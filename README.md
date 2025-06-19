@@ -12,6 +12,9 @@ axel helps organize short, medium and long term goals using chat, reasoning and 
 - [ ] fetch repos from the GitHub API
 - [ ] integrate LLM assistants to suggest quests across repos
 - [ ] integrate `token.place` clients across all repos
+- [ ] represent personal flywheel of projects and highlight cross-pollination
+- [ ] document workflow for a private `local/` directory
+- [ ] track tasks with markdown files in the `issues/` folder
 
 ## usage
 
@@ -20,6 +23,20 @@ axel helps organize short, medium and long term goals using chat, reasoning and 
 3. Remove a repo with `python -m axel.repo_manager remove <url>`.
 4. Run `flake8 axel tests` and `pytest --cov=axel --cov=tests` before committing.
 5. Pass `--path <file>` or set `AXEL_REPO_FILE` to use a custom repo list.
+
+## local setup
+
+To keep personal notes and repo lists private, create a `local/` directory and
+add it to `.gitignore`. Set `AXEL_REPO_FILE=local/repos.txt` to use a private
+repo list without committing it to source control.
+
+Example:
+
+```bash
+mkdir -p local
+echo "https://github.com/your/private-repo" > local/repos.txt
+export AXEL_REPO_FILE=local/repos.txt
+```
 
 See `examples/` for a sample repo list.
 

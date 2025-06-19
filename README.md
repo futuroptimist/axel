@@ -8,15 +8,18 @@ axel helps organize short, medium and long term goals using chat, reasoning and 
 - [x] maintain a list of repos in `repos.txt`
 - [x] simple CLI for managing repos
 - [x] contributor guide
+- [x] remove repos from the list
 - [ ] fetch repos from the GitHub API
 - [ ] integrate LLM assistants to suggest quests across repos
+- [ ] integrate `token.place` clients across all repos
 
 ## usage
 
 1. Add a repo with `python -m axel.repo_manager add <url>` or edit `repos.txt`.
 2. View the list with `python -m axel.repo_manager list`.
-3. Run `flake8 axel tests` and `pytest --cov=axel --cov=tests` before committing.
-4. Pass `--path <file>` or set `AXEL_REPO_FILE` to use a custom repo list.
+3. Remove a repo with `python -m axel.repo_manager remove <url>`.
+4. Run `flake8 axel tests` and `pytest --cov=axel --cov=tests` before committing.
+5. Pass `--path <file>` or set `AXEL_REPO_FILE` to use a custom repo list.
 
 See `examples/` for a sample repo list.
 

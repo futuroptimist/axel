@@ -1,7 +1,15 @@
 from pathlib import Path
 from typing import List
 
-DEFAULT_REPO_FILE = Path(__file__).resolve().parent.parent / "repos.txt"
+import argparse
+import os
+
+DEFAULT_REPO_FILE = Path(
+    os.getenv(
+        "AXEL_REPO_FILE",
+        Path(__file__).resolve().parent.parent / "repos.txt",
+    )
+)
 
 
 def load_repos(path: Path = DEFAULT_REPO_FILE) -> List[str]:
@@ -26,6 +34,25 @@ def list_repos(path: Path = DEFAULT_REPO_FILE) -> List[str]:
     return load_repos(path)
 
 
-if __name__ == "__main__":
-    for repo in list_repos():
+def main(argv: List[str] | None = None) -> None:
+    """Simple command-line interface for managing repos."""
+    parser = argparse.ArgumentParser(description="Manage repo list")
+    sub = parser.add_subparsers(dest="cmd")
+
+    add_p = sub.add_parser("add", help="Add a repository URL")
+    add_p.add_argument("url")
+
+    sub.add_parser("list", help="List repositories")
+
+    args = parser.parse_args(argv)
+
+    if args.cmd == "add":
+        repos = add_repo(args.url)
+    else:
+        repos = list_repos()
+    for repo in repos:
         print(repo)
+
+
+if __name__ == "__main__":  # pragma: no cover - manual use
+    main()

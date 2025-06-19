@@ -29,6 +29,15 @@ def add_repo(url: str, path: Path = DEFAULT_REPO_FILE) -> List[str]:
     return repos
 
 
+def remove_repo(url: str, path: Path = DEFAULT_REPO_FILE) -> List[str]:
+    """Remove a repository URL from the list if present."""
+    repos = load_repos(path)
+    if url in repos:
+        repos.remove(url)
+        path.write_text("\n".join(repos))
+    return repos
+
+
 def list_repos(path: Path = DEFAULT_REPO_FILE) -> List[str]:
     """Return the list of repository URLs."""
     return load_repos(path)
@@ -48,12 +57,17 @@ def main(argv: List[str] | None = None) -> None:
     add_p = sub.add_parser("add", help="Add a repository URL")
     add_p.add_argument("url")
 
+    remove_p = sub.add_parser("remove", help="Remove a repository URL")
+    remove_p.add_argument("url")
+
     sub.add_parser("list", help="List repositories")
 
     args = parser.parse_args(argv)
 
     if args.cmd == "add":
         repos = add_repo(args.url, path=args.path)
+    elif args.cmd == "remove":
+        repos = remove_repo(args.url, path=args.path)
     else:
         repos = list_repos(path=args.path)
     for repo in repos:

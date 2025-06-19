@@ -16,6 +16,9 @@ axel helps organize short, medium and long term goals using chat, reasoning and 
 2. View the list with `python -m axel.repo_manager list`.
 3. Run `flake8 axel tests` and `pytest --cov=axel --cov=tests` before committing.
 
+Set `AXEL_REPO_FILE` to point at a custom repo list if you want to experiment
+without touching the default `repos.txt`.
+
 See `examples/` for a sample repo list.
 
 The repos in `repos.txt` come from various projects like

@@ -1,0 +1,6 @@
+[run]
+source = axel
+
+[report]
+omit =
+    tests/*

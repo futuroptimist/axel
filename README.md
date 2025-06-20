@@ -45,5 +45,6 @@ The repos in `repos.txt` come from various projects like
 [`futuroptimist`](https://github.com/futuroptimist/futuroptimist). Axel aims to
 cross‑pollinate ideas between them by suggesting quests that touch multiple
 codebases.
+New additions such as [`gabriel`](https://github.com/futuroptimist/gabriel) help expand this flywheel by providing an open-source OSINT agent focused on personal safety.
 
 See [CONTRIBUTORS.md](CONTRIBUTORS.md) for guidelines on sending pull requests.

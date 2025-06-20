@@ -14,7 +14,7 @@ axel helps organize short, medium and long term goals using chat, reasoning and 
 - [ ] integrate `token.place` clients across all repos
 - [ ] represent personal flywheel of projects and highlight cross-pollination
 - [ ] document workflow for a private `local/` directory
-- [ ] track tasks with markdown files in the `issues/` folder
+- [x] track tasks with markdown files in the `issues/` folder
 
 ## usage
 

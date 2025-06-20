@@ -13,6 +13,7 @@ across projects. Repos are stored in `repos.txt` and managed via
   quests that connect multiple repositories.
 - Look for opportunities to integrate or document `token.place` clients across
   the repositories listed in `repos.txt`.
+- Explore synergy with [futuroptimist/gabriel](https://github.com/futuroptimist/gabriel) for safety-focused OSINT tasks.
 - Keep markdown issues in the `issues/` folder up to date.
 - Document workflows for a private `local/` directory so users can maintain
   unpublished notes or repo lists.

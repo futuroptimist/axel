@@ -11,7 +11,7 @@ axel helps organize short, medium and long term goals using chat, reasoning and 
 - [x] remove repos from the list
 - [ ] fetch repos from the GitHub API
 - [ ] integrate LLM assistants to suggest quests across repos
-- [ ] integrate `token.place` clients across all repos
+- [ ] integrate `token.place` clients across all repos (see [issue 0002](issues/0002-token-place-flywheel.md))
 - [ ] represent personal flywheel of projects and highlight cross-pollination
 - [ ] document workflow for a private `local/` directory
 - [x] track tasks with markdown files in the `issues/` folder

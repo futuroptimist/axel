@@ -5,5 +5,6 @@ With issue tracking in place, coordinate work across projects to tighten the per
 - [ ] integrate token.place API v1 with [democratized.space](https://github.com/democratizedspace/dspace)
 - [ ] integrate token.place API v1 with this repo (axel) for cross-project quests
 - [ ] update [futuroptimist/futuroptimist](https://github.com/futuroptimist/futuroptimist) README to clearly convey value add
+- [ ] collaborate with [futuroptimist/gabriel](https://github.com/futuroptimist/gabriel) to build an OSINT agent that improves physical safety with open source LLMs
 - [ ] onboard [futuroptimist/blog](https://github.com/futuroptimist/blog) without slowing the futuropimist/futuroptimist flywheel
 - [ ] encourage regular blogging that leads to more YouTube content

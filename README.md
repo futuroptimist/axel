@@ -58,5 +58,8 @@ The repos in `repos.txt` come from various projects like
 cross‑pollinate ideas between them by suggesting quests that touch multiple
 codebases.
 New additions such as [`gabriel`](https://github.com/futuroptimist/gabriel) help expand this flywheel by providing an open-source OSINT agent focused on personal safety.
+The [`flywheel`](https://github.com/futuroptimist/flywheel) template bundles
+linting, testing, and documentation checks so new repositories can start with
+healthy continuous integration from the beginning.
 
 See [CONTRIBUTORS.md](CONTRIBUTORS.md) for guidelines on sending pull requests.

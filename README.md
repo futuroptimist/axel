@@ -41,6 +41,17 @@ export AXEL_REPO_FILE=local/repos.txt
 
 See `examples/` for a sample repo list.
 
+## publishing
+
+Before flipping this repository to public, search the codebase for accidental credentials.
+A quick sanity check is:
+
+```bash
+git ls-files -z | xargs -0 grep -i --line-number --context=1 -e token -e secret -e password
+```
+
+Review the output and remove any sensitive data. Make sure `repos.txt` contains only repositories you wish to share.
+
 The repos in `repos.txt` come from various projects like
 [`dspace`](https://github.com/democratizedspace/dspace) and
 [`futuroptimist`](https://github.com/futuroptimist/futuroptimist). Axel aims to

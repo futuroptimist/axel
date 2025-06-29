@@ -17,4 +17,6 @@ across projects. Repos are stored in `repos.txt` and managed via
 - Keep markdown issues in the `issues/` folder up to date.
 - Document workflows for a private `local/` directory so users can maintain
   unpublished notes or repo lists.
+- Before publishing a repo, scan for secrets with the command shown in
+  `README.md`.
 - Refer to `CONTRIBUTORS.md` for more detailed contribution instructions.

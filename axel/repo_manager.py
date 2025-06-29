@@ -25,7 +25,7 @@ def add_repo(url: str, path: Path = DEFAULT_REPO_FILE) -> List[str]:
     repos = load_repos(path)
     if url not in repos:
         repos.append(url)
-        path.write_text("\n".join(repos))
+        path.write_text("\n".join(repos) + "\n")
     return repos
 
 
@@ -34,7 +34,10 @@ def remove_repo(url: str, path: Path = DEFAULT_REPO_FILE) -> List[str]:
     repos = load_repos(path)
     if url in repos:
         repos.remove(url)
-        path.write_text("\n".join(repos))
+        text = "\n".join(repos)
+        if text:
+            text += "\n"
+        path.write_text(text)
     return repos
 
 

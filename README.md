@@ -12,6 +12,7 @@ axel helps organize short, medium and long term goals using chat, reasoning and 
 - [ ] fetch repos from the GitHub API
 - [ ] integrate LLM assistants to suggest quests across repos
 - [ ] integrate `token.place` clients across all repos
+- [ ] integrate [`gabriel`](https://github.com/futuroptimist/gabriel) as a security layer across repos
 - [ ] represent personal flywheel of projects and highlight cross-pollination
 - [ ] document workflow for a private `local/` directory
 - [x] track tasks with markdown files in the `issues/` folder

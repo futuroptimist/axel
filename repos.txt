@@ -4,3 +4,5 @@ https://github.com/futuroptimist/futuroptimist
 https://github.com/futuroptimist/f2clipboard
 
 https://github.com/futuroptimist/gabriel
+
+https://github.com/futuroptimist/flywheel

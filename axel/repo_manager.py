@@ -1,8 +1,7 @@
-from pathlib import Path
-from typing import List
-
 import argparse
 import os
+from pathlib import Path
+from typing import List
 
 DEFAULT_REPO_FILE = Path(
     os.getenv(

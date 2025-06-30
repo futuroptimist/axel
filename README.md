@@ -3,6 +3,7 @@
 axel helps organize short, medium and long term goals using chat, reasoning and agentic LLMs. The project begins by keeping track of the GitHub repositories you contribute to. Over time it will fetch this list automatically and provide tools to analyze those repos and generate actionable quests.
 
 [![CI](https://github.com/futuroptimist/axel/actions/workflows/ci.yml/badge.svg)](https://github.com/futuroptimist/axel/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/futuroptimist/axel/branch/main/graph/badge.svg)](https://codecov.io/gh/futuroptimist/axel)
 
 ## roadmap
 - [x] maintain a list of repos in `repos.txt`
@@ -17,12 +18,18 @@ axel helps organize short, medium and long term goals using chat, reasoning and 
 - [ ] document workflow for a private `local/` directory
 - [x] track tasks with markdown files in the `issues/` folder
 
+## installation
+
+```bash
+pip install -e .
+```
+
 ## usage
 
 1. Add a repo with `python -m axel.repo_manager add <url>` or edit `repos.txt`.
 2. View the list with `python -m axel.repo_manager list`.
 3. Remove a repo with `python -m axel.repo_manager remove <url>`.
-4. Run `flake8 axel tests` and `pytest --cov=axel --cov=tests` before committing.
+4. Run `pre-commit run --all-files` before committing to check formatting and tests.
 5. Pass `--path <file>` or set `AXEL_REPO_FILE` to use a custom repo list.
 
 ## local setup
@@ -40,6 +47,15 @@ export AXEL_REPO_FILE=local/repos.txt
 ```
 
 See `examples/` for a sample repo list.
+
+## API
+
+```python
+from axel import add_repo, list_repos
+
+add_repo("https://github.com/example/repo")
+print(list_repos())
+```
 
 ## publishing
 
@@ -62,4 +78,5 @@ The [`flywheel`](https://github.com/futuroptimist/flywheel) template bundles
 linting, testing, and documentation checks so new repositories can start with
 healthy continuous integration from the beginning.
 
-See [CONTRIBUTORS.md](CONTRIBUTORS.md) for guidelines on sending pull requests.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on sending pull requests.
+For LLM-specific tips see [AGENTS.md](AGENTS.md).

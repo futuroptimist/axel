@@ -3,3 +3,5 @@ flake8
 coverage
 pytest-cov
 requests
+black
+isort

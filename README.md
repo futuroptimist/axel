@@ -77,6 +77,11 @@ New additions such as [`gabriel`](https://github.com/futuroptimist/gabriel) help
 The [`flywheel`](https://github.com/futuroptimist/flywheel) template bundles
 linting, testing, and documentation checks so new repositories can start with
 healthy continuous integration from the beginning.
+Other tracked repos include:
+[`sigma`](https://github.com/futuroptimist/sigma), an open-source AI pin device,
+the [`blog`](https://github.com/futuroptimist/blog) for publishing progress,
+and [`esp.ac`](https://github.com/futuroptimist/esp.ac), a simple landing page
+for Esp.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on sending pull requests.
 For LLM-specific tips see [AGENTS.md](AGENTS.md).

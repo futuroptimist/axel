@@ -6,3 +6,7 @@ https://github.com/futuroptimist/f2clipboard
 https://github.com/futuroptimist/gabriel
 
 https://github.com/futuroptimist/flywheel
+https://github.com/futuroptimist/blog
+https://github.com/futuroptimist/esp.ac
+https://github.com/futuroptimist/sigma
+https://github.com/futuroptimist/axel

@@ -3,24 +3,28 @@ import os
 from pathlib import Path
 from typing import List
 
-DEFAULT_REPO_FILE = Path(
-    os.getenv(
-        "AXEL_REPO_FILE",
-        Path(__file__).resolve().parent.parent / "repos.txt",
-    )
-)
+DEFAULT_REPO_FILE = Path(__file__).resolve().parent.parent / "repos.txt"
 
 
-def load_repos(path: Path = DEFAULT_REPO_FILE) -> List[str]:
+def get_repo_file() -> Path:
+    """Return the repository list path, honoring ``AXEL_REPO_FILE`` if set."""
+    return Path(os.getenv("AXEL_REPO_FILE", DEFAULT_REPO_FILE))
+
+
+def load_repos(path: Path | None = None) -> List[str]:
     """Load repository URLs from a text file."""
+    if path is None:
+        path = get_repo_file()
     if not path.exists():
         return []
     with path.open() as f:
         return [line.strip() for line in f if line.strip()]
 
 
-def add_repo(url: str, path: Path = DEFAULT_REPO_FILE) -> List[str]:
+def add_repo(url: str, path: Path | None = None) -> List[str]:
     """Add a repository URL to the list if not already present."""
+    if path is None:
+        path = get_repo_file()
     repos = load_repos(path)
     if url not in repos:
         repos.append(url)
@@ -28,8 +32,10 @@ def add_repo(url: str, path: Path = DEFAULT_REPO_FILE) -> List[str]:
     return repos
 
 
-def remove_repo(url: str, path: Path = DEFAULT_REPO_FILE) -> List[str]:
+def remove_repo(url: str, path: Path | None = None) -> List[str]:
     """Remove a repository URL from the list if present."""
+    if path is None:
+        path = get_repo_file()
     repos = load_repos(path)
     if url in repos:
         repos.remove(url)
@@ -40,7 +46,7 @@ def remove_repo(url: str, path: Path = DEFAULT_REPO_FILE) -> List[str]:
     return repos
 
 
-def list_repos(path: Path = DEFAULT_REPO_FILE) -> List[str]:
+def list_repos(path: Path | None = None) -> List[str]:
     """Return the list of repository URLs."""
     return load_repos(path)
 
@@ -51,7 +57,7 @@ def main(argv: List[str] | None = None) -> None:
     parser.add_argument(
         "--path",
         type=Path,
-        default=DEFAULT_REPO_FILE,
+        default=get_repo_file(),
         help="Path to repo list",
     )
     sub = parser.add_subparsers(dest="cmd")

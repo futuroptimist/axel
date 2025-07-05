@@ -22,4 +22,4 @@ pre-commit run --all-files
 - Keep the [roadmap](README.md#roadmap) updated when you close an item.
 - By submitting a PR you agree to license your work under the MIT license.
 
-For additional tips see [CONTRIBUTORS.md](CONTRIBUTORS.md).
+For additional tips see [CONTRIBUTING.md](CONTRIBUTING.md).

@@ -82,6 +82,16 @@ def test_env_default_var(monkeypatch, tmp_path: Path):
     assert repo_file.read_text().strip() == "https://example.com/repo"
 
 
+def test_env_dynamic_at_runtime(monkeypatch, tmp_path: Path) -> None:
+    """``AXEL_REPO_FILE`` is honored without reloading the module."""
+    repo_file = tmp_path / "repos_runtime.txt"
+    monkeypatch.setenv("AXEL_REPO_FILE", str(repo_file))
+    import axel.repo_manager as rm
+
+    rm.add_repo("https://example.com/runtime")
+    assert repo_file.read_text().strip() == "https://example.com/runtime"
+
+
 def test_remove_repo_leaves_newline(tmp_path: Path) -> None:
     """Line 38 in remove_repo appends a trailing newline when repos remain."""
     file = tmp_path / "repos.txt"

@@ -134,3 +134,25 @@ def test_cli_remove_direct(tmp_path: Path, capsys) -> None:
     rm.main(["--path", str(file), "remove", "https://example.com/repo"])  # remove
     assert capsys.readouterr().out.strip() == ""
     assert not file.read_text()
+
+
+def test_load_repos_defaults(monkeypatch, tmp_path: Path) -> None:
+    """When no path is provided ``AXEL_REPO_FILE`` is used."""
+    repo_file = tmp_path / "repos.txt"
+    monkeypatch.setenv("AXEL_REPO_FILE", str(repo_file))
+    import axel.repo_manager as rm
+
+    assert rm.load_repos() == []  # file doesn't exist yet
+    rm.add_repo("https://example.com/repo")  # default path
+    assert rm.load_repos() == ["https://example.com/repo"]
+
+
+def test_remove_repo_defaults(monkeypatch, tmp_path: Path) -> None:
+    """``remove_repo`` should also honor ``AXEL_REPO_FILE``."""
+    repo_file = tmp_path / "repos.txt"
+    monkeypatch.setenv("AXEL_REPO_FILE", str(repo_file))
+    import axel.repo_manager as rm
+
+    rm.add_repo("https://example.com/repo")
+    rm.remove_repo("https://example.com/repo")
+    assert rm.load_repos() == []

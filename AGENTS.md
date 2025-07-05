@@ -20,4 +20,4 @@ across projects. Repos are stored in `repos.txt` and managed via
   unpublished notes or repo lists.
 - Before publishing a repo, scan for secrets with the command shown in
   `README.md`.
-- Refer to `CONTRIBUTORS.md` for more detailed contribution instructions.
+- Refer to `CONTRIBUTING.md` for more detailed contribution instructions.

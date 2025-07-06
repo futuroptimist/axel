@@ -21,3 +21,4 @@ across projects. Repos are stored in `repos.txt` and managed via
 - Before publishing a repo, scan for secrets with the command shown in
   `README.md`.
 - Refer to `CONTRIBUTING.md` for more detailed contribution instructions.
+- Use `uv` to manage the virtual environment and install dependencies.

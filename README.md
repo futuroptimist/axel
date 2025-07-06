@@ -14,6 +14,7 @@ axel helps organize short, medium and long term goals using chat, reasoning and 
 - [ ] integrate LLM assistants to suggest quests across repos
 - [ ] integrate `token.place` clients across all repos
 - [ ] integrate [`gabriel`](https://github.com/futuroptimist/gabriel) as a security layer across repos
+- [ ] self-hosted Discord bot for ingesting messages when mentioned
 - [ ] represent personal flywheel of projects and highlight cross-pollination
 - [x] document workflow for a private `local/` directory
 - [x] track tasks with markdown files in the `issues/` folder
@@ -56,6 +57,11 @@ from axel import add_repo, list_repos
 add_repo("https://github.com/example/repo")
 print(list_repos())
 ```
+
+## discord bot
+
+See [docs/discord-bot.md](docs/discord-bot.md) for running a local Discord bot
+that saves mentioned messages to `local/discord/`.
 
 ## publishing
 

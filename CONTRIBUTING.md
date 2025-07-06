@@ -23,5 +23,6 @@ pre-commit run --all-files
 - Add tests for new functionality.
 - Keep the [roadmap](README.md#roadmap) updated when you close an item.
 - By submitting a PR you agree to license your work under the MIT license.
+- Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 For additional tips see [CONTRIBUTING.md](CONTRIBUTING.md).

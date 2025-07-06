@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+
 sys.path.append(str(Path(__file__).resolve().parents[1]))  # noqa: E402
 
 import axel.discord_bot as db  # noqa: E402

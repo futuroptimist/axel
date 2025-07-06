@@ -27,9 +27,7 @@ class AxelClient(discord.Client):
         if self.user is None or message.author == self.user:
             return
         if self.user.mentioned_in(message) and message.reference:
-            original = await message.channel.fetch_message(
-                message.reference.message_id
-            )
+            original = await message.channel.fetch_message(message.reference.message_id)
             path = save_message(original)
             await message.channel.send(f"Saved to {path}")
 

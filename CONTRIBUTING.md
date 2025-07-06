@@ -5,6 +5,8 @@ Thank you for helping improve **axel**!
 ## Setup
 
 ```bash
+uv venv .venv
+source .venv/bin/activate
 uv pip install -r requirements.txt
 uv pip install pre-commit
 pre-commit install

@@ -22,6 +22,8 @@ axel helps organize short, medium and long term goals using chat, reasoning and 
 ## installation
 
 ```bash
+uv venv .venv
+source .venv/bin/activate
 uv pip install -e .
 ```
 

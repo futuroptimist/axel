@@ -5,8 +5,8 @@ Thank you for helping improve **axel**!
 ## Setup
 
 ```bash
-pip install -r requirements.txt
-pip install pre-commit
+uv pip install -r requirements.txt
+uv pip install pre-commit
 pre-commit install
 ```
 

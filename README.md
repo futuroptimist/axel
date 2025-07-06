@@ -22,7 +22,7 @@ axel helps organize short, medium and long term goals using chat, reasoning and 
 ## installation
 
 ```bash
-pip install -e .
+uv pip install -e .
 ```
 
 ## usage
@@ -90,4 +90,5 @@ and [`esp.ac`](https://github.com/futuroptimist/esp.ac), a simple landing page
 for Esp.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on sending pull requests.
+This project adheres to the [Code of Conduct](CODE_OF_CONDUCT.md).
 For LLM-specific tips see [AGENTS.md](AGENTS.md).

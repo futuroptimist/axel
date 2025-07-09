@@ -18,6 +18,11 @@ axel helps organize short, medium and long term goals using chat, reasoning and 
 - [ ] represent personal flywheel of projects and highlight cross-pollination
 - [x] document workflow for a private `local/` directory
 - [x] track tasks with markdown files in the `issues/` folder
+- [x] verify `local/` directories are gitignored
+- [x] add `THREAT_MODEL.md` with cross-repo considerations
+- [ ] provide token rotation guidance in docs
+- [ ] encrypt notes saved under `local/discord/`
+- [ ] review permissions for integrated tools (token.place, gabriel)
 
 ## installation
 
@@ -47,7 +52,10 @@ Example:
 mkdir -p local
 echo "https://github.com/your/private-repo" > local/repos.txt
 export AXEL_REPO_FILE=local/repos.txt
+git check-ignore -v local/
 ```
+
+The final command confirms that your `local/` directory is excluded from version control.
 
 See `examples/` for a sample repo list.
 
@@ -60,6 +68,7 @@ information. Because this project is entirely open source, the community can
 audit how data is handled. We rely on the
 [flywheel](https://github.com/futuroptimist/flywheel) template to keep our
 lint, test and documentation practices transparent.
+See [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) for cross-repo security tips.
 
 ## API
 

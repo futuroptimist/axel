@@ -22,3 +22,9 @@ across projects. Repos are stored in `repos.txt` and managed via
   `README.md`.
 - Refer to `CONTRIBUTING.md` for more detailed contribution instructions.
 - Use `uv` to manage the virtual environment and install dependencies.
+- Treat users' goals and ambitions with care. Keep data local whenever
+  possible and follow [gabriel](https://github.com/futuroptimist/gabriel)
+  guidance for security. Use the open-source nature of this project to
+  provide transparency and auditability, taking inspiration from
+  [`flywheel`](https://github.com/futuroptimist/flywheel) for best
+  practices.

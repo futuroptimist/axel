@@ -51,6 +51,16 @@ export AXEL_REPO_FILE=local/repos.txt
 
 See `examples/` for a sample repo list.
 
+## privacy & transparency
+
+Axel treats your goals with respect. Repository lists and any Discord notes
+are stored locally by default. Follow guidance from
+[gabriel](https://github.com/futuroptimist/gabriel) when sharing sensitive
+information. Because this project is entirely open source, the community can
+audit how data is handled. We rely on the
+[flywheel](https://github.com/futuroptimist/flywheel) template to keep our
+lint, test and documentation practices transparent.
+
 ## API
 
 ```python

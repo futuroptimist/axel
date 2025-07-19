@@ -11,7 +11,16 @@ authors = [{ name = "futuroptimist" }]
 license = { text = "MIT" }
 requires-python = ">=3.11"
 dependencies = ["requests"]
-packages = ["axel"]
 
 [project.urls]
 Homepage = "https://github.com/futuroptimist/axel"
+
+[tool.setuptools]
+packages = {find = {include = ["axel"]}}
+
+[tool.black]
+line-length = 88
+
+[tool.isort]
+profile = "black"
+line_length = 88

@@ -1,0 +1,26 @@
+name: Docs
+on:
+  push:
+    paths:
+      - 'docs/**'
+      - 'README.md'
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'README.md'
+jobs:
+  linkcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+      - name: Install linkchecker
+        run: |
+          uv venv .venv
+          source .venv/bin/activate
+          uv pip install linkchecker
+      - name: Check links
+        run: |
+          source .venv/bin/activate
+          linkchecker README.md docs/ || true

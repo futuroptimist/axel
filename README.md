@@ -2,8 +2,11 @@
 
 axel helps organize short, medium and long term goals using chat, reasoning and agentic LLMs. The project begins by keeping track of the GitHub repositories you contribute to. Over time it will fetch this list automatically and provide tools to analyze those repos and generate actionable quests.
 
-[![CI](https://github.com/futuroptimist/axel/actions/workflows/ci.yml/badge.svg)](https://github.com/futuroptimist/axel/actions/workflows/ci.yml)
+[![Lint & Format](https://img.shields.io/github/actions/workflow/status/futuroptimist/axel/.github/workflows/01-lint-format.yml?label=lint%20%26%20format)](https://github.com/futuroptimist/axel/actions/workflows/01-lint-format.yml)
+[![Tests](https://img.shields.io/github/actions/workflow/status/futuroptimist/axel/.github/workflows/02-tests.yml?label=tests)](https://github.com/futuroptimist/axel/actions/workflows/02-tests.yml)
 [![Coverage](https://codecov.io/gh/futuroptimist/axel/branch/main/graph/badge.svg)](https://codecov.io/gh/futuroptimist/axel)
+[![Docs](https://img.shields.io/github/actions/workflow/status/futuroptimist/axel/.github/workflows/03-docs.yml?label=docs)](https://github.com/futuroptimist/axel/actions/workflows/03-docs.yml)
+[![License](https://img.shields.io/github/license/futuroptimist/axel)](LICENSE)
 
 ## roadmap
 - [x] maintain a list of repos in `repos.txt`
@@ -30,6 +33,8 @@ axel helps organize short, medium and long term goals using chat, reasoning and 
 uv venv .venv
 source .venv/bin/activate
 uv pip install -e .
+uv pip install pre-commit
+pre-commit install
 ```
 
 ## usage

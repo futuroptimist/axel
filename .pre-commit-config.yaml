@@ -20,6 +20,6 @@ repos:
     hooks:
       - id: pytest
         name: run tests
-        entry: pytest --cov=axel --cov=tests
+        entry: pytest --cov=axel --cov=tests --cov-report=xml
         language: system
         pass_filenames: false

@@ -1,9 +1,23 @@
-# llms.txt
+# Axel
 
-> A proposal that those interested in providing LLM-friendly content add a /llms.txt file to their site. This is a markdown file that provides brief background information and guidance, along with links to markdown files providing more detailed information.
+> Organizes GitHub repositories and suggests quests using LLMs. Repositories are listed in `repos.txt` and managed via a CLI.
+
+Axel keeps data local by default and works best inside a Python 3.11 environment managed with `uv`. See [AGENTS.md](AGENTS.md) for contributor guidelines.
 
 ## Docs
+- [README](README.md): Overview and roadmap
+- [Threat Model](docs/THREAT_MODEL.md): Cross-repo security notes
+- [Rotating Tokens](docs/ROTATING_TOKENS.md): Guidance on credential hygiene
+- [Discord Bot](docs/discord-bot.md): Saving mentioned messages locally
 
-- [llms.txt proposal](https://llmstxt.org/index.md): The proposal for llms.txt
-- [Python library docs](https://llmstxt.org/intro.html.md): Docs for `llms-txt` python lib
-- [ed demo](https://llmstxt.org/ed-commonmark.md): Tongue-in-cheek example of how llms.txt could be used in the classic `ed` editor, used to show how editors could incorporate llms.txt in general.
+## Examples
+- [Sample repos list](examples/repos.txt): Demonstrates custom repo files
+
+## Related Projects
+- [gabriel](https://github.com/futuroptimist/gabriel): OSINT agent for security
+- [flywheel](https://github.com/futuroptimist/flywheel): Template for linting and tests
+- [token.place](https://github.com/futuroptimist/token.place): Client integrations
+
+## Optional
+- [llms.txt spec](https://llmstxt.org/index.md)
+- [agentsmd.net](https://agentsmd.net/)

@@ -44,6 +44,7 @@ pre-commit install
 3. Remove a repo with `python -m axel.repo_manager remove <url>`.
 4. Run `pre-commit run --all-files` before committing to check formatting and tests.
 5. Pass `--path <file>` or set `AXEL_REPO_FILE` to use a custom repo list.
+6. Coverage reports are uploaded to [Codecov](https://codecov.io/gh/futuroptimist/axel) via CI.
 
 ## local setup
 

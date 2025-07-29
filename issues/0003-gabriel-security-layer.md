@@ -5,4 +5,3 @@
 - [ ] add examples of using gabriel alongside `token.place` and `dspace`
 - [ ] mention gabriel in future quests that involve sensitive data
 - [ ] keep README entries updated as integration progresses
-

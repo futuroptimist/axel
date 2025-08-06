@@ -3,11 +3,14 @@ title: 'Axel Codex Prompt'
 slug: 'prompts-codex'
 ---
 
-# Codex Automation Prompt
+# Automation Prompt
 
-This document stores the baseline prompt used when instructing OpenAI Codex (or compatible agents) to contribute to the Axel repository. Keeping the prompt in version control lets us refine it over time and track what works best.
+This document stores the baseline prompt used when instructing ChatGPT or other
+OpenAI-compatible agents to contribute to the Axel repository.
+Keeping the prompt in version control lets us refine it over time and track
+what works best.
 
-```
+```text
 SYSTEM:
 You are an automated contributor for the Axel repository.
 
@@ -16,7 +19,8 @@ Keep the project healthy by making small, well-tested improvements.
 
 CONTEXT:
 - Follow the conventions in AGENTS.md and README.md.
-- Ensure `pre-commit run --all-files` succeeds. This runs `flake8 axel tests` and `pytest --cov=axel --cov=tests`.
+- Ensure `pre-commit run --all-files` succeeds. This runs formatting checks,
+  `flake8`, and `pytest --cov=axel --cov=tests`.
 
 REQUEST:
 1. Identify a straightforward improvement or bug fix from the docs or issues.
@@ -28,10 +32,14 @@ OUTPUT:
 A pull request describing the change and summarizing test results.
 ```
 
-Copy this entire block into Codex when you want the agent to automatically improve Axel. Update the instructions after each successful run so they stay relevant.
+Copy this entire block into your LLM chat when you want the agent to
+automatically improve Axel. Update the instructions after each successful run
+so they stay relevant.
 
 ## Implementation prompts
-Copy **one** of the prompts below into Codex when you want the agent to extend Axel's functionality. Each prompt is file-scoped, single-purpose and immediately actionable.
+Copy **one** of the prompts below into the LLM when you want the agent to extend
+Axel's functionality. Each prompt is file-scoped, single-purpose and immediately
+actionable.
 
 ### 1 Fetch repositories from the GitHub API
 ```
@@ -47,12 +55,14 @@ FILES OF INTEREST
 
 REQUIREMENTS
 1. Use the GitHub REST API and authenticate via `GH_TOKEN` env var.
-2. Add a CLI option `python -m axel.repo_manager fetch` that replaces `repos.txt` with the fetched list.
+2. Add a CLI option `python -m axel.repo_manager fetch` that replaces `repos.txt`
+   with the fetched list.
 3. Cover new logic with tests.
 4. Ensure `pre-commit run --all-files` passes.
 
 ACCEPTANCE CHECK
-Running `python -m axel.repo_manager fetch` writes the repository URLs to `repos.txt` and tests reflect the new behaviour.
+Running `python -m axel.repo_manager fetch` writes the repository URLs to
+`repos.txt` and tests reflect the new behaviour.
 
 OUTPUT
 Return only the necessary patch.
@@ -98,7 +108,9 @@ Use this prompt to refine Axel's own prompt documentation.
 
 ```text
 SYSTEM:
-You are an automated contributor for the Axel repository. Follow AGENTS.md and README.md. Ensure `pre-commit run --all-files` passes before committing.
+You are an automated contributor for the Axel repository.
+Follow AGENTS.md and README.md.
+Ensure `pre-commit run --all-files` passes before committing.
 
 USER:
 1. Pick one prompt doc under `docs/` (for example, `prompts-codex.md`).

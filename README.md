@@ -40,6 +40,7 @@ pre-commit install
 ## usage
 
 1. Add a repo with `python -m axel.repo_manager add <url>` or edit `repos.txt`.
+   Whitespace around the URL is stripped automatically.
 2. View the list with `python -m axel.repo_manager list`.
 3. Remove a repo with `python -m axel.repo_manager remove <url>`.
 4. Run `pre-commit run --all-files` before committing to check formatting and tests.

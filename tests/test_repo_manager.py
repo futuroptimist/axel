@@ -65,11 +65,24 @@ def test_add_repo_no_duplicates(tmp_path: Path):
     assert load_repos(path=file) == ["https://example.com/repo"]
 
 
+def test_add_repo_strips_whitespace(tmp_path: Path) -> None:
+    file = tmp_path / "repos.txt"
+    add_repo("https://example.com/repo\n", path=file)
+    assert load_repos(path=file) == ["https://example.com/repo"]
+
+
 def test_remove_repo_missing(tmp_path: Path):
     file = tmp_path / "repos.txt"
     add_repo("https://example.com/repo", path=file)
     remove_repo("https://example.com/other", path=file)
     assert load_repos(path=file) == ["https://example.com/repo"]
+
+
+def test_remove_repo_strips_whitespace(tmp_path: Path) -> None:
+    file = tmp_path / "repos.txt"
+    add_repo("https://example.com/repo", path=file)
+    remove_repo("https://example.com/repo \n", path=file)
+    assert load_repos(path=file) == []
 
 
 def test_env_default_var(monkeypatch, tmp_path: Path):

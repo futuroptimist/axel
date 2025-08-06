@@ -17,7 +17,7 @@ axel helps organize short, medium and long term goals using chat, reasoning and 
 - [ ] integrate LLM assistants to suggest quests across repos
 - [ ] integrate `token.place` clients across all repos
 - [ ] integrate [`gabriel`](https://github.com/futuroptimist/gabriel) as a security layer across repos
-- [ ] self-hosted Discord bot for ingesting messages when mentioned
+- [x] self-hosted Discord bot for ingesting messages when mentioned (see docs/discord-bot.md)
 - [ ] represent personal flywheel of projects and highlight cross-pollination
 - [x] document workflow for a private `local/` directory
 - [x] track tasks with markdown files in the `issues/` folder
@@ -25,7 +25,7 @@ axel helps organize short, medium and long term goals using chat, reasoning and 
 - [x] add `THREAT_MODEL.md` with cross-repo considerations
 - [x] provide token rotation guidance in docs
 - [ ] encrypt notes saved under `local/discord/`
-- [ ] review permissions for integrated tools (token.place, gabriel)
+- [x] review permissions for integrated tools (token.place, gabriel) (see docs/THREAT_MODEL.md)
 
 ## installation
 

@@ -25,7 +25,7 @@ axel helps organize short, medium and long term goals using chat, reasoning and 
 - [x] add `THREAT_MODEL.md` with cross-repo considerations
 - [x] provide token rotation guidance in docs
 - [ ] encrypt notes saved under `local/discord/`
-- [ ] review permissions for integrated tools (token.place, gabriel)
+- [x] review permissions for integrated tools (token.place, gabriel) (see docs/THREAT_MODEL.md)
 
 ## installation
 
@@ -40,6 +40,7 @@ pre-commit install
 ## usage
 
 1. Add a repo with `python -m axel.repo_manager add <url>` or edit `repos.txt`.
+   Whitespace around the URL is stripped automatically.
 2. View the list with `python -m axel.repo_manager list`.
 3. Remove a repo with `python -m axel.repo_manager remove <url>`.
 4. Run `pre-commit run --all-files` before committing to check formatting and tests.

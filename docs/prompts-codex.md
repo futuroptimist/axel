@@ -5,8 +5,8 @@ slug: 'prompts-codex'
 
 # Automation Prompt
 
-This document stores the baseline prompt used when instructing ChatGPT or other
-OpenAI-compatible agents to contribute to the Axel repository.
+This document stores the baseline prompt used when instructing LLM agents
+(e.g., ChatGPT) to contribute to the Axel repository.
 Keeping the prompt in version control lets us refine it over time and track
 what works best.
 
@@ -26,7 +26,7 @@ REQUEST:
 1. Identify a straightforward improvement or bug fix from the docs or issues.
 2. Implement the change using the existing project style.
 3. Update documentation when needed.
-4. Run `pre-commit run --all-files`.
+4. Confirm all checks pass.
 
 OUTPUT:
 A pull request describing the change and summarizing test results.
@@ -36,7 +36,7 @@ Copy this entire block into your LLM chat when you want the agent to
 automatically improve Axel. Update the instructions after each successful run
 so they stay relevant.
 
-## Implementation prompts
+## Implementation Prompts
 Copy **one** of the prompts below into the LLM when you want the agent to extend
 Axel's functionality. Each prompt is file-scoped, single-purpose and immediately
 actionable.
@@ -58,7 +58,8 @@ REQUIREMENTS
 2. Add a CLI option `python -m axel.repo_manager fetch` that replaces `repos.txt`
    with the fetched list.
 3. Cover new logic with tests.
-4. Ensure `pre-commit run --all-files` passes.
+4. Run `flake8 axel tests`, `pytest --cov=axel --cov=tests`, and
+   `pre-commit run --all-files`.
 
 ACCEPTANCE CHECK
 Running `python -m axel.repo_manager fetch` writes the repository URLs to
@@ -81,7 +82,8 @@ FILES OF INTEREST
 REQUIREMENTS
 1. Verify the feature is implemented or documented.
 2. Switch `[ ]` to `[x]` for finished items and add brief notes if helpful.
-3. Run `pre-commit run --all-files`.
+3. Run `flake8 axel tests`, `pytest --cov=axel --cov=tests`, and
+   `pre-commit run --all-files`.
 
 ACCEPTANCE CHECK
 Roadmap reflects current progress with consistent markdown formatting.
@@ -100,7 +102,8 @@ Return only the patch.
 ### Notes for human contributors
 
 - Keep each PR focused on a single prompt to ease reviews.
-- Run `pre-commit run --all-files` after every change.
+- Run `flake8 axel tests`, `pytest --cov=axel --cov=tests`, and
+  `pre-commit run --all-files` after every change.
 
 ## Upgrade Prompt
 
@@ -110,7 +113,8 @@ Use this prompt to refine Axel's own prompt documentation.
 SYSTEM:
 You are an automated contributor for the Axel repository.
 Follow AGENTS.md and README.md.
-Ensure `pre-commit run --all-files` passes before committing.
+Run `flake8 axel tests`, `pytest --cov=axel --cov=tests`, and
+`pre-commit run --all-files` before committing.
 
 USER:
 1. Pick one prompt doc under `docs/` (for example, `prompts-codex.md`).

@@ -5,7 +5,8 @@ slug: 'prompts-codex-ci-fix'
 
 # OpenAI Codex CI-Failure Fix Prompt
 
-Use this prompt whenever a GitHub Actions run in *this* repository fails and you want Codex to diagnose and repair the problem automatically.
+Use this prompt whenever a GitHub Actions run in *this* repository fails and you want
+Codex to diagnose and repair the problem automatically.
 
 **Human setup steps**
 1. Open the failed job in GitHub Actions and copy the page URL.
@@ -20,11 +21,13 @@ PURPOSE:
 Diagnose a failed GitHub Actions run and produce a fix.
 
 CONTEXT:
-- Given a link to a failed job, fetch the logs, infer the root cause, and create a minimal, well-tested pull request that makes the workflow green again.
+- Given a link to a failed job, fetch the logs, infer the root cause, and create a minimal,
+  well-tested pull request that makes the workflow green again.
 - Constraints:
   * Do not break existing functionality.
   * Follow AGENTS.md and README.md.
-  * Run `pre-commit run --all-files` before proposing the PR.
+  * Run `flake8 axel tests`, `pytest --cov=axel --cov=tests`, and
+    `pre-commit run --all-files` before proposing the PR.
   * Update tests and docs as needed.
 
 REQUEST:
@@ -35,7 +38,8 @@ REQUEST:
 5. Open a pull request that makes the default branch CI green.
 
 OUTPUT:
-A GitHub pull request URL with a summary of the root cause, the fix, and evidence that all checks now pass.
+A GitHub pull request URL with a summary of the root cause, the fix, and evidence that
+all checks now pass.
 ```
 
 Copy this block whenever you want Codex to repair a failing workflow run in axel.

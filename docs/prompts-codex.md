@@ -18,9 +18,9 @@ PURPOSE:
 Keep the project healthy by making small, well-tested improvements.
 
 CONTEXT:
-- Follow the conventions in AGENTS.md and README.md.
-- Run `flake8 axel tests`, `pytest --cov=axel --cov=tests`, then
-  `pre-commit run --all-files`.
+- Follow the conventions in [AGENTS.md](../AGENTS.md) and [README.md](../README.md).
+- Run `flake8 axel tests` and `pytest --cov=axel --cov=tests` before committing.
+- Ensure `pre-commit run --all-files` also succeeds.
 
 REQUEST:
 1. Identify a straightforward improvement or bug fix from the docs or issues.

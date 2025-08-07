@@ -51,7 +51,8 @@ pre-commit install
 
 To keep personal notes and repo lists private, set `AXEL_REPO_FILE` to a path
 under `local/`, which is gitignored. The repo manager creates the directory
-automatically if it doesn't already exist.
+automatically if it doesn't already exist. Paths beginning with `~` expand to
+the user's home directory.
 
 Example:
 

@@ -111,6 +111,19 @@ def test_env_dynamic_at_runtime(monkeypatch, tmp_path: Path) -> None:
     assert repo_file.read_text().strip() == "https://example.com/runtime"
 
 
+def test_env_var_expands_user(monkeypatch, tmp_path: Path) -> None:
+    """``AXEL_REPO_FILE`` supports ``~`` expansion."""
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("AXEL_REPO_FILE", "~/repos.txt")
+    import axel.repo_manager as rm
+
+    rm.add_repo("https://example.com/tilde")
+    assert rm.get_repo_file() == home / "repos.txt"
+    assert (home / "repos.txt").read_text().strip() == "https://example.com/tilde"
+
+
 def test_remove_repo_leaves_newline(tmp_path: Path) -> None:
     """Line 38 in remove_repo appends a trailing newline when repos remain."""
     file = tmp_path / "repos.txt"

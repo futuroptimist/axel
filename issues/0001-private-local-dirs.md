@@ -4,4 +4,4 @@ Users should be able to keep local notes and repos without publishing them. Docu
 
 - [x] add instructions in README
 - [x] provide example of `local/repos.txt`
-- [ ] ensure repo manager works with `AXEL_REPO_FILE`
+ - [x] ensure repo manager works with `AXEL_REPO_FILE`

@@ -64,7 +64,7 @@ git check-ignore -v local/
 
 The final command confirms that your `local/` directory is excluded from version control.
 
-See `examples/` for a sample repo list.
+Start with `examples/local/repos_example.txt` when creating your private repo list.
 
 ## privacy & transparency
 

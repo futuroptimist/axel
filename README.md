@@ -43,9 +43,11 @@ pre-commit install
    Whitespace around the URL is stripped automatically.
 2. View the list with `python -m axel.repo_manager list`.
 3. Remove a repo with `python -m axel.repo_manager remove <url>`.
-4. Run `pre-commit run --all-files` before committing to check formatting and tests.
-5. Pass `--path <file>` or set `AXEL_REPO_FILE` to use a custom repo list.
-6. Coverage reports are uploaded to [Codecov](https://codecov.io/gh/futuroptimist/axel) via CI.
+4. Replace `repos.txt` with the authenticated user's repos via
+   `python -m axel.repo_manager fetch`. Requires ``GH_TOKEN``.
+5. Run `pre-commit run --all-files` before committing to check formatting and tests.
+6. Pass `--path <file>` or set `AXEL_REPO_FILE` to use a custom repo list.
+7. Coverage reports are uploaded to [Codecov](https://codecov.io/gh/futuroptimist/axel) via CI.
 
 ## local setup
 

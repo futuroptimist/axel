@@ -4,6 +4,9 @@ import sys
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))  # noqa: E402
+import pytest  # noqa: E402
+import requests  # noqa: E402
+
 from axel import add_repo, load_repos, remove_repo  # noqa: E402
 
 
@@ -201,3 +204,113 @@ def test_remove_repo_defaults(monkeypatch, tmp_path: Path) -> None:
     rm.add_repo("https://example.com/repo")
     rm.remove_repo("https://example.com/repo")
     assert rm.load_repos() == []
+
+
+def test_fetch_repos(monkeypatch, tmp_path: Path) -> None:
+    """``fetch_repos`` retrieves repos and writes them to disk."""
+    repo_file = tmp_path / "repos.txt"
+
+    def fake_get(url, headers=None, params=None, timeout=0):
+        class Resp:
+            def __init__(self, data):
+                self._data = data
+
+            def json(self):
+                return self._data
+
+            def raise_for_status(self):
+                return None
+
+        if params["page"] == 1:
+            return Resp(
+                [
+                    {"html_url": "https://github.com/u/a"},
+                    {"html_url": "https://github.com/u/b"},
+                ]
+            )
+        return Resp([])
+
+    monkeypatch.setenv("GH_TOKEN", "token")
+    monkeypatch.setattr(requests, "get", fake_get)
+    from axel import repo_manager as rm
+
+    repos = rm.fetch_repos(path=repo_file)
+    assert repos == [
+        "https://github.com/u/a",
+        "https://github.com/u/b",
+    ]
+    assert repo_file.read_text() == "https://github.com/u/a\nhttps://github.com/u/b\n"
+
+
+def test_cli_fetch(monkeypatch, tmp_path: Path, capsys) -> None:
+    """CLI ``fetch`` writes and prints fetched repositories."""
+    repo_file = tmp_path / "repos.txt"
+
+    def fake_get(url, headers=None, params=None, timeout=0):
+        class Resp:
+            def __init__(self, data):
+                self._data = data
+
+            def json(self):
+                return self._data
+
+            def raise_for_status(self):
+                return None
+
+        if params["page"] == 1:
+            return Resp(
+                [
+                    {"html_url": "https://github.com/u/a"},
+                    {"html_url": "https://github.com/u/b"},
+                ]
+            )
+        return Resp([])
+
+    monkeypatch.setenv("GH_TOKEN", "token")
+    monkeypatch.setattr(requests, "get", fake_get)
+    from axel import repo_manager as rm
+
+    rm.main(["--path", str(repo_file), "fetch"])
+    output = capsys.readouterr().out.strip().splitlines()
+    assert output == [
+        "https://github.com/u/a",
+        "https://github.com/u/b",
+    ]
+    assert repo_file.read_text() == "https://github.com/u/a\nhttps://github.com/u/b\n"
+
+
+def test_fetch_repo_urls_requires_token(monkeypatch) -> None:
+    """Fetching without ``GH_TOKEN`` raises an error."""
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+    from axel import repo_manager as rm
+
+    with pytest.raises(RuntimeError):
+        rm.fetch_repo_urls()
+
+
+def test_fetch_repos_defaults(monkeypatch, tmp_path: Path) -> None:
+    """``fetch_repos`` honors ``AXEL_REPO_FILE`` when no path is given."""
+    repo_file = tmp_path / "repos.txt"
+
+    def fake_get(url, headers=None, params=None, timeout=0):
+        class Resp:
+            def __init__(self, data):
+                self._data = data
+
+            def json(self):
+                return self._data
+
+            def raise_for_status(self):
+                return None
+
+        if params["page"] == 1:
+            return Resp([{"html_url": "https://github.com/u/a"}])
+        return Resp([])
+
+    monkeypatch.setenv("AXEL_REPO_FILE", str(repo_file))
+    monkeypatch.setenv("GH_TOKEN", "token")
+    monkeypatch.setattr(requests, "get", fake_get)
+    from axel import repo_manager as rm
+
+    rm.fetch_repos()
+    assert repo_file.read_text() == "https://github.com/u/a\n"

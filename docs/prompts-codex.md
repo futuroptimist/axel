@@ -18,11 +18,10 @@ PURPOSE:
 Keep the project healthy by making small, well-tested improvements.
 
 CONTEXT:
-- Follow the conventions in AGENTS.md and README.md.
-- Search for secrets with
-  `git ls-files -z | xargs -0 grep -i --line-number --context=1 -e token -e secret -e password`.
-- Ensure `pre-commit run --all-files` succeeds. This runs formatting checks,
-  `flake8`, and `pytest --cov=axel --cov=tests`.
+- Follow the conventions in [AGENTS.md](../AGENTS.md) and [README.md](../README.md).
+- Scan for secrets with `git diff --cached | ./scripts/scan-secrets.py`.
+- Ensure `pre-commit run --all-files` succeeds. This runs formatting checks, `flake8`,
+  and `pytest --cov=axel --cov=tests`.
 
 REQUEST:
 1. Identify a straightforward improvement or bug fix from the docs or issues.

@@ -9,8 +9,11 @@ DEFAULT_REPO_FILE = Path(__file__).resolve().parent.parent / "repos.txt"
 
 
 def get_repo_file() -> Path:
-    """Return the repository list path, honoring ``AXEL_REPO_FILE`` if set."""
-    return Path(os.getenv("AXEL_REPO_FILE", DEFAULT_REPO_FILE))
+    """Return the repository list path, honoring ``AXEL_REPO_FILE`` if set.
+
+    ``AXEL_REPO_FILE`` may include a ``~`` to reference the user's home directory.
+    """
+    return Path(os.getenv("AXEL_REPO_FILE", DEFAULT_REPO_FILE)).expanduser()
 
 
 def load_repos(path: Path | None = None) -> List[str]:

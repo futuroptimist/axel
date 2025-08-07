@@ -10,20 +10,20 @@ axel helps organize short, medium and long term goals using chat, reasoning and 
 
 ## roadmap
 - [x] maintain a list of repos in `repos.txt`
-- [x] simple CLI for managing repos
-- [x] contributor guide
-- [x] remove repos from the list
+- [x] simple CLI for managing repos (`python -m axel.repo_manager`)
+- [x] contributor guide (see `CONTRIBUTING.md`)
+- [x] remove repos from the list (`python -m axel.repo_manager remove`)
 - [ ] fetch repos from the GitHub API
 - [ ] integrate LLM assistants to suggest quests across repos
 - [ ] integrate `token.place` clients across all repos
 - [ ] integrate [`gabriel`](https://github.com/futuroptimist/gabriel) as a security layer across repos
 - [x] self-hosted Discord bot for ingesting messages when mentioned (see docs/discord-bot.md)
 - [x] represent personal flywheel of projects and highlight cross-pollination (see repo list below)
-- [x] document workflow for a private `local/` directory
+- [x] document workflow for a private `local/` directory (see local setup below)
 - [x] track tasks with markdown files in the `issues/` folder
-- [x] verify `local/` directories are gitignored
-- [x] add `THREAT_MODEL.md` with cross-repo considerations
-- [x] provide token rotation guidance in docs
+- [x] verify `local/` directories are gitignored (see `.gitignore`)
+- [x] add `THREAT_MODEL.md` with cross-repo considerations (see `docs/THREAT_MODEL.md`)
+- [x] provide token rotation guidance in docs (see `docs/ROTATING_TOKENS.md`)
 - [ ] encrypt notes saved under `local/discord/`
 - [x] review permissions for integrated tools (token.place, gabriel) (see docs/THREAT_MODEL.md)
 
@@ -43,15 +43,18 @@ pre-commit install
    Whitespace around the URL is stripped automatically.
 2. View the list with `python -m axel.repo_manager list`.
 3. Remove a repo with `python -m axel.repo_manager remove <url>`.
-4. Run `pre-commit run --all-files` before committing to check formatting and tests.
-5. Pass `--path <file>` or set `AXEL_REPO_FILE` to use a custom repo list.
-6. Coverage reports are uploaded to [Codecov](https://codecov.io/gh/futuroptimist/axel) via CI.
+4. Replace `repos.txt` with the authenticated user's repos via
+   `python -m axel.repo_manager fetch`. Requires ``GH_TOKEN``.
+5. Run `pre-commit run --all-files` before committing to check formatting and tests.
+6. Pass `--path <file>` or set `AXEL_REPO_FILE` to use a custom repo list.
+7. Coverage reports are uploaded to [Codecov](https://codecov.io/gh/futuroptimist/axel) via CI.
 
 ## local setup
 
 To keep personal notes and repo lists private, set `AXEL_REPO_FILE` to a path
 under `local/`, which is gitignored. The repo manager creates the directory
-automatically if it doesn't already exist.
+automatically if it doesn't already exist. Paths beginning with `~` expand to
+the user's home directory.
 
 Example:
 

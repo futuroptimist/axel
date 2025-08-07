@@ -25,6 +25,7 @@ def add_repo(url: str, path: Path | None = None) -> List[str]:
     """Add a repository URL to the list if not already present."""
     if path is None:
         path = get_repo_file()
+    path.parent.mkdir(parents=True, exist_ok=True)
     url = url.strip()
     repos = load_repos(path)
     if url and url not in repos:
@@ -37,6 +38,7 @@ def remove_repo(url: str, path: Path | None = None) -> List[str]:
     """Remove a repository URL from the list if present."""
     if path is None:
         path = get_repo_file()
+    path.parent.mkdir(parents=True, exist_ok=True)
     url = url.strip()
     repos = load_repos(path)
     if url in repos:

@@ -71,6 +71,12 @@ def test_add_repo_strips_whitespace(tmp_path: Path) -> None:
     assert load_repos(path=file) == ["https://example.com/repo"]
 
 
+def test_add_repo_creates_parent_dir(tmp_path: Path) -> None:
+    file = tmp_path / "nested" / "repos.txt"
+    add_repo("https://example.com/repo", path=file)
+    assert file.read_text() == "https://example.com/repo\n"
+
+
 def test_remove_repo_missing(tmp_path: Path):
     file = tmp_path / "repos.txt"
     add_repo("https://example.com/repo", path=file)

@@ -49,20 +49,20 @@ pre-commit install
 
 ## local setup
 
-To keep personal notes and repo lists private, create a `local/` directory and
-add it to `.gitignore`. Set `AXEL_REPO_FILE=local/repos.txt` to use a private
-repo list without committing it to source control.
+To keep personal notes and repo lists private, set `AXEL_REPO_FILE` to a path
+under `local/`, which is gitignored. The repo manager creates the directory
+automatically if it doesn't already exist.
 
 Example:
 
 ```bash
-mkdir -p local
-echo "https://github.com/your/private-repo" > local/repos.txt
+python -m axel.repo_manager add https://github.com/your/private-repo --path local/repos.txt
 export AXEL_REPO_FILE=local/repos.txt
 git check-ignore -v local/
 ```
 
-The final command confirms that your `local/` directory is excluded from version control.
+The `git check-ignore` command confirms that `local/` is excluded from version
+control.
 
 Start with `examples/local/repos_example.txt` when creating your private repo list.
 

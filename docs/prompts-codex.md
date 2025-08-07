@@ -18,9 +18,11 @@ PURPOSE:
 Keep the project healthy by making small, well-tested improvements.
 
 CONTEXT:
-- Follow the conventions in [AGENTS.md](../AGENTS.md) and [README.md](../README.md).
-- Run `flake8 axel tests` and `pytest --cov=axel --cov=tests` before committing.
-- Ensure `pre-commit run --all-files` also succeeds.
+- Follow the conventions in AGENTS.md and README.md.
+- Search for secrets with
+  `git ls-files -z | xargs -0 grep -i --line-number --context=1 -e token -e secret -e password`.
+- Ensure `pre-commit run --all-files` succeeds. This runs formatting checks,
+  `flake8`, and `pytest --cov=axel --cov=tests`.
 
 REQUEST:
 1. Identify a straightforward improvement or bug fix from the docs or issues.
@@ -41,7 +43,7 @@ Copy **one** of the prompts below into the LLM when you want the agent to extend
 Axel's functionality. Each prompt is file-scoped, single-purpose and immediately
 actionable.
 
-### 1 Fetch repositories from the GitHub API
+### 1. Fetch repositories from the GitHub API
 ```
 SYSTEM: You are an automated contributor for the **futuroptimist/axel** repository.
 
@@ -69,7 +71,7 @@ OUTPUT
 Return only the necessary patch.
 ```
 
-### 2 Update roadmap status
+### 2. Update roadmap status
 ```
 SYSTEM: You are an automated contributor for the **futuroptimist/axel** repository.
 
@@ -92,14 +94,14 @@ OUTPUT
 Return only the patch.
 ```
 
-### How to choose a prompt
+### How to Choose a Prompt
 
 | When you want to…                        | Use prompt |
 |------------------------------------------|-----------|
 | Fetch repositories automatically         | 1         |
 | Refresh roadmap checkboxes               | 2         |
 
-### Notes for human contributors
+### Notes for Human Contributors
 
 - Keep each PR focused on a single prompt to ease reviews.
 - Run `flake8 axel tests`, `pytest --cov=axel --cov=tests`, and

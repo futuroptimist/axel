@@ -3,6 +3,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.append(str(Path(__file__).resolve().parents[1]))  # noqa: E402
 from axel import add_repo, load_repos, remove_repo  # noqa: E402
 
@@ -188,3 +190,53 @@ def test_remove_repo_defaults(monkeypatch, tmp_path: Path) -> None:
     rm.add_repo("https://example.com/repo")
     rm.remove_repo("https://example.com/repo")
     assert rm.load_repos() == []
+
+
+def test_fetch_repos_cli(monkeypatch, tmp_path: Path, capsys) -> None:
+    """``fetch`` replaces the file with GitHub repositories."""
+    repo_file = tmp_path / "repos.txt"
+    from axel import repo_manager as rm
+
+    class FakeResponse:
+        def __init__(self, data):
+            self._data = data
+
+        def json(self):
+            return self._data
+
+        def raise_for_status(self):
+            return None
+
+    def fake_get(url, headers=None, params=None, timeout=10):
+        if params["page"] == 1:
+            return FakeResponse(
+                [
+                    {"html_url": "https://github.com/example/repo1"},
+                    {"html_url": "https://github.com/example/repo2"},
+                ]
+            )
+        return FakeResponse([])
+
+    repo_file.write_text("https://old/repo\n")
+    monkeypatch.setenv("GH_TOKEN", "token123")
+    monkeypatch.setattr(rm.requests, "get", fake_get)
+
+    rm.main(["--path", str(repo_file), "fetch"])
+
+    output = capsys.readouterr().out.strip().splitlines()
+    assert output == [
+        "https://github.com/example/repo1",
+        "https://github.com/example/repo2",
+    ]
+    assert repo_file.read_text() == (
+        "https://github.com/example/repo1\nhttps://github.com/example/repo2\n"
+    )
+
+
+def test_fetch_repos_requires_token(monkeypatch, tmp_path: Path) -> None:
+    repo_file = tmp_path / "repos.txt"
+    from axel import repo_manager as rm
+
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+    with pytest.raises(RuntimeError):
+        rm.fetch_repos(path=repo_file)

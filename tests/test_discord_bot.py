@@ -27,6 +27,15 @@ def test_save_message(tmp_path: Path) -> None:
     assert path.read_text() == "# user\n\nhello\n"
 
 
+def test_save_message_creates_dir(tmp_path: Path) -> None:
+    missing = tmp_path / "discord"
+    db.SAVE_DIR = missing
+    msg = DummyMessage("hi", mid=2)
+    path = db.save_message(msg)
+    assert path.read_text() == "# user\n\nhi\n"
+    assert missing.exists()
+
+
 def test_run_missing_token(monkeypatch) -> None:
     """``run`` exits if ``DISCORD_BOT_TOKEN`` is not set."""
     monkeypatch.delenv("DISCORD_BOT_TOKEN", raising=False)

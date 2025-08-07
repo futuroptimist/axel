@@ -10,20 +10,20 @@ axel helps organize short, medium and long term goals using chat, reasoning and 
 
 ## roadmap
 - [x] maintain a list of repos in `repos.txt`
-- [x] simple CLI for managing repos
-- [x] contributor guide
-- [x] remove repos from the list
+- [x] simple CLI for managing repos (`python -m axel.repo_manager`)
+- [x] contributor guide (see `CONTRIBUTING.md`)
+- [x] remove repos from the list (`python -m axel.repo_manager remove`)
 - [ ] fetch repos from the GitHub API
 - [ ] integrate LLM assistants to suggest quests across repos
 - [ ] integrate `token.place` clients across all repos
 - [ ] integrate [`gabriel`](https://github.com/futuroptimist/gabriel) as a security layer across repos
 - [x] self-hosted Discord bot for ingesting messages when mentioned (see docs/discord-bot.md)
 - [x] represent personal flywheel of projects and highlight cross-pollination (see repo list below)
-- [x] document workflow for a private `local/` directory
+- [x] document workflow for a private `local/` directory (see local setup below)
 - [x] track tasks with markdown files in the `issues/` folder
-- [x] verify `local/` directories are gitignored
-- [x] add `THREAT_MODEL.md` with cross-repo considerations
-- [x] provide token rotation guidance in docs
+- [x] verify `local/` directories are gitignored (see `.gitignore`)
+- [x] add `THREAT_MODEL.md` with cross-repo considerations (see `docs/THREAT_MODEL.md`)
+- [x] provide token rotation guidance in docs (see `docs/ROTATING_TOKENS.md`)
 - [ ] encrypt notes saved under `local/discord/`
 - [x] review permissions for integrated tools (token.place, gabriel) (see docs/THREAT_MODEL.md)
 

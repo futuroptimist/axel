@@ -149,6 +149,19 @@ def test_cli_remove_direct(tmp_path: Path, capsys) -> None:
     assert not file.read_text()
 
 
+def test_cli_honors_env_var(monkeypatch, tmp_path: Path, capsys) -> None:
+    """CLI uses ``AXEL_REPO_FILE`` when ``--path`` is omitted."""
+    repo_file = tmp_path / "repos.txt"
+    monkeypatch.setenv("AXEL_REPO_FILE", str(repo_file))
+    from axel import repo_manager as rm
+
+    rm.main(["add", "https://example.com/env-cli"])
+    assert capsys.readouterr().out.strip() == "https://example.com/env-cli"
+
+    rm.main(["list"])
+    assert capsys.readouterr().out.strip() == "https://example.com/env-cli"
+
+
 def test_load_repos_defaults(monkeypatch, tmp_path: Path) -> None:
     """When no path is provided ``AXEL_REPO_FILE`` is used."""
     repo_file = tmp_path / "repos.txt"

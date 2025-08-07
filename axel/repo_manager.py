@@ -3,6 +3,8 @@ import os
 from pathlib import Path
 from typing import List
 
+import requests
+
 DEFAULT_REPO_FILE = Path(__file__).resolve().parent.parent / "repos.txt"
 
 
@@ -55,6 +57,45 @@ def list_repos(path: Path | None = None) -> List[str]:
     return load_repos(path)
 
 
+def fetch_repo_urls(token: str | None = None) -> List[str]:
+    """Fetch repositories for the authenticated user via GitHub API."""
+    if token is None:
+        token = os.getenv("GH_TOKEN")
+    if not token:
+        raise RuntimeError("GH_TOKEN is required to fetch repositories")
+    headers = {"Authorization": f"token {token}"}
+    page = 1
+    repos: List[str] = []
+    while True:
+        resp = requests.get(
+            "https://api.github.com/user/repos",
+            headers=headers,
+            params={"per_page": 100, "page": page},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        if not data:
+            break
+        repos.extend(repo["html_url"] for repo in data)
+        page += 1
+    repos.sort()
+    return repos
+
+
+def fetch_repos(path: Path | None = None, token: str | None = None) -> List[str]:
+    """Fetch repo URLs and replace the repo list file."""
+    if path is None:
+        path = get_repo_file()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    repos = fetch_repo_urls(token=token)
+    text = "\n".join(repos)
+    if text:
+        text += "\n"
+    path.write_text(text)
+    return repos
+
+
 def main(argv: List[str] | None = None) -> None:
     """Simple command-line interface for managing repos."""
     parser = argparse.ArgumentParser(description="Manage repo list")
@@ -73,6 +114,7 @@ def main(argv: List[str] | None = None) -> None:
     remove_p.add_argument("url")
 
     sub.add_parser("list", help="List repositories")
+    sub.add_parser("fetch", help="Fetch repositories from GitHub")
 
     args = parser.parse_args(argv)
 
@@ -80,6 +122,8 @@ def main(argv: List[str] | None = None) -> None:
         repos = add_repo(args.url, path=args.path)
     elif args.cmd == "remove":
         repos = remove_repo(args.url, path=args.path)
+    elif args.cmd == "fetch":
+        repos = fetch_repos(path=args.path)
     else:
         repos = list_repos(path=args.path)
     for repo in repos:

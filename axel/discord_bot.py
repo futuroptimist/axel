@@ -8,11 +8,14 @@ from pathlib import Path
 import discord
 
 SAVE_DIR = Path("local/discord")
-SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def save_message(message: discord.Message) -> Path:
-    """Persist the provided message as markdown."""
+    """Persist the provided message as markdown.
+
+    Ensures the save directory exists before writing.
+    """
+    SAVE_DIR.mkdir(parents=True, exist_ok=True)
     path = SAVE_DIR / f"{message.id}.md"
     content = f"# {message.author.display_name}\n\n{message.content}\n"
     path.write_text(content)

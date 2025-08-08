@@ -1,4 +1,5 @@
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import discord
@@ -14,17 +15,23 @@ class DummyAuthor:
 
 
 class DummyMessage:
-    def __init__(self, content: str, mid: int = 1) -> None:
+    def __init__(
+        self,
+        content: str,
+        mid: int = 1,
+        created_at: datetime | None = None,
+    ) -> None:
         self.content = content
         self.id = mid
         self.author = DummyAuthor()
+        self.created_at = created_at or datetime(2024, 1, 1, tzinfo=timezone.utc)
 
 
 def test_save_message(tmp_path: Path) -> None:
     db.SAVE_DIR = tmp_path
     msg = DummyMessage("hello")
     path = db.save_message(msg)
-    assert path.read_text() == "# user\n\nhello\n"
+    assert path.read_text() == "# user\n\n2024-01-01T00:00:00+00:00\n\nhello\n"
 
 
 def test_save_message_creates_dir(tmp_path: Path) -> None:
@@ -32,7 +39,7 @@ def test_save_message_creates_dir(tmp_path: Path) -> None:
     db.SAVE_DIR = missing
     msg = DummyMessage("hi", mid=2)
     path = db.save_message(msg)
-    assert path.read_text() == "# user\n\nhi\n"
+    assert path.read_text() == "# user\n\n2024-01-01T00:00:00+00:00\n\nhi\n"
     assert missing.exists()
 
 

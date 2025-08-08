@@ -1,0 +1,13 @@
+key: demo-90s
+title: 90-second demo video/GIF linked at top of README
+applies_to: ["token.place","f2clipboard","gitshelves","flywheel","sugarkube","sigma","dspace"]
+acceptance_criteria:
+  - "Demo video or GIF checked into repo or linked from releases"
+  - "README top includes demo and a 60s Quickstart"
+constraints:
+  files_max: 4
+  loc_max: 60
+must_pass: []
+artifacts:
+  - "README.md"
+  - "docs/demo/*"

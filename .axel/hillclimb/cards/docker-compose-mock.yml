@@ -1,0 +1,15 @@
+key: docker-compose-mock
+title: One-command docker compose (relay + server + mock LLM)
+applies_to: ["token.place"]
+acceptance_criteria:
+  - "docker compose up works with no config"
+  - "README Quickstart (<=60s) shows compose path"
+  - "Release notes mention compose; image published on tag"
+constraints:
+  files_max: 8
+  loc_max: 250
+must_pass:
+  - "docker --version"
+artifacts:
+  - "docker-compose.yml"
+  - "README.md"

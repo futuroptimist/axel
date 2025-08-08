@@ -1,0 +1,24 @@
+# Target repositories. Remove or add as you like.
+# If a repo is absent or inaccessible, the tool skips it gracefully.
+repos:
+  - slug: "futuroptimist/token.place"
+    default_branch: "main"
+    enabled: true
+  - slug: "futuroptimist/f2clipboard"
+    default_branch: "main"
+    enabled: true
+  - slug: "futuroptimist/flywheel"
+    default_branch: "main"
+    enabled: true
+  - slug: "futuroptimist/gitshelves"
+    default_branch: "main"
+    enabled: true
+  - slug: "futuroptimist/sugarkube"
+    default_branch: "main"
+    enabled: true
+  - slug: "futuroptimist/sigma"
+    default_branch: "main"
+    enabled: true
+  - slug: "democratizedspace/dspace"
+    default_branch: "main"
+    enabled: true

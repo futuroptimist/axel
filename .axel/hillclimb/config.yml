@@ -1,0 +1,26 @@
+runs: 4
+branch_prefix: "hc"
+touch_budget:
+  files_max: 8
+  loc_max: 400
+objective:
+  close_card: 3.0
+  tests_added: 1.5
+  coverage_delta: 1.0
+  lints_clean: 0.8
+  build_time_delta: 0.6
+  doc_quickstart_touched: 0.5
+  vuln_delta: 1.0
+gates:
+  - "ci.green == true"
+  - "secrets.leaked == false"
+  - "license.compatible == true"
+selection:
+  mode: "epsilon_greedy"
+  epsilon: 0.2
+labels:
+  - hillclimb
+  - ai-assisted
+pr:
+  merge_strategy: "squash"
+  draft: true

@@ -1,0 +1,18 @@
+key: add-pipx-install
+title: Add 1-click pipx install + Quickstart
+applies_to: ["f2clipboard", "gitshelves"]
+acceptance_criteria:
+  - "Published to PyPI with pinned deps"
+  - "README top includes 60s Quickstart using pipx"
+  - "CI publishes on tag v*"
+constraints:
+  files_max: 6
+  loc_max: 200
+must_pass:
+  - "pytest -q"
+  - "ruff --version || true"    # optional linters tolerated if missing
+nice_to_have:
+  - "coverage >= 80%"
+artifacts:
+  - "dist/*.whl"
+  - "README.md"

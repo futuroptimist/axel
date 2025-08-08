@@ -1,0 +1,44 @@
+name: axel-hillclimb
+on:
+  workflow_dispatch:
+    inputs:
+      card:
+        description: "Action card key (optional)"
+        required: false
+      execute:
+        description: "Set to true to push branches & open draft PRs"
+        required: false
+  schedule:
+    - cron: "17 3 * * 2,5" # Tue/Fri
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: python -m pip install -r requirements.txt
+      - name: Hillclimb
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CARD="${{ github.event.inputs.card }}"
+          EXEC="${{ github.event.inputs.execute }}"
+          if [ "$EXEC" = "true" ]; then
+            python .axel/hillclimb/scripts/axel.py hillclimb ${CARD:+--card $CARD} --runs 4 --execute
+          else
+            python .axel/hillclimb/scripts/axel.py hillclimb ${CARD:+--card $CARD} --runs 4 --dry-run
+          fi
+      - name: Update dashboard
+        run: python .axel/hillclimb/scripts/axel.py dashboard
+      - name: Upload work dir (artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: axel-work
+          path: .axel/hillclimb/work

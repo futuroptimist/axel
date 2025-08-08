@@ -22,8 +22,14 @@ def load_repos(path: Path | None = None) -> List[str]:
         path = get_repo_file()
     if not path.exists():
         return []
+    repos: List[str] = []
     with path.open() as f:
-        return [line.strip() for line in f if line.strip()]
+        for line in f:
+            # Allow comments using ``#`` and strip inline notes
+            line = line.split("#", 1)[0].strip()
+            if line:
+                repos.append(line)
+    return repos
 
 
 def add_repo(url: str, path: Path | None = None) -> List[str]:

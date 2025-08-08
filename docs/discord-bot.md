@@ -16,6 +16,7 @@ that ingests messages from your server.
 ## Launching the Bot
 
 ```bash
+uv pip install discord.py
 python -m axel.discord_bot
 ```
 

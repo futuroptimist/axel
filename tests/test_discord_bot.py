@@ -2,8 +2,9 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-import discord
 import pytest
+
+discord = pytest.importorskip("discord")
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))  # noqa: E402
 

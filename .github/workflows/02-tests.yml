@@ -19,6 +19,7 @@ jobs:
           uv venv .venv
           source .venv/bin/activate
           uv pip install -r requirements.txt
+          uv pip install pytest pytest-cov discord.py
       - name: Run tests
         run: |
           source .venv/bin/activate

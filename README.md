@@ -88,9 +88,11 @@ For instructions on rotating API tokens see [docs/ROTATING_TOKENS.md](docs/ROTAT
 
 ```python
 from axel import add_repo, list_repos
+from axel.utils import strip_ansi
 
 add_repo("https://github.com/example/repo")
 print(list_repos())
+strip_ansi("\x1b[31merror\x1b[0m")  # -> "error"
 ```
 
 ## discord bot

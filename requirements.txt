@@ -1,8 +1,4 @@
-pytest
-flake8
-coverage
-pytest-cov
+pyyaml
 requests
-black
-isort
-discord.py
+python-dotenv
+rich

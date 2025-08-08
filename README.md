@@ -13,7 +13,7 @@ axel helps organize short, medium and long term goals using chat, reasoning and 
 - [x] simple CLI for managing repos (`python -m axel.repo_manager`)
 - [x] contributor guide (see `CONTRIBUTING.md`)
 - [x] remove repos from the list (`python -m axel.repo_manager remove`)
-- [ ] fetch repos from the GitHub API
+- [x] fetch repos from the GitHub API
 - [ ] integrate LLM assistants to suggest quests across repos
 - [ ] integrate `token.place` clients across all repos
 - [ ] integrate [`gabriel`](https://github.com/futuroptimist/gabriel) as a security layer across repos

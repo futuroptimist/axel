@@ -17,7 +17,8 @@ def save_message(message: discord.Message) -> Path:
     """
     SAVE_DIR.mkdir(parents=True, exist_ok=True)
     path = SAVE_DIR / f"{message.id}.md"
-    content = f"# {message.author.display_name}\n\n{message.content}\n"
+    timestamp = message.created_at.isoformat()
+    content = f"# {message.author.display_name}\n\n{timestamp}\n\n{message.content}\n"
     path.write_text(content)
     return path
 

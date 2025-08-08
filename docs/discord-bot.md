@@ -27,7 +27,8 @@ environment variable. Once running, it appears online in the server.
 Mention the bot in reply to any message you want to save. The bot fetches the
 original message and writes a markdown file under
 `local/discord/<message_id>.md`. The directory is created automatically if it
-doesn't exist.
+doesn't exist. Each file records the author's display name, an ISO 8601
+timestamp, and the message content.
 
 Future iterations can analyze these notes alongside `token.place` and
 [`gabriel`](https://github.com/futuroptimist/gabriel) to suggest quests across

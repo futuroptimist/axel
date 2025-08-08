@@ -49,6 +49,8 @@ pre-commit install
 5. Run `pre-commit run --all-files` before committing to check formatting and tests.
 6. Pass `--path <file>` or set `AXEL_REPO_FILE` to use a custom repo list.
 7. Coverage reports are uploaded to [Codecov](https://codecov.io/gh/futuroptimist/axel) via CI.
+8. Add a task with `python -m axel.task_manager add "write docs"`. Tasks are
+   saved in `tasks.json` and listed with `python -m axel.task_manager list`.
 
 ## local setup
 

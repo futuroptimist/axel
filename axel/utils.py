@@ -1,11 +1,12 @@
 import re
 
-ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
+ANSI_ESCAPE_RE = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
 
 
 def strip_ansi(text: str) -> str:
-    """Return *text* with ANSI escape codes removed.
+    """Return *text* with ANSI escape sequences removed.
 
-    Useful when capturing colored CLI output in tests.
+    Removes color codes and other cursor-control sequences, making it
+    useful when capturing CLI output in tests.
     """
     return ANSI_ESCAPE_RE.sub("", text)

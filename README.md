@@ -41,7 +41,8 @@ pre-commit install
 
 1. Add a repo with `python -m axel.repo_manager add <url>` or edit `repos.txt`.
    Lines starting with `#` or with trailing `#` comments are ignored.
-   Whitespace around the URL is stripped automatically.
+   Whitespace around the URL is stripped automatically and trailing slashes are
+   removed.
    The repository list is kept sorted alphabetically.
 2. View the list with `python -m axel.repo_manager list`.
 3. Remove a repo with `python -m axel.repo_manager remove <url>`.

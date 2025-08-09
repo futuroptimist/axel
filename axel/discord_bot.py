@@ -40,7 +40,9 @@ def run() -> None:
     token = os.environ.get("DISCORD_BOT_TOKEN")
     if not token:
         raise SystemExit("DISCORD_BOT_TOKEN not set")
-    client = AxelClient(intents=discord.Intents.default())
+    intents = discord.Intents.default()
+    intents.message_content = True
+    client = AxelClient(intents=intents)
     client.run(token)
 
 

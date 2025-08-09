@@ -45,6 +45,19 @@ def add_task(description: str, path: Path | None = None) -> List[Dict]:
     return tasks
 
 
+def complete_task(task_id: int, path: Path | None = None) -> List[Dict]:
+    """Mark the task with ``task_id`` as completed."""
+    if path is None:
+        path = get_task_file()
+    tasks = load_tasks(path)
+    for task in tasks:
+        if task["id"] == task_id:
+            task["completed"] = True
+            path.write_text(json.dumps(tasks, indent=2) + "\n")
+            return tasks
+    raise ValueError(f"task id {task_id} not found")
+
+
 def list_tasks(path: Path | None = None) -> List[Dict]:
     """Return the list of tasks."""
     return load_tasks(path)
@@ -66,10 +79,15 @@ def main(argv: List[str] | None = None) -> None:
 
     sub.add_parser("list", help="List tasks")
 
+    complete_p = sub.add_parser("complete", help="Mark a task as completed")
+    complete_p.add_argument("id", type=int)
+
     args = parser.parse_args(argv)
 
     if args.cmd == "add":
         tasks = add_task(args.description, path=args.path)
+    elif args.cmd == "complete":
+        tasks = complete_task(args.id, path=args.path)
     else:
         tasks = list_tasks(path=args.path)
     for task in tasks:

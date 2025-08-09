@@ -54,3 +54,20 @@ def test_cli_add(tmp_path: Path) -> None:
         {"id": 1, "description": "write code", "completed": False},
     ]
     assert "1 write code" in result.stdout
+
+
+def test_env_default_var(monkeypatch, tmp_path: Path) -> None:
+    """``AXEL_TASK_FILE`` controls the default task file."""
+    task_file = tmp_path / "tasks.json"
+    monkeypatch.setenv("AXEL_TASK_FILE", str(task_file))
+    import axel.task_manager as tm
+
+    tm.add_task("dyn")
+    assert task_file.read_text().strip()
+
+
+def test_load_tasks_empty_file(tmp_path: Path) -> None:
+    """Empty JSON files yield an empty task list."""
+    file = tmp_path / "tasks.json"
+    file.write_text("")
+    assert load_tasks(path=file) == []

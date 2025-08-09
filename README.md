@@ -52,7 +52,7 @@ pre-commit install
 7. Coverage reports are uploaded to [Codecov](https://codecov.io/gh/futuroptimist/axel) via CI.
 8. Add a task with `python -m axel.task_manager add "write docs"`. Tasks are
    saved in `tasks.json` and listed with `python -m axel.task_manager list`.
-   Descriptions are trimmed and cannot be empty.
+9. Pass `--path <file>` or set `AXEL_TASK_FILE` to use a custom task list.
 
 ## local setup
 

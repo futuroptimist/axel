@@ -18,8 +18,12 @@ def load_tasks(path: Path | None = None) -> List[Dict]:
         path = get_task_file()
     if not path.exists():
         return []
-    with path.open() as f:
-        return json.load(f)
+    try:
+        with path.open() as f:
+            return json.load(f)
+    except json.JSONDecodeError:
+        # Treat empty or corrupt files as no tasks
+        return []
 
 
 def add_task(description: str, path: Path | None = None) -> List[Dict]:

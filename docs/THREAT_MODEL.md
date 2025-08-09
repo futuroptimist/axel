@@ -6,5 +6,10 @@ Axel coordinates multiple repositories and stores user notes locally. This docum
 - The `local/` directory is gitignored by default. Verify this with `git check-ignore -v local/` after setup.
 - When using `token.place` or `gabriel`, review their permissions and rotate tokens regularly. See [docs/ROTATING_TOKENS.md](ROTATING_TOKENS.md) for detailed steps.
 - Notes saved under `local/discord/` stay on your machine. Future work may encrypt these files.
+- Before publishing the repository, scan for accidental secrets with:
+
+  ```bash
+  git ls-files -z | xargs -0 grep -i --line-number --context=1 -e token -e secret -e password
+  ```
 
 See `docs/IMPROVEMENT_CHECKLISTS.md` in the gabriel repository for related tasks.

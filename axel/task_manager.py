@@ -27,10 +27,16 @@ def load_tasks(path: Path | None = None) -> List[Dict]:
 
 
 def add_task(description: str, path: Path | None = None) -> List[Dict]:
-    """Add a task with ``description`` to the JSON database."""
+    """Add a task with ``description`` to the JSON database.
+
+    ``description`` is stripped of surrounding whitespace and must not be empty.
+    """
     if path is None:
         path = get_task_file()
     path.parent.mkdir(parents=True, exist_ok=True)
+    description = description.strip()
+    if not description:
+        raise ValueError("description must not be empty")
     tasks = load_tasks(path)
     next_id = max((t["id"] for t in tasks), default=0) + 1
     task = {"id": next_id, "description": description, "completed": False}

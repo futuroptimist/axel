@@ -17,7 +17,10 @@ def get_repo_file() -> Path:
 
 
 def load_repos(path: Path | None = None) -> List[str]:
-    """Load repository URLs from a text file."""
+    """Load repository URLs from a text file.
+
+    Trailing slashes are stripped to keep entries canonical.
+    """
     if path is None:
         path = get_repo_file()
     if not path.exists():
@@ -26,18 +29,21 @@ def load_repos(path: Path | None = None) -> List[str]:
     with path.open() as f:
         for line in f:
             # Allow comments using ``#`` and strip inline notes
-            line = line.split("#", 1)[0].strip()
+            line = line.split("#", 1)[0].strip().rstrip("/")
             if line:
                 repos.append(line)
     return repos
 
 
 def add_repo(url: str, path: Path | None = None) -> List[str]:
-    """Add a repository URL to the list if not already present."""
+    """Add a repository URL to the list if not already present.
+
+    Trailing slashes in ``url`` are removed before processing.
+    """
     if path is None:
         path = get_repo_file()
     path.parent.mkdir(parents=True, exist_ok=True)
-    url = url.strip()
+    url = url.strip().rstrip("/")
     repos = load_repos(path)
     if url and url not in repos:
         repos.append(url)
@@ -47,11 +53,14 @@ def add_repo(url: str, path: Path | None = None) -> List[str]:
 
 
 def remove_repo(url: str, path: Path | None = None) -> List[str]:
-    """Remove a repository URL from the list if present."""
+    """Remove a repository URL from the list if present.
+
+    Trailing slashes in ``url`` are removed before processing.
+    """
     if path is None:
         path = get_repo_file()
     path.parent.mkdir(parents=True, exist_ok=True)
-    url = url.strip()
+    url = url.strip().rstrip("/")
     repos = load_repos(path)
     if url in repos:
         repos.remove(url)

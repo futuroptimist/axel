@@ -23,6 +23,10 @@ python -m axel.discord_bot
 This will start the bot using the token set in the `DISCORD_BOT_TOKEN`
 environment variable. Once running, it appears online in the server.
 
+Ensure the **Message Content Intent** is enabled for the bot in the Discord
+Developer Portal so it can read message text. The client enables this intent
+when starting.
+
 ## Usage
 
 Mention the bot in reply to any message you want to save. The bot fetches the

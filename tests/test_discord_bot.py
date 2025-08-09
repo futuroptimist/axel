@@ -69,4 +69,6 @@ def test_run_invokes_client(monkeypatch) -> None:
     db.run()
 
     assert captured["token"] == "123"
-    assert captured["intents"] == discord.Intents.default()
+    intents = captured["intents"]
+    assert isinstance(intents, discord.Intents)
+    assert intents.message_content is True

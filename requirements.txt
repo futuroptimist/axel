@@ -2,3 +2,5 @@ pyyaml
 requests
 python-dotenv
 rich
+
+discord.py

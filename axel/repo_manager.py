@@ -41,6 +41,7 @@ def add_repo(url: str, path: Path | None = None) -> List[str]:
     repos = load_repos(path)
     if url and url not in repos:
         repos.append(url)
+        repos.sort()
         path.write_text("\n".join(repos) + "\n")
     return repos
 

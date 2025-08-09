@@ -87,6 +87,16 @@ def test_add_repo_strips_whitespace(tmp_path: Path) -> None:
     assert load_repos(path=file) == ["https://example.com/repo"]
 
 
+def test_add_repo_keeps_list_sorted(tmp_path: Path) -> None:
+    file = tmp_path / "repos.txt"
+    add_repo("https://example.com/b", path=file)
+    add_repo("https://example.com/a", path=file)
+    assert load_repos(path=file) == [
+        "https://example.com/a",
+        "https://example.com/b",
+    ]
+
+
 def test_add_repo_creates_parent_dir(tmp_path: Path) -> None:
     file = tmp_path / "nested" / "repos.txt"
     add_repo("https://example.com/repo", path=file)

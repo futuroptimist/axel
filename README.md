@@ -83,6 +83,8 @@ audit how data is handled. We rely on the
 lint, test and documentation practices transparent.
 See [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) for cross-repo security tips.
 For instructions on rotating API tokens see [docs/ROTATING_TOKENS.md](docs/ROTATING_TOKENS.md).
+For example, run gabriel alongside token.place and dspace to cross-check repository data
+for OSINT insights before sharing.
 
 ## API
 

@@ -74,6 +74,12 @@ def test_load_repos_ignores_comments(tmp_path: Path) -> None:
     ]
 
 
+def test_load_repos_strips_trailing_slash(tmp_path: Path) -> None:
+    file = tmp_path / "repos.txt"
+    file.write_text("https://example.com/repo/\n")
+    assert load_repos(path=file) == ["https://example.com/repo"]
+
+
 def test_add_repo_no_duplicates(tmp_path: Path):
     file = tmp_path / "repos.txt"
     add_repo("https://example.com/repo", path=file)

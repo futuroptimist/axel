@@ -80,6 +80,17 @@ def test_load_repos_strips_trailing_slash(tmp_path: Path) -> None:
     assert load_repos(path=file) == ["https://example.com/repo"]
 
 
+def test_load_repos_deduplicates(tmp_path: Path) -> None:
+    file = tmp_path / "repos.txt"
+    file.write_text(
+        "https://example.com/a\n" "https://example.com/a\n" "https://example.com/b\n"
+    )
+    assert load_repos(path=file) == [
+        "https://example.com/a",
+        "https://example.com/b",
+    ]
+
+
 def test_add_repo_no_duplicates(tmp_path: Path):
     file = tmp_path / "repos.txt"
     add_repo("https://example.com/repo", path=file)

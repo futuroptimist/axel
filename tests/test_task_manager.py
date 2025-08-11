@@ -108,3 +108,10 @@ def test_load_tasks_empty_file(tmp_path: Path) -> None:
     file = tmp_path / "tasks.json"
     file.write_text("")
     assert load_tasks(path=file) == []
+
+
+def test_load_tasks_non_list_json(tmp_path: Path) -> None:
+    """Non-list JSON content is treated as no tasks."""
+    file = tmp_path / "tasks.json"
+    file.write_text("{}")
+    assert load_tasks(path=file) == []

@@ -55,6 +55,7 @@ pre-commit install
    saved in `tasks.json` and listed with `python -m axel.task_manager list`.
 9. Mark a task complete with `python -m axel.task_manager complete 1`.
 10. Pass `--path <file>` or set `AXEL_TASK_FILE` to use a custom task list.
+    Axel treats missing, empty, or malformed task files as an empty list.
 
 ## local setup
 

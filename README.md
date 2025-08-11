@@ -44,6 +44,7 @@ pre-commit install
    Whitespace around the URL is stripped automatically and trailing slashes are
    removed.
    The repository list is kept sorted alphabetically.
+   Duplicate URLs are automatically removed.
 2. View the list with `python -m axel.repo_manager list`.
 3. Remove a repo with `python -m axel.repo_manager remove <url>`.
 4. Replace `repos.txt` with the authenticated user's repos via

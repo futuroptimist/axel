@@ -19,19 +19,22 @@ def get_repo_file() -> Path:
 def load_repos(path: Path | None = None) -> List[str]:
     """Load repository URLs from a text file.
 
-    Trailing slashes are stripped to keep entries canonical.
+    Trailing slashes are stripped to keep entries canonical and duplicates are
+    removed while preserving order.
     """
     if path is None:
         path = get_repo_file()
     if not path.exists():
         return []
     repos: List[str] = []
+    seen: set[str] = set()
     with path.open() as f:
         for line in f:
             # Allow comments using ``#`` and strip inline notes
             line = line.split("#", 1)[0].strip().rstrip("/")
-            if line:
+            if line and line not in seen:
                 repos.append(line)
+                seen.add(line)
     return repos
 
 

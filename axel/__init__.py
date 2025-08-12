@@ -14,6 +14,7 @@ from axel.task_manager import (
     list_tasks,
     load_tasks,
 )
+from .utils import strip_ansi
 
 
 def run_discord_bot() -> None:
@@ -31,6 +32,7 @@ __all__ = [
     "load_repos",
     "remove_repo",
     "run_discord_bot",
+    "strip_ansi",
     "add_task",
     "complete_task",
     "get_task_file",

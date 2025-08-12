@@ -44,7 +44,7 @@ pre-commit install
    Whitespace around the URL is stripped automatically and trailing slashes are
    removed.
    The repository list is kept sorted alphabetically.
-   Duplicate URLs are automatically removed.
+   Duplicate URLs are automatically removed (case-insensitive).
 2. View the list with `python -m axel.repo_manager list`.
 3. Remove a repo with `python -m axel.repo_manager remove <url>`.
 4. Replace `repos.txt` with the authenticated user's repos via
@@ -96,8 +96,7 @@ for OSINT insights before sharing.
 ## API
 
 ```python
-from axel import add_repo, list_repos
-from axel.utils import strip_ansi
+from axel import add_repo, list_repos, strip_ansi
 
 add_repo("https://github.com/example/repo")
 print(list_repos())
@@ -120,6 +119,14 @@ git ls-files -z | xargs -0 grep -i --line-number --context=1 -e token -e secret 
 ```
 
 Review the output and remove any sensitive data. Make sure `repos.txt` contains only repositories you wish to share.
+
+For staged changes, run:
+
+```bash
+git diff --cached | python scripts/scan-secrets.py
+```
+
+This helper flags suspicious lines in the diff before they reach the commit history.
 
 The repos in `repos.txt` come from various projects like
 [`dspace`](https://github.com/democratizedspace/dspace) and

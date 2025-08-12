@@ -49,13 +49,15 @@ pre-commit install
 3. Remove a repo with `python -m axel.repo_manager remove <url>`.
 4. Replace `repos.txt` with the authenticated user's repos via
    `python -m axel.repo_manager fetch`. Requires ``GH_TOKEN``.
-5. Run `pre-commit run --all-files` before committing to check formatting and tests.
-6. Pass `--path <file>` or set `AXEL_REPO_FILE` to use a custom repo list.
-7. Coverage reports are uploaded to [Codecov](https://codecov.io/gh/futuroptimist/axel) via CI.
-8. Add a task with `python -m axel.task_manager add "write docs"`. Tasks are
+5. Import helper functions directly in Python:
+   `from axel.repo_manager import add_repo`.
+6. Run `pre-commit run --all-files` before committing to check formatting and tests.
+7. Pass `--path <file>` or set `AXEL_REPO_FILE` to use a custom repo list.
+8. Coverage reports are uploaded to [Codecov](https://codecov.io/gh/futuroptimist/axel) via CI.
+9. Add a task with `python -m axel.task_manager add "write docs"`. Tasks are
    saved in `tasks.json` and listed with `python -m axel.task_manager list`.
-9. Mark a task complete with `python -m axel.task_manager complete 1`.
-10. Pass `--path <file>` or set `AXEL_TASK_FILE` to use a custom task list.
+10. Mark a task complete with `python -m axel.task_manager complete 1`.
+11. Pass `--path <file>` or set `AXEL_TASK_FILE` to use a custom task list.
 
 ## local setup
 

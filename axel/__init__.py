@@ -1,13 +1,25 @@
 """axel package."""
 
-from .repo_manager import add_repo, get_repo_file, list_repos, load_repos, remove_repo
-from .task_manager import add_task, complete_task, get_task_file, list_tasks, load_tasks
+from axel.repo_manager import (
+    add_repo,
+    get_repo_file,
+    list_repos,
+    load_repos,
+    remove_repo,
+)
+from axel.task_manager import (
+    add_task,
+    complete_task,
+    get_task_file,
+    list_tasks,
+    load_tasks,
+)
 
 
 def run_discord_bot() -> None:
     """Run the Discord bot without requiring ``discord`` at import time."""
 
-    from .discord_bot import run
+    from axel.discord_bot import run
 
     run()
 

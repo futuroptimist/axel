@@ -94,8 +94,7 @@ for OSINT insights before sharing.
 ## API
 
 ```python
-from axel import add_repo, list_repos
-from axel.utils import strip_ansi
+from axel import add_repo, list_repos, strip_ansi
 
 add_repo("https://github.com/example/repo")
 print(list_repos())

@@ -1,4 +1,4 @@
-from axel.utils import strip_ansi
+from axel import strip_ansi
 
 
 def test_strip_ansi_removes_codes():

@@ -26,6 +26,7 @@ axel helps organize short, medium and long term goals using chat, reasoning and 
 - [x] provide token rotation guidance in docs (see `docs/ROTATING_TOKENS.md`)
 - [ ] encrypt notes saved under `local/discord/`
 - [x] review permissions for integrated tools (token.place, gabriel) (see docs/THREAT_MODEL.md)
+- [x] achieve 100% test coverage
 
 ## installation
 

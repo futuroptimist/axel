@@ -98,10 +98,24 @@ def test_add_repo_no_duplicates(tmp_path: Path):
     assert load_repos(path=file) == ["https://example.com/repo"]
 
 
+def test_add_repo_no_duplicates_case_insensitive(tmp_path: Path) -> None:
+    file = tmp_path / "repos.txt"
+    add_repo("https://example.com/Repo", path=file)
+    add_repo("https://example.com/repo", path=file)
+    assert load_repos(path=file) == ["https://example.com/Repo"]
+
+
 def test_add_repo_strips_whitespace(tmp_path: Path) -> None:
     file = tmp_path / "repos.txt"
     add_repo("https://example.com/repo\n", path=file)
     assert load_repos(path=file) == ["https://example.com/repo"]
+
+
+def test_remove_repo_case_insensitive(tmp_path: Path) -> None:
+    file = tmp_path / "repos.txt"
+    add_repo("https://example.com/Repo", path=file)
+    remove_repo("https://example.com/repo", path=file)
+    assert load_repos(path=file) == []
 
 
 def test_add_repo_strips_trailing_slash(tmp_path: Path) -> None:

@@ -20,7 +20,7 @@ def load_repos(path: Path | None = None) -> List[str]:
     """Load repository URLs from a text file.
 
     Trailing slashes are stripped to keep entries canonical and duplicates are
-    removed while preserving order.
+    removed case-insensitively while preserving the first occurrence.
     """
     if path is None:
         path = get_repo_file()
@@ -32,23 +32,26 @@ def load_repos(path: Path | None = None) -> List[str]:
         for line in f:
             # Allow comments using ``#`` and strip inline notes
             line = line.split("#", 1)[0].strip().rstrip("/")
-            if line and line not in seen:
+            key = line.lower()
+            if line and key not in seen:
                 repos.append(line)
-                seen.add(line)
+                seen.add(key)
     return repos
 
 
 def add_repo(url: str, path: Path | None = None) -> List[str]:
     """Add a repository URL to the list if not already present.
 
-    Trailing slashes in ``url`` are removed before processing.
+    Trailing slashes in ``url`` are removed before processing. Comparison is
+    case-insensitive.
     """
     if path is None:
         path = get_repo_file()
     path.parent.mkdir(parents=True, exist_ok=True)
     url = url.strip().rstrip("/")
     repos = load_repos(path)
-    if url and url not in repos:
+    seen = {r.lower() for r in repos}
+    if url and url.lower() not in seen:
         repos.append(url)
         repos.sort()
         path.write_text("\n".join(repos) + "\n")
@@ -58,15 +61,21 @@ def add_repo(url: str, path: Path | None = None) -> List[str]:
 def remove_repo(url: str, path: Path | None = None) -> List[str]:
     """Remove a repository URL from the list if present.
 
-    Trailing slashes in ``url`` are removed before processing.
+    Trailing slashes in ``url`` are removed before processing and comparison is
+    case-insensitive.
     """
     if path is None:
         path = get_repo_file()
     path.parent.mkdir(parents=True, exist_ok=True)
     url = url.strip().rstrip("/")
     repos = load_repos(path)
-    if url in repos:
-        repos.remove(url)
+    removed = False
+    for existing in repos:
+        if existing.lower() == url.lower():
+            repos.remove(existing)
+            removed = True
+            break
+    if removed:
         text = "\n".join(repos)
         if text:
             text += "\n"

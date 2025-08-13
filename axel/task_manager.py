@@ -58,6 +58,18 @@ def complete_task(task_id: int, path: Path | None = None) -> List[Dict]:
     raise ValueError(f"task id {task_id} not found")
 
 
+def remove_task(task_id: int, path: Path | None = None) -> List[Dict]:
+    """Remove the task with ``task_id`` from the JSON database."""
+    if path is None:
+        path = get_task_file()
+    tasks = load_tasks(path)
+    new_tasks = [t for t in tasks if t["id"] != task_id]
+    if len(new_tasks) == len(tasks):
+        raise ValueError(f"task id {task_id} not found")
+    path.write_text(json.dumps(new_tasks, indent=2) + "\n")
+    return new_tasks
+
+
 def list_tasks(path: Path | None = None) -> List[Dict]:
     """Return the list of tasks."""
     return load_tasks(path)
@@ -82,12 +94,17 @@ def main(argv: List[str] | None = None) -> None:
     complete_p = sub.add_parser("complete", help="Mark a task as completed")
     complete_p.add_argument("id", type=int)
 
+    remove_p = sub.add_parser("remove", help="Remove a task")
+    remove_p.add_argument("id", type=int)
+
     args = parser.parse_args(argv)
 
     if args.cmd == "add":
         tasks = add_task(args.description, path=args.path)
     elif args.cmd == "complete":
         tasks = complete_task(args.id, path=args.path)
+    elif args.cmd == "remove":
+        tasks = remove_task(args.id, path=args.path)
     else:
         tasks = list_tasks(path=args.path)
     for task in tasks:

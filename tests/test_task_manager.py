@@ -6,7 +6,13 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[1]))  # noqa: E402
 import pytest  # noqa: E402
 
-from axel import add_task, complete_task, list_tasks, load_tasks  # noqa: E402
+from axel import (  # noqa: E402
+    add_task,
+    complete_task,
+    list_tasks,
+    load_tasks,
+    remove_task,
+)
 
 
 def test_add_and_load(tmp_path: Path) -> None:
@@ -40,6 +46,23 @@ def test_complete_task(tmp_path: Path) -> None:
         {"id": 1, "description": "write docs", "completed": True},
         {"id": 2, "description": "write code", "completed": False},
     ]
+
+
+def test_remove_task(tmp_path: Path) -> None:
+    file = tmp_path / "tasks.json"
+    add_task("write docs", path=file)
+    add_task("write code", path=file)
+    remove_task(1, path=file)
+    assert load_tasks(path=file) == [
+        {"id": 2, "description": "write code", "completed": False},
+    ]
+
+
+def test_remove_task_missing_id(tmp_path: Path) -> None:
+    file = tmp_path / "tasks.json"
+    add_task("write docs", path=file)
+    with pytest.raises(ValueError):
+        remove_task(2, path=file)
 
 
 def test_cli_add(tmp_path: Path) -> None:
@@ -91,6 +114,33 @@ def test_cli_complete(tmp_path: Path) -> None:
         {"id": 1, "description": "write docs", "completed": True},
     ]
     assert "1 write docs" in result.stdout
+
+
+def test_cli_remove(tmp_path: Path) -> None:
+    file = tmp_path / "tasks.json"
+    add_task("write docs", path=file)
+    add_task("write code", path=file)
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "axel.task_manager",
+            "--path",
+            str(file),
+            "remove",
+            "1",
+        ],
+        cwd=Path(__file__).resolve().parents[1],
+        capture_output=True,
+        text=True,
+        env={"PYTHONPATH": str(Path(__file__).resolve().parents[1])},
+        check=True,
+    )
+    data = json.loads(file.read_text())
+    assert data == [
+        {"id": 2, "description": "write code", "completed": False},
+    ]
+    assert "2 write code" in result.stdout
 
 
 def test_env_default_var(monkeypatch, tmp_path: Path) -> None:

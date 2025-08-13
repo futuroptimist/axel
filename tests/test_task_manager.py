@@ -110,6 +110,13 @@ def test_load_tasks_empty_file(tmp_path: Path) -> None:
     assert load_tasks(path=file) == []
 
 
+def test_load_tasks_invalid_json(tmp_path: Path) -> None:
+    """Corrupt JSON files are treated as having no tasks."""
+    file = tmp_path / "tasks.json"
+    file.write_text("{invalid}")
+    assert load_tasks(path=file) == []
+
+
 def test_load_tasks_default_path(monkeypatch, tmp_path: Path) -> None:
     """``load_tasks`` uses ``AXEL_TASK_FILE`` when no path is provided."""
     file = tmp_path / "tasks.json"

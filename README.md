@@ -101,6 +101,7 @@ add_repo("https://github.com/example/repo")
 print(list_repos())
 strip_ansi("\x1b[2K\x1b[31merror\x1b[0m")  # -> "error"
 strip_ansi(b"\x1b[31merror\x1b[0m")  # bytes are accepted
+strip_ansi(None)  # -> ""
 ```
 
 ## discord bot

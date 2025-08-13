@@ -15,3 +15,8 @@ def test_strip_ansi_handles_cursor_codes() -> None:
 def test_strip_ansi_accepts_bytes() -> None:
     """Byte strings should also be handled."""
     assert strip_ansi(b"\x1b[31merror\x1b[0m") == "error"
+
+
+def test_strip_ansi_none_returns_empty() -> None:
+    """Passing ``None`` should return an empty string."""
+    assert strip_ansi(None) == ""

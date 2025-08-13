@@ -57,6 +57,7 @@ pre-commit install
    saved in `tasks.json` and listed with `python -m axel.task_manager list`.
 9. Mark a task complete with `python -m axel.task_manager complete 1`.
 10. Pass `--path <file>` or set `AXEL_TASK_FILE` to use a custom task list.
+11. The task database stores a JSON array; invalid or non-array content loads as empty.
 
 ## local setup
 

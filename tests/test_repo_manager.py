@@ -347,6 +347,43 @@ def test_cli_fetch(monkeypatch, tmp_path: Path, capsys) -> None:
     assert repo_file.read_text() == "https://github.com/u/a\nhttps://github.com/u/b\n"
 
 
+def test_cli_fetch_accepts_token_flag(monkeypatch, tmp_path: Path, capsys) -> None:
+    """Passing ``--token`` bypasses the ``GH_TOKEN`` env var."""
+    repo_file = tmp_path / "repos.txt"
+
+    def fake_get(url, headers=None, params=None, timeout=0):
+        class Resp:
+            def __init__(self, data):
+                self._data = data
+
+            def json(self):
+                return self._data
+
+            def raise_for_status(self):
+                return None
+
+        if params["page"] == 1:
+            return Resp(
+                [
+                    {"html_url": "https://github.com/u/a"},
+                    {"html_url": "https://github.com/u/b"},
+                ]
+            )
+        return Resp([])
+
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+    monkeypatch.setattr(requests, "get", fake_get)
+    from axel import repo_manager as rm
+
+    rm.main(["--path", str(repo_file), "fetch", "--token", "token"])
+    output = capsys.readouterr().out.strip().splitlines()
+    assert output == [
+        "https://github.com/u/a",
+        "https://github.com/u/b",
+    ]
+    assert repo_file.read_text() == "https://github.com/u/a\nhttps://github.com/u/b\n"
+
+
 def test_fetch_repo_urls_requires_token(monkeypatch) -> None:
     """Fetching without ``GH_TOKEN`` raises an error."""
     monkeypatch.delenv("GH_TOKEN", raising=False)

@@ -12,6 +12,12 @@ def test_strip_ansi_handles_cursor_codes() -> None:
     assert strip_ansi(text) == "error"
 
 
+def test_strip_ansi_removes_osc_codes() -> None:
+    """Operating system command sequences should be stripped."""
+    text = "\x1b]0;title\x07error"
+    assert strip_ansi(text) == "error"
+
+
 def test_strip_ansi_accepts_bytes() -> None:
     """Byte strings should also be handled."""
     assert strip_ansi(b"\x1b[31merror\x1b[0m") == "error"

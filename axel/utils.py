@@ -1,6 +1,9 @@
 import re
 
-ANSI_ESCAPE_RE = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
+ANSI_ESCAPE_RE = re.compile(
+    "\x1B\\[[0-?]*[ -/]*[@-~]"  # CSI sequences
+    "|\x1B\\][^\x07\x1B]*(?:\x07|\x1B\\\\)"  # OSC sequences
+)
 
 
 def strip_ansi(text: str | bytes) -> str:
@@ -10,8 +13,8 @@ def strip_ansi(text: str | bytes) -> str:
     are provided they are decoded as UTF-8 with ``errors='ignore'`` before
     stripping the ANSI sequences.
 
-    Removes color codes and other cursor-control sequences, making it useful
-    when capturing CLI output in tests.
+    Removes color codes, cursor-control sequences, and operating system
+    commands, making it useful when capturing CLI output in tests.
     """
     if isinstance(text, bytes):
         text = text.decode("utf-8", "ignore")

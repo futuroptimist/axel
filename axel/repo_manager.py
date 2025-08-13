@@ -43,7 +43,8 @@ def add_repo(url: str, path: Path | None = None) -> List[str]:
     """Add a repository URL to the list if not already present.
 
     Trailing slashes in ``url`` are removed before processing. Comparison is
-    case-insensitive.
+    case-insensitive. The resulting list is kept sorted alphabetically
+    regardless of case.
     """
     if path is None:
         path = get_repo_file()
@@ -53,7 +54,7 @@ def add_repo(url: str, path: Path | None = None) -> List[str]:
     seen = {r.lower() for r in repos}
     if url and url.lower() not in seen:
         repos.append(url)
-        repos.sort()
+        repos.sort(key=str.lower)
         path.write_text("\n".join(repos) + "\n")
     return repos
 
@@ -110,7 +111,7 @@ def fetch_repo_urls(token: str | None = None) -> List[str]:
             break
         repos.extend(repo["html_url"] for repo in data)
         page += 1
-    repos.sort()
+    repos.sort(key=str.lower)
     return repos
 
 

@@ -43,7 +43,8 @@ def add_repo(url: str, path: Path | None = None) -> List[str]:
     """Add a repository URL to the list if not already present.
 
     Trailing slashes in ``url`` are removed before processing. Comparison is
-    case-insensitive.
+    case-insensitive. The resulting list is kept sorted alphabetically
+    regardless of case.
     """
     if path is None:
         path = get_repo_file()
@@ -53,7 +54,7 @@ def add_repo(url: str, path: Path | None = None) -> List[str]:
     seen = {r.lower() for r in repos}
     if url and url.lower() not in seen:
         repos.append(url)
-        repos.sort()
+        repos.sort(key=str.lower)
         path.write_text("\n".join(repos) + "\n")
     return repos
 
@@ -89,7 +90,10 @@ def list_repos(path: Path | None = None) -> List[str]:
 
 
 def fetch_repo_urls(token: str | None = None) -> List[str]:
-    """Fetch repositories for the authenticated user via GitHub API."""
+    """Fetch repositories for the authenticated user via GitHub API.
+
+    The token may be provided directly or read from ``GH_TOKEN``.
+    """
     if token is None:
         token = os.getenv("GH_TOKEN")
     if not token:
@@ -110,12 +114,15 @@ def fetch_repo_urls(token: str | None = None) -> List[str]:
             break
         repos.extend(repo["html_url"] for repo in data)
         page += 1
-    repos.sort()
+    repos.sort(key=str.lower)
     return repos
 
 
 def fetch_repos(path: Path | None = None, token: str | None = None) -> List[str]:
-    """Fetch repo URLs and replace the repo list file."""
+    """Fetch repo URLs and replace the repo list file.
+
+    ``token`` overrides ``GH_TOKEN`` when provided.
+    """
     if path is None:
         path = get_repo_file()
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -145,7 +152,8 @@ def main(argv: List[str] | None = None) -> None:
     remove_p.add_argument("url")
 
     sub.add_parser("list", help="List repositories")
-    sub.add_parser("fetch", help="Fetch repositories from GitHub")
+    fetch_p = sub.add_parser("fetch", help="Fetch repositories from GitHub")
+    fetch_p.add_argument("--token", help="GitHub token", default=None)
 
     args = parser.parse_args(argv)
 
@@ -154,7 +162,7 @@ def main(argv: List[str] | None = None) -> None:
     elif args.cmd == "remove":
         repos = remove_repo(args.url, path=args.path)
     elif args.cmd == "fetch":
-        repos = fetch_repos(path=args.path)
+        repos = fetch_repos(path=args.path, token=args.token)
     else:
         repos = list_repos(path=args.path)
     for repo in repos:

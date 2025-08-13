@@ -44,12 +44,12 @@ pre-commit install
    Lines starting with `#` or with trailing `#` comments are ignored.
    Whitespace around the URL is stripped automatically and trailing slashes are
    removed.
-   The repository list is kept sorted alphabetically.
+   The repository list is kept sorted alphabetically, ignoring case.
    Duplicate URLs are automatically removed (case-insensitive).
 2. View the list with `python -m axel.repo_manager list`.
 3. Remove a repo with `python -m axel.repo_manager remove <url>`.
 4. Replace `repos.txt` with the authenticated user's repos via
-   `python -m axel.repo_manager fetch`. Requires ``GH_TOKEN``.
+   `python -m axel.repo_manager fetch`. Pass `--token` or set ``GH_TOKEN``.
 5. Run `pre-commit run --all-files` before committing to check formatting and tests.
 6. Pass `--path <file>` or set `AXEL_REPO_FILE` to use a custom repo list.
 7. Coverage reports are uploaded to [Codecov](https://codecov.io/gh/futuroptimist/axel) via CI.
@@ -58,6 +58,7 @@ pre-commit install
 9. Remove a task with `python -m axel.task_manager remove 1`.
 10. Mark a task complete with `python -m axel.task_manager complete 1`.
 11. Pass `--path <file>` or set `AXEL_TASK_FILE` to use a custom task list.
+12. Empty or invalid `tasks.json` files are treated as containing no tasks.
 
 ## local setup
 
@@ -102,6 +103,7 @@ add_repo("https://github.com/example/repo")
 print(list_repos())
 strip_ansi("\x1b[2K\x1b[31merror\x1b[0m")  # -> "error"
 strip_ansi(b"\x1b[31merror\x1b[0m")  # bytes are accepted
+strip_ansi(None)  # -> ""
 ```
 
 ## discord bot

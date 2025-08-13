@@ -13,7 +13,10 @@ def get_task_file() -> Path:
 
 
 def load_tasks(path: Path | None = None) -> List[Dict]:
-    """Load tasks from a JSON file."""
+    """Load tasks from a JSON file.
+
+    Returns an empty list for missing, empty, or invalid JSON files.
+    """
     if path is None:
         path = get_task_file()
     if not path.exists():

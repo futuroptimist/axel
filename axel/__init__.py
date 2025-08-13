@@ -1,7 +1,14 @@
 """axel package."""
 
 from .repo_manager import add_repo, get_repo_file, list_repos, load_repos, remove_repo
-from .task_manager import add_task, complete_task, get_task_file, list_tasks, load_tasks
+from .task_manager import (
+    add_task,
+    complete_task,
+    get_task_file,
+    list_tasks,
+    load_tasks,
+    remove_task,
+)
 from .utils import strip_ansi
 
 
@@ -26,4 +33,5 @@ __all__ = [
     "get_task_file",
     "list_tasks",
     "load_tasks",
+    "remove_task",
 ]

@@ -14,8 +14,7 @@ def get_task_file() -> Path:
 
 def load_tasks(path: Path | None = None) -> List[Dict]:
     """Load tasks from a JSON file.
-
-    Returns an empty list for missing, empty, or invalid JSON files.
+    Returns an empty list for missing, empty, invalid, or non-list JSON files.
     """
     if path is None:
         path = get_task_file()
@@ -23,10 +22,13 @@ def load_tasks(path: Path | None = None) -> List[Dict]:
         return []
     try:
         with path.open() as f:
-            return json.load(f)
+            data = json.load(f)
     except json.JSONDecodeError:
         # Treat empty or corrupt files as no tasks
         return []
+    if not isinstance(data, list):
+        return []
+    return data
 
 
 def add_task(description: str, path: Path | None = None) -> List[Dict]:

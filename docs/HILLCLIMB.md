@@ -21,6 +21,8 @@ Configure
 
 .axel/hillclimb/cards/*.yml: action cards (acceptance criteria + constraints).
 
+If a repo is missing or private, it is skipped with a log message instead of aborting the run.
+
 .env: set GITHUB_TOKEN= (see .env.example).
 
 Notes

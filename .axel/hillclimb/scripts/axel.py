@@ -208,7 +208,11 @@ def cmd_hillclimb(args):
     for r in targets:
         slug = r["slug"]
         default_branch = r.get("default_branch", "main")
-        repo_dir = ensure_clone(slug, default_branch)
+        try:
+            repo_dir = ensure_clone(slug, default_branch)
+        except RuntimeError as e:
+            print(f"Skipping {slug}: {e}")
+            continue
 
         for attempt in range(1, args.runs + 1):
             branch = make_branch_name(cfg["branch_prefix"], slug, card["key"], attempt)

@@ -15,10 +15,8 @@ jobs:
           uv venv .venv
           source .venv/bin/activate
           uv pip install -r requirements.txt
-          uv pip install flake8 black isort
-      - name: Run linters
+          uv pip install pre-commit
+      - name: Run pre-commit
         run: |
           source .venv/bin/activate
-          flake8 axel tests
-          isort --check-only axel tests
-          black --check axel tests
+          pre-commit run --all-files --show-diff-on-failure

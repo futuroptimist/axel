@@ -25,4 +25,4 @@ pre-commit run --all-files
 - By submitting a PR you agree to license your work under the MIT license.
 - Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 
-For additional tips see [CONTRIBUTING.md](CONTRIBUTING.md).
+For AI-specific tips see [AGENTS.md](AGENTS.md).

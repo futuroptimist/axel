@@ -17,6 +17,12 @@ def test_strip_ansi_accepts_bytes() -> None:
     assert strip_ansi(b"\x1b[31merror\x1b[0m") == "error"
 
 
+def test_strip_ansi_accepts_bytearray() -> None:
+    """Bytearrays should also be handled."""
+    data = bytearray(b"\x1b[31merror\x1b[0m")
+    assert strip_ansi(data) == "error"
+
+
 def test_strip_ansi_none_returns_empty() -> None:
     """Passing ``None`` should return an empty string."""
     assert strip_ansi(None) == ""

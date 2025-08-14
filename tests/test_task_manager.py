@@ -31,6 +31,15 @@ def test_add_task_strips_whitespace(tmp_path: Path) -> None:
     ]
 
 
+def test_add_task_preserves_unicode(tmp_path: Path) -> None:
+    """Unicode descriptions are stored without escapes."""
+    file = tmp_path / "tasks.json"
+    add_task("español café", path=file)
+    text = file.read_text(encoding="utf-8")
+    assert "español café" in text
+    assert "\\u" not in text
+
+
 def test_add_task_rejects_empty_description(tmp_path: Path) -> None:
     file = tmp_path / "tasks.json"
     with pytest.raises(ValueError):

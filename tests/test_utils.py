@@ -12,6 +12,12 @@ def test_strip_ansi_handles_cursor_codes() -> None:
     assert strip_ansi(text) == "error"
 
 
+def test_strip_ansi_strips_osc_sequences() -> None:
+    """OSC hyperlinks must be removed."""
+    text = "\x1b]8;;https://example.com\x1b\\link\x1b]8;;\x1b\\"
+    assert strip_ansi(text) == "link"
+
+
 def test_strip_ansi_accepts_bytes() -> None:
     """Byte strings should also be handled."""
     assert strip_ansi(b"\x1b[31merror\x1b[0m") == "error"

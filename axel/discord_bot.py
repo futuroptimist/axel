@@ -10,13 +10,20 @@ import discord
 SAVE_DIR = Path("local/discord")
 
 
+def _get_save_dir() -> Path:
+    env = os.getenv("AXEL_DISCORD_DIR")
+    return Path(env) if env else SAVE_DIR
+
+
 def save_message(message: discord.Message) -> Path:
     """Persist the provided message as markdown.
 
-    Ensures the save directory exists before writing.
+    Ensures the save directory exists before writing. The directory can be overridden
+    via the ``AXEL_DISCORD_DIR`` environment variable.
     """
-    SAVE_DIR.mkdir(parents=True, exist_ok=True)
-    path = SAVE_DIR / f"{message.id}.md"
+    save_dir = _get_save_dir()
+    save_dir.mkdir(parents=True, exist_ok=True)
+    path = save_dir / f"{message.id}.md"
     timestamp = message.created_at.isoformat()
     content = f"# {message.author.display_name}\n\n{timestamp}\n\n{message.content}\n"
     path.write_text(content)

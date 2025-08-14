@@ -35,6 +35,12 @@ original message and writes a markdown file under
 doesn't exist. Each file records the author's display name, an ISO 8601
 timestamp, and the message content.
 
+Set the ``AXEL_DISCORD_DIR`` environment variable to change the save location:
+
+```bash
+export AXEL_DISCORD_DIR=/path/to/notes
+```
+
 Future iterations can analyze these notes alongside `token.place` and
 [`gabriel`](https://github.com/futuroptimist/gabriel) to suggest quests across
 repositories.

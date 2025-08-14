@@ -69,7 +69,7 @@ REQUIREMENTS
 
 ACCEPTANCE CHECK
 Running `python -m axel.repo_manager fetch` writes the repository URLs to
-`repos.txt` and tests reflect the new behaviour.
+`repos.txt` and tests reflect the new behavior.
 
 OUTPUT
 Return only the necessary patch.

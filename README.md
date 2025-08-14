@@ -57,6 +57,7 @@ pre-commit install
    saved in `tasks.json` and listed with `python -m axel.task_manager list`.
    Descriptions may include Unicode characters and are stored unescaped using
    UTF-8 for readability.
+   Listings show `[ ]` for pending tasks and `[x]` when completed.
 9. Remove a task with `python -m axel.task_manager remove 1`.
 10. Mark a task complete with `python -m axel.task_manager complete 1`.
 11. Pass `--path <file>` or set `AXEL_TASK_FILE` to use a custom task list.
@@ -106,6 +107,7 @@ print(list_repos())
 strip_ansi("\x1b[2K\x1b[31merror\x1b[0m")  # -> "error"
 strip_ansi(b"\x1b[31merror\x1b[0m")  # bytes are accepted
 strip_ansi(None)  # -> ""
+strip_ansi(123)  # raises TypeError for invalid types
 ```
 
 ## discord bot

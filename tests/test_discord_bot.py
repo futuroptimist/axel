@@ -44,6 +44,14 @@ def test_save_message_creates_dir(tmp_path: Path) -> None:
     assert missing.exists()
 
 
+def test_save_message_respects_env(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("AXEL_DISCORD_DIR", str(tmp_path))
+    msg = DummyMessage("hey", mid=3)
+    path = db.save_message(msg)
+    assert path.parent == tmp_path
+    assert path.read_text() == "# user\n\n2024-01-01T00:00:00+00:00\n\nhey\n"
+
+
 def test_run_missing_token(monkeypatch) -> None:
     """``run`` exits if ``DISCORD_BOT_TOKEN`` is not set."""
     monkeypatch.delenv("DISCORD_BOT_TOKEN", raising=False)

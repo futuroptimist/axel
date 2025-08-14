@@ -1,3 +1,5 @@
+import pytest
+
 from axel import strip_ansi
 
 
@@ -20,3 +22,9 @@ def test_strip_ansi_accepts_bytes() -> None:
 def test_strip_ansi_none_returns_empty() -> None:
     """Passing ``None`` should return an empty string."""
     assert strip_ansi(None) == ""
+
+
+def test_strip_ansi_invalid_type_raises() -> None:
+    """Non-string inputs should raise ``TypeError``."""
+    with pytest.raises(TypeError):
+        strip_ansi(123)  # type: ignore[arg-type]

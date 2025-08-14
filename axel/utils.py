@@ -11,7 +11,7 @@ def strip_ansi(text: str | bytes | None) -> str:
 
     ``text`` may be a :class:`str` or :class:`bytes` instance. When ``bytes``
     are provided they are decoded as UTF-8 with ``errors='ignore'`` before
-    stripping the ANSI sequences.
+    stripping the ANSI sequences. Passing any other type raises ``TypeError``.
 
     Removes color codes and other cursor-control sequences, making it useful
     when capturing CLI output in tests.
@@ -20,4 +20,6 @@ def strip_ansi(text: str | bytes | None) -> str:
         return ""
     if isinstance(text, bytes):
         text = text.decode("utf-8", "ignore")
+    elif not isinstance(text, str):
+        raise TypeError("text must be str, bytes, or None")
     return ANSI_ESCAPE_RE.sub("", text)

@@ -111,7 +111,8 @@ def main(argv: List[str] | None = None) -> None:
     else:
         tasks = list_tasks(path=args.path)
     for task in tasks:
-        print(f"{task['id']} {task['description']}")
+        status = "[x]" if task["completed"] else "[ ]"
+        print(f"{task['id']} {status} {task['description']}")
 
 
 if __name__ == "__main__":  # pragma: no cover - manual use

@@ -87,7 +87,7 @@ def test_cli_add(tmp_path: Path) -> None:
     assert data == [
         {"id": 1, "description": "write code", "completed": False},
     ]
-    assert "1 write code" in result.stdout
+    assert "1 [ ] write code" in result.stdout
 
 
 def test_cli_complete(tmp_path: Path) -> None:
@@ -113,7 +113,7 @@ def test_cli_complete(tmp_path: Path) -> None:
     assert data == [
         {"id": 1, "description": "write docs", "completed": True},
     ]
-    assert "1 write docs" in result.stdout
+    assert "1 [x] write docs" in result.stdout
 
 
 def test_cli_remove(tmp_path: Path) -> None:
@@ -140,7 +140,7 @@ def test_cli_remove(tmp_path: Path) -> None:
     assert data == [
         {"id": 2, "description": "write code", "completed": False},
     ]
-    assert "2 write code" in result.stdout
+    assert "2 [ ] write code" in result.stdout
 
 
 def test_main_remove(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -153,7 +153,7 @@ def test_main_remove(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None
     assert load_tasks(path=file) == [
         {"id": 2, "description": "write code", "completed": False},
     ]
-    assert "2 write code" in capsys.readouterr().out
+    assert "2 [ ] write code" in capsys.readouterr().out
 
 
 def test_env_default_var(monkeypatch, tmp_path: Path) -> None:
@@ -239,8 +239,8 @@ def test_main_branches(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> No
     import axel.task_manager as tm
 
     tm.main(["--path", str(file), "add", "write docs"])
-    assert "1 write docs" in capsys.readouterr().out
+    assert "1 [ ] write docs" in capsys.readouterr().out
     tm.main(["--path", str(file), "complete", "1"])
-    assert "1 write docs" in capsys.readouterr().out
+    assert "1 [x] write docs" in capsys.readouterr().out
     tm.main(["--path", str(file), "list"])
-    assert "1 write docs" in capsys.readouterr().out
+    assert "1 [x] write docs" in capsys.readouterr().out

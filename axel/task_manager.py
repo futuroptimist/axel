@@ -22,7 +22,7 @@ def load_tasks(path: Path | None = None) -> List[Dict]:
     if not path.exists():
         return []
     try:
-        with path.open() as f:
+        with path.open(encoding="utf-8") as f:
             return json.load(f)
     except json.JSONDecodeError:
         # Treat empty or corrupt files as no tasks
@@ -44,7 +44,10 @@ def add_task(description: str, path: Path | None = None) -> List[Dict]:
     next_id = max((t["id"] for t in tasks), default=0) + 1
     task = {"id": next_id, "description": description, "completed": False}
     tasks.append(task)
-    path.write_text(json.dumps(tasks, indent=2) + "\n")
+    path.write_text(
+        json.dumps(tasks, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
     return tasks
 
 
@@ -56,7 +59,10 @@ def complete_task(task_id: int, path: Path | None = None) -> List[Dict]:
     for task in tasks:
         if task["id"] == task_id:
             task["completed"] = True
-            path.write_text(json.dumps(tasks, indent=2) + "\n")
+            path.write_text(
+                json.dumps(tasks, indent=2, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
             return tasks
     raise ValueError(f"task id {task_id} not found")
 
@@ -69,7 +75,10 @@ def remove_task(task_id: int, path: Path | None = None) -> List[Dict]:
     new_tasks = [t for t in tasks if t["id"] != task_id]
     if len(new_tasks) == len(tasks):
         raise ValueError(f"task id {task_id} not found")
-    path.write_text(json.dumps(new_tasks, indent=2) + "\n")
+    path.write_text(
+        json.dumps(new_tasks, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
     return new_tasks
 
 

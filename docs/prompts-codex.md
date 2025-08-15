@@ -60,7 +60,7 @@ FILES OF INTEREST
 - tests/test_repo_manager.py
 
 REQUIREMENTS
-1. Use the GitHub REST API and authenticate via `GH_TOKEN` env var or `--token` flag.
+1. Use the GitHub REST API and authenticate via `GH_TOKEN`/`GITHUB_TOKEN` env var or `--token` flag.
 2. Add a CLI option `python -m axel.repo_manager fetch` that replaces `repos.txt`
    with the fetched list.
 3. Cover new logic with tests.

@@ -358,7 +358,7 @@ def test_cli_fetch(monkeypatch, tmp_path: Path, capsys) -> None:
 
 
 def test_cli_fetch_accepts_token_flag(monkeypatch, tmp_path: Path, capsys) -> None:
-    """Passing ``--token`` bypasses the ``GH_TOKEN`` env var."""
+    """Passing ``--token`` bypasses the ``GH_TOKEN``/``GITHUB_TOKEN`` env vars."""
     repo_file = tmp_path / "repos.txt"
 
     def fake_get(url, headers=None, params=None, timeout=0):
@@ -382,6 +382,7 @@ def test_cli_fetch_accepts_token_flag(monkeypatch, tmp_path: Path, capsys) -> No
         return Resp([])
 
     monkeypatch.delenv("GH_TOKEN", raising=False)
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
     monkeypatch.setattr(requests, "get", fake_get)
     from axel import repo_manager as rm
 
@@ -395,12 +396,37 @@ def test_cli_fetch_accepts_token_flag(monkeypatch, tmp_path: Path, capsys) -> No
 
 
 def test_fetch_repo_urls_requires_token(monkeypatch) -> None:
-    """Fetching without ``GH_TOKEN`` raises an error."""
+    """Fetching without ``GH_TOKEN``/``GITHUB_TOKEN`` raises an error."""
     monkeypatch.delenv("GH_TOKEN", raising=False)
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
     from axel import repo_manager as rm
 
     with pytest.raises(RuntimeError):
         rm.fetch_repo_urls()
+
+
+def test_fetch_repo_urls_uses_github_token(monkeypatch) -> None:
+    """``GITHUB_TOKEN`` is accepted when ``GH_TOKEN`` is missing."""
+
+    def fake_get(url, headers=None, params=None, timeout=0):
+        class Resp:
+            def __init__(self):
+                self._data = []
+
+            def json(self):
+                return self._data
+
+            def raise_for_status(self):
+                return None
+
+        return Resp()
+
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+    monkeypatch.setenv("GITHUB_TOKEN", "token")
+    monkeypatch.setattr(requests, "get", fake_get)
+    from axel import repo_manager as rm
+
+    assert rm.fetch_repo_urls() == []
 
 
 def test_fetch_repos_defaults(monkeypatch, tmp_path: Path) -> None:

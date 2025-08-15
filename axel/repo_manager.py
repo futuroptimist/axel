@@ -92,12 +92,13 @@ def list_repos(path: Path | None = None) -> List[str]:
 def fetch_repo_urls(token: str | None = None) -> List[str]:
     """Fetch repositories for the authenticated user via GitHub API.
 
-    The token may be provided directly or read from ``GH_TOKEN``.
+    The token may be provided directly or read from ``GH_TOKEN`` or
+    ``GITHUB_TOKEN``.
     """
     if token is None:
-        token = os.getenv("GH_TOKEN")
+        token = os.getenv("GH_TOKEN") or os.getenv("GITHUB_TOKEN")
     if not token:
-        raise RuntimeError("GH_TOKEN is required to fetch repositories")
+        raise RuntimeError("GH_TOKEN or GITHUB_TOKEN is required to fetch repositories")
     headers = {"Authorization": f"token {token}"}
     page = 1
     repos: List[str] = []
@@ -121,7 +122,7 @@ def fetch_repo_urls(token: str | None = None) -> List[str]:
 def fetch_repos(path: Path | None = None, token: str | None = None) -> List[str]:
     """Fetch repo URLs and replace the repo list file.
 
-    ``token`` overrides ``GH_TOKEN`` when provided.
+    ``token`` overrides ``GH_TOKEN`` or ``GITHUB_TOKEN`` when provided.
     """
     if path is None:
         path = get_repo_file()

@@ -40,7 +40,8 @@ pre-commit install
 
 ## usage
 
-1. Add a repo with `python -m axel.repo_manager add <url>` or edit `repos.txt`.
+1. Add a repo with `python -m axel.repo_manager add <url>` (use `https://...`).
+   Alternatively, edit `repos.txt`.
    Lines starting with `#` or with trailing `#` comments are ignored.
    Whitespace around the URL is stripped automatically and trailing slashes are
    removed.

@@ -42,14 +42,18 @@ def load_repos(path: Path | None = None) -> List[str]:
 def add_repo(url: str, path: Path | None = None) -> List[str]:
     """Add a repository URL to the list if not already present.
 
-    Trailing slashes in ``url`` are removed before processing. Comparison is
-    case-insensitive. The resulting list is kept sorted alphabetically
-    regardless of case.
+    ``url`` must include the scheme (for example ``https://``). Trailing slashes
+    in ``url`` are removed before processing. Comparison is case-insensitive. The
+    resulting list is kept sorted alphabetically regardless of case.
     """
     if path is None:
         path = get_repo_file()
     path.parent.mkdir(parents=True, exist_ok=True)
     url = url.strip().rstrip("/")
+    if "://" not in url:
+        raise ValueError(
+            "url must include scheme, e.g., 'https://github.com/user/repo'"
+        )
     repos = load_repos(path)
     seen = {r.lower() for r in repos}
     if url and url.lower() not in seen:

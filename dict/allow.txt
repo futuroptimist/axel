@@ -1,0 +1,1 @@
+# Custom dictionary for codespell

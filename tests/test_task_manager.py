@@ -225,6 +225,18 @@ def test_remove_task_default_path(monkeypatch, tmp_path: Path) -> None:
     ]
 
 
+def test_list_tasks_default_path(monkeypatch, tmp_path: Path) -> None:
+    """``list_tasks`` honors ``AXEL_TASK_FILE`` when ``path`` is omitted."""
+    file = tmp_path / "tasks.json"
+    monkeypatch.setenv("AXEL_TASK_FILE", str(file))
+    import axel.task_manager as tm
+
+    tm.add_task("write docs")
+    assert tm.list_tasks() == [
+        {"id": 1, "description": "write docs", "completed": False},
+    ]
+
+
 def test_complete_task_missing_id(tmp_path: Path) -> None:
     """Completing an unknown task id raises ``ValueError``."""
     file = tmp_path / "tasks.json"

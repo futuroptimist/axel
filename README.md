@@ -88,6 +88,13 @@ control.
 
 Start with `examples/local/repos_example.txt` when creating your private repo list.
 
+To store tasks privately, point `AXEL_TASK_FILE` to a file under `local/`:
+
+```bash
+python -m axel.task_manager add "write docs" --path local/tasks.json
+export AXEL_TASK_FILE=local/tasks.json
+```
+
 ## privacy & transparency
 
 Axel treats your goals with respect. Repository lists and any Discord notes

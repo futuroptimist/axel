@@ -15,10 +15,10 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parents[3]  # repo root
 AXEL_DIR = ROOT / ".axel" / "hillclimb"
 WORK_DIR = AXEL_DIR / "work"
-PROMPTS_DIR = AXEL_DIR / "prompts"
 CARDS_DIR = AXEL_DIR / "cards"
 CONFIG = AXEL_DIR / "config.yml"
 REPOS = AXEL_DIR / "repos.yml"
+PROMPTS_FILE = ROOT / "docs" / "prompts" / "prompts-hillclimb.md"
 
 
 def sh(cmd, cwd=None, check=True):
@@ -93,13 +93,34 @@ def fingerprint_patch(repo_dir):
     return hashlib.sha1(diff.encode("utf-8")).hexdigest()
 
 
-def create_task_markdown(slug, card, attempt, cfg, prompts):
+def parse_prompts(path):
+    text = read(path)
+    if text.startswith("---"):
+        text = text.split("---", 2)[2]
+    sections = {}
+    current = None
+    buf = []
+    for line in text.splitlines():
+        if line.startswith("## "):
+            if current:
+                sections[current] = "\n".join(buf).strip()
+            current = line[3:].strip().lower()
+            buf = []
+        else:
+            buf.append(line)
+    if current:
+        sections[current] = "\n".join(buf).strip()
+    return sections
+
+
+def create_task_markdown(slug, card, attempt, cfg, prompts_file):
     tb = card.get("constraints", {})
     files_max = tb.get("files_max", cfg["touch_budget"]["files_max"])
     loc_max = tb.get("loc_max", cfg["touch_budget"]["loc_max"])
-    plan_p = read(PROMPTS_DIR / "plan.md")
-    code_p = read(PROMPTS_DIR / "code.md")
-    crit_p = read(PROMPTS_DIR / "critique.md")
+    sections = parse_prompts(prompts_file)
+    plan_p = sections.get("plan", "")
+    code_p = sections.get("code", "")
+    crit_p = sections.get("critique", "")
 
     ac_lines = "\n".join([f"- {x}" for x in card.get("acceptance_criteria", [])])
     must_pass = "\n".join([f"- {x}" for x in card.get("must_pass", [])]) or "- (none)"
@@ -125,25 +146,15 @@ def create_task_markdown(slug, card, attempt, cfg, prompts):
 ## Planner Prompt
 {plan_p}
 
-shell
-Copy
-
 ## Coder Prompt
 {code_p}
-
-shell
-Copy
 
 ## Self-Critique Prompt
 {crit_p}
 
-bash
-Copy
-
-    > Implement the smallest viable change that satisfies the acceptance
-    > criteria within the touch budget. Include tests and docs updates.
-    > Do not add secrets. Prefer conventional commits in separate commits if
-    > needed.
+> Implement the smallest viable change that satisfies the acceptance
+> criteria within the touch budget. Include tests and docs updates.
+> Do not add secrets. Prefer conventional commits in separate commits if needed.
 """
     return body
 
@@ -219,7 +230,7 @@ def cmd_hillclimb(args):
 
             # Write task file
             task_path = Path(repo_dir) / "AXEL_TASK.md"
-            task_body = create_task_markdown(slug, card, attempt, cfg, PROMPTS_DIR)
+            task_body = create_task_markdown(slug, card, attempt, cfg, PROMPTS_FILE)
             write(task_path, task_body)
             sh(f'git add "{task_path.name}"', cwd=repo_dir)
             commit_msg = (

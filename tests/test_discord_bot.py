@@ -52,6 +52,15 @@ def test_save_message_respects_env(tmp_path: Path, monkeypatch) -> None:
     assert path.read_text() == "# user\n\n2024-01-01T00:00:00+00:00\n\nhey\n"
 
 
+def test_save_message_env_expands_user(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("AXEL_DISCORD_DIR", "~/discord")
+    msg = DummyMessage("home", mid=4)
+    path = db.save_message(msg)
+    assert path.parent == tmp_path / "discord"
+    assert path.read_text() == "# user\n\n2024-01-01T00:00:00+00:00\n\nhome\n"
+
+
 def test_run_missing_token(monkeypatch) -> None:
     """``run`` exits if ``DISCORD_BOT_TOKEN`` is not set."""
     monkeypatch.delenv("DISCORD_BOT_TOKEN", raising=False)

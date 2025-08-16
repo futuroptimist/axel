@@ -41,6 +41,8 @@ Set the ``AXEL_DISCORD_DIR`` environment variable to change the save location:
 export AXEL_DISCORD_DIR=/path/to/notes
 ```
 
+Paths beginning with ``~`` are expanded to the user's home directory.
+
 Future iterations can analyze these notes alongside `token.place` and
 [`gabriel`](https://github.com/futuroptimist/gabriel) to suggest quests across
 repositories.

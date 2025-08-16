@@ -11,8 +11,12 @@ SAVE_DIR = Path("local/discord")
 
 
 def _get_save_dir() -> Path:
+    """Return directory for saving Discord messages.
+
+    Honors ``AXEL_DISCORD_DIR`` and expands ``~`` to the user's home.
+    """
     env = os.getenv("AXEL_DISCORD_DIR")
-    return Path(env) if env else SAVE_DIR
+    return Path(env).expanduser() if env else SAVE_DIR
 
 
 def save_message(message: discord.Message) -> Path:

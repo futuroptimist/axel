@@ -67,7 +67,8 @@ def remove_repo(url: str, path: Path | None = None) -> List[str]:
     """Remove a repository URL from the list if present.
 
     Trailing slashes in ``url`` are removed before processing and comparison is
-    case-insensitive.
+    case-insensitive. The remaining list is kept sorted alphabetically,
+    ignoring case.
     """
     if path is None:
         path = get_repo_file()
@@ -81,6 +82,7 @@ def remove_repo(url: str, path: Path | None = None) -> List[str]:
             removed = True
             break
     if removed:
+        repos.sort(key=str.lower)
         text = "\n".join(repos)
         if text:
             text += "\n"

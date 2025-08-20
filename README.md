@@ -49,8 +49,8 @@ pre-commit install
    Lines starting with `#` or with trailing `#` comments are ignored.
    Whitespace around the URL is stripped automatically and trailing slashes are
    removed.
-   The repository list is kept sorted alphabetically, ignoring case.
-   Duplicate URLs are automatically removed (case-insensitive).
+   The repository list is kept sorted alphabetically, ignoring case. Removing entries
+   preserves this order. Duplicate URLs are automatically removed (case-insensitive).
 2. View the list with `python -m axel.repo_manager list`.
 3. Remove a repo with `python -m axel.repo_manager remove <url>`.
 4. Replace `repos.txt` with the authenticated user's repos via

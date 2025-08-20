@@ -178,6 +178,18 @@ def test_remove_repo_strips_trailing_slash(tmp_path: Path) -> None:
     assert load_repos(path=file) == []
 
 
+def test_remove_repo_sorts_remaining(tmp_path: Path) -> None:
+    file = tmp_path / "repos.txt"
+    file.write_text(
+        "https://example.com/b\nhttps://example.com/a\nhttps://example.com/c\n"
+    )
+    remove_repo("https://example.com/c", path=file)
+    assert load_repos(path=file) == [
+        "https://example.com/a",
+        "https://example.com/b",
+    ]
+
+
 def test_env_default_var(monkeypatch, tmp_path: Path):
     repo_file = tmp_path / "repos.txt"
     monkeypatch.setenv("AXEL_REPO_FILE", str(repo_file))

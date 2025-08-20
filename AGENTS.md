@@ -40,4 +40,5 @@ pytest --cov=axel --cov=tests
 - Document private notes in `local/` (gitignored)
 - Scan for secrets with the command in `README.md` before publishing
 - Integrate `token.place` clients and coordinate with [gabriel](https://github.com/futuroptimist/gabriel)
-- Use [`futuroptimist/flywheel`](https://github.com/futuroptimist/flywheel) when starting new repositories
+- Use [`futuroptimist/flywheel`](https://github.com/futuroptimist/flywheel) when starting new repositories to
+  inherit preconfigured linting, testing, and docs checks

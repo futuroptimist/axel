@@ -76,8 +76,9 @@ pre-commit install
    Listings show `[ ]` for pending tasks and `[x]` when completed.
 9. Remove a task with `python -m axel.task_manager remove 1`.
 10. Mark a task complete with `python -m axel.task_manager complete 1`.
-11. Pass `--path <file>` or set `AXEL_TASK_FILE` to use a custom task list.
-12. Empty, invalid, or non-list `tasks.json` files are treated as containing no tasks.
+11. Clear all tasks with `python -m axel.task_manager clear`.
+12. Pass `--path <file>` or set `AXEL_TASK_FILE` to use a custom task list.
+13. Empty, invalid, or non-list `tasks.json` files are treated as containing no tasks.
 
 ## local setup
 

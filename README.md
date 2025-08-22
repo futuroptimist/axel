@@ -11,13 +11,15 @@ and generate actionable quests.
 [![Docs](https://img.shields.io/github/actions/workflow/status/futuroptimist/axel/.github/workflows/03-docs.yml?label=docs)](https://github.com/futuroptimist/axel/actions/workflows/03-docs.yml)
 [![License](https://img.shields.io/github/license/futuroptimist/axel)](LICENSE)
 
-## quickstart
-
-Run the token.place relay, server and a mock LLM:
+## 60s Quickstart
 
 ```bash
-docker compose -f docker-compose-mock.yml up
+pipx install axel
+axel-repo list
 ```
+
+`pipx` installs axel with pinned deps. `axel-repo` manages repo lists; use
+`axel-task` for tasks.
 
 ## roadmap
 - [x] maintain a list of repos in `repos.txt`
@@ -74,8 +76,9 @@ pre-commit install
    Listings show `[ ]` for pending tasks and `[x]` when completed.
 9. Remove a task with `python -m axel.task_manager remove 1`.
 10. Mark a task complete with `python -m axel.task_manager complete 1`.
-11. Pass `--path <file>` or set `AXEL_TASK_FILE` to use a custom task list.
-12. Empty, invalid, or non-list `tasks.json` files are treated as containing no tasks.
+11. Clear all tasks with `python -m axel.task_manager clear`.
+12. Pass `--path <file>` or set `AXEL_TASK_FILE` to use a custom task list.
+13. Empty, invalid, or non-list `tasks.json` files are treated as containing no tasks.
 
 ## local setup
 
@@ -171,6 +174,11 @@ Other tracked repos include:
 the [`blog`](https://github.com/futuroptimist/blog) for publishing progress,
 and [`esp.ac`](https://github.com/futuroptimist/esp.ac), a simple landing page
 for Esp.
+
+## hardware
+
+OpenSCAD source files live in `hardware/cad`. Run `bash scripts/build_stl.sh`
+to regenerate matching files in `hardware/stl`.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on sending pull requests.
 This project adheres to the [Code of Conduct](CODE_OF_CONDUCT.md).

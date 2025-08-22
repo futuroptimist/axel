@@ -8,6 +8,7 @@ import pytest  # noqa: E402
 
 from axel import (  # noqa: E402
     add_task,
+    clear_tasks,
     complete_task,
     list_tasks,
     load_tasks,
@@ -244,6 +245,17 @@ def test_list_tasks_default_path(monkeypatch, tmp_path: Path) -> None:
     ]
 
 
+def test_clear_tasks_default_path(monkeypatch, tmp_path: Path) -> None:
+    """``clear_tasks`` honors ``AXEL_TASK_FILE`` when ``path`` is omitted."""
+    file = tmp_path / "tasks.json"
+    monkeypatch.setenv("AXEL_TASK_FILE", str(file))
+    import axel.task_manager as tm
+
+    tm.add_task("write docs")
+    tm.clear_tasks()
+    assert tm.load_tasks() == []
+
+
 def test_complete_task_missing_id(tmp_path: Path) -> None:
     """Completing an unknown task id raises ``ValueError``."""
     file = tmp_path / "tasks.json"
@@ -272,3 +284,33 @@ def test_main_branches(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> No
     assert "1 [x] write docs" in capsys.readouterr().out
     tm.main(["--path", str(file), "list"])
     assert "1 [x] write docs" in capsys.readouterr().out
+    tm.main(["--path", str(file), "clear"])
+    assert tm.list_tasks(path=file) == []
+
+
+def test_clear_tasks(tmp_path: Path) -> None:
+    file = tmp_path / "tasks.json"
+    add_task("write docs", path=file)
+    clear_tasks(path=file)
+    assert load_tasks(path=file) == []
+
+
+def test_cli_clear(tmp_path: Path) -> None:
+    file = tmp_path / "tasks.json"
+    add_task("write docs", path=file)
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "axel.task_manager",
+            "--path",
+            str(file),
+            "clear",
+        ],
+        cwd=Path(__file__).resolve().parents[1],
+        capture_output=True,
+        text=True,
+        env={"PYTHONPATH": str(Path(__file__).resolve().parents[1])},
+        check=True,
+    )
+    assert load_tasks(path=file) == []

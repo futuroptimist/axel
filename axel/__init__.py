@@ -3,6 +3,7 @@
 from .repo_manager import add_repo, get_repo_file, list_repos, load_repos, remove_repo
 from .task_manager import (
     add_task,
+    clear_tasks,
     complete_task,
     get_task_file,
     list_tasks,
@@ -34,4 +35,5 @@ __all__ = [
     "list_tasks",
     "load_tasks",
     "remove_task",
+    "clear_tasks",
 ]

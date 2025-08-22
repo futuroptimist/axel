@@ -1,0 +1,22 @@
+version: '3.8'
+services:
+  server:
+    image: ghcr.io/tokenplace/server:latest
+    depends_on:
+      - relay
+    environment:
+      RELAY_URL: http://relay:8080
+    ports:
+      - "8000:8000"
+  relay:
+    image: ghcr.io/tokenplace/relay:latest
+    depends_on:
+      - mock-llm
+    environment:
+      UPSTREAM: http://mock-llm:4000
+    ports:
+      - "8080:8080"
+  mock-llm:
+    image: ghcr.io/tokenplace/mock-llm:latest
+    ports:
+      - "4000:4000"

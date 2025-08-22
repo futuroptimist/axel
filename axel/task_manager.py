@@ -90,6 +90,15 @@ def list_tasks(path: Path | None = None) -> List[Dict]:
     return load_tasks(path)
 
 
+def clear_tasks(path: Path | None = None) -> List[Dict]:
+    """Remove all tasks from the JSON database."""
+    if path is None:
+        path = get_task_file()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("[]\n", encoding="utf-8")
+    return []
+
+
 def main(argv: List[str] | None = None) -> None:
     """Simple command-line interface for managing tasks."""
     parser = argparse.ArgumentParser(description="Manage task list")
@@ -112,6 +121,8 @@ def main(argv: List[str] | None = None) -> None:
     remove_p = sub.add_parser("remove", help="Remove a task")
     remove_p.add_argument("id", type=int)
 
+    sub.add_parser("clear", help="Remove all tasks")
+
     args = parser.parse_args(argv)
 
     if args.cmd == "add":
@@ -120,6 +131,8 @@ def main(argv: List[str] | None = None) -> None:
         tasks = complete_task(args.id, path=args.path)
     elif args.cmd == "remove":
         tasks = remove_task(args.id, path=args.path)
+    elif args.cmd == "clear":
+        tasks = clear_tasks(path=args.path)
     else:
         tasks = list_tasks(path=args.path)
     for task in tasks:

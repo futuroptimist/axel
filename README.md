@@ -11,6 +11,14 @@ and generate actionable quests.
 [![Docs](https://img.shields.io/github/actions/workflow/status/futuroptimist/axel/.github/workflows/03-docs.yml?label=docs)](https://github.com/futuroptimist/axel/actions/workflows/03-docs.yml)
 [![License](https://img.shields.io/github/license/futuroptimist/axel)](LICENSE)
 
+## quickstart
+
+Run the token.place relay, server and a mock LLM:
+
+```bash
+docker compose -f docker-compose-mock.yml up
+```
+
 ## roadmap
 - [x] maintain a list of repos in `repos.txt`
 - [x] simple CLI for managing repos (`python -m axel.repo_manager`)

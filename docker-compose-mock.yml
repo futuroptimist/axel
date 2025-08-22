@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  server:
+    image: ghcr.io/futuroptimist/token-place-server:latest
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+  relay:
+    image: ghcr.io/futuroptimist/token-place-relay:latest
+    ports:
+      - "5000:5000"
+    depends_on:
+      - server
+    restart: unless-stopped
+
+  mock-llm:
+    image: ghcr.io/futuroptimist/mock-llm:latest
+    ports:
+      - "8000:8000"
+    restart: unless-stopped

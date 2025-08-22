@@ -164,6 +164,11 @@ the [`blog`](https://github.com/futuroptimist/blog) for publishing progress,
 and [`esp.ac`](https://github.com/futuroptimist/esp.ac), a simple landing page
 for Esp.
 
+## hardware
+
+OpenSCAD source files live in `hardware/cad`. Run `bash scripts/build_stl.sh`
+to regenerate matching files in `hardware/stl`.
+
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on sending pull requests.
 This project adheres to the [Code of Conduct](CODE_OF_CONDUCT.md).
 For LLM-specific tips see [AGENTS.md](AGENTS.md).

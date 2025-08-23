@@ -3,20 +3,26 @@ version: "3.8"
 services:
   server:
     image: ghcr.io/futuroptimist/token-place-server:latest
+    depends_on:
+      - relay
+    environment:
+      RELAY_URL: http://relay:8080
     ports:
       - "3000:3000"
     restart: unless-stopped
 
   relay:
     image: ghcr.io/futuroptimist/token-place-relay:latest
+    depends_on:
+      - mock-llm
+    environment:
+      UPSTREAM: http://mock-llm:4000
     ports:
       - "5000:5000"
-    depends_on:
-      - server
     restart: unless-stopped
 
   mock-llm:
     image: ghcr.io/futuroptimist/mock-llm:latest
     ports:
-      - "8000:8000"
+      - "4000:4000"
     restart: unless-stopped

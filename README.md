@@ -11,15 +11,15 @@ and generate actionable quests.
 [![Docs](https://img.shields.io/github/actions/workflow/status/futuroptimist/axel/.github/workflows/03-docs.yml?label=docs)](https://github.com/futuroptimist/axel/actions/workflows/03-docs.yml)
 [![License](https://img.shields.io/github/license/futuroptimist/axel)](LICENSE)
 
-## 60s Quickstart
+## Quickstart (≤60s)
 
 ```bash
-pipx install axel
-axel-repo list
+git clone https://github.com/futuroptimist/axel
+cd axel
+docker compose -f docker-compose-mock.yml up
 ```
 
-`pipx` installs axel with pinned deps. `axel-repo` manages repo lists; use
-`axel-task` for tasks.
+This launches the token.place server, relay and a mock LLM using one command.
 
 ## roadmap
 - [x] maintain a list of repos in `repos.txt`

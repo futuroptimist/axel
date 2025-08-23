@@ -23,7 +23,7 @@ Definition of Done for v0.1
 
 Summary Table
 Repo v0.1 tag Release notes 1‑click install Demo Landing page CI green Coverage badge Security scans Arch doc
-token.place [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ]
+token.place [ ] [ ] [x] [ ] [ ] [ ] [ ] [ ] [ ]
 f2clipboard [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ]
 flywheel [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ]
 gitshelves [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ] [ ]

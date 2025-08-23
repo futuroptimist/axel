@@ -91,6 +91,15 @@ def test_load_repos_deduplicates(tmp_path: Path) -> None:
     ]
 
 
+def test_load_repos_sorts_entries(tmp_path: Path) -> None:
+    file = tmp_path / "repos.txt"
+    file.write_text("https://example.com/b\nhttps://example.com/a\n")
+    assert load_repos(path=file) == [
+        "https://example.com/a",
+        "https://example.com/b",
+    ]
+
+
 def test_add_repo_no_duplicates(tmp_path: Path):
     file = tmp_path / "repos.txt"
     add_repo("https://example.com/repo", path=file)

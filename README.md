@@ -61,7 +61,8 @@ pre-commit install
    removed.
    The repository list is kept sorted alphabetically, ignoring case. Removing entries
    preserves this order. Duplicate URLs are automatically removed (case-insensitive).
-2. View the list with `python -m axel.repo_manager list`.
+2. View the list with `python -m axel.repo_manager list`. Output is sorted
+   alphabetically, ignoring case.
 3. Remove a repo with `python -m axel.repo_manager remove <url>`.
 4. Replace `repos.txt` with the authenticated user's repos via
    `python -m axel.repo_manager fetch`. Pass `--token` or set ``GH_TOKEN`` or

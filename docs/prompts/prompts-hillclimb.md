@@ -43,6 +43,23 @@ Conclude with PASS or REVISE and a brief rationale.
 
 ## Example Action Cards
 
+Action cards capture repeatable tasks for hillclimb. Each one is a small YAML file that
+describes *what* to build and *how* to validate it so newcomers can jump in without prior
+context. Fields include:
+
+- **key** – unique identifier used by automation
+- **title** – human‑readable summary
+- **applies_to** – repositories where the card is valid
+- **acceptance_criteria** – outcomes that must be met
+- **constraints** – size limits such as touched files or LOC
+- **must_pass** – commands that the resulting diff must satisfy
+
+Cards exist so contributors can copy and paste a known‑good template instead of inventing
+tasks from scratch. They should be
+[1‑click prompts](https://github.com/futuroptimist/flywheel/blob/main/docs/prompt-docs-summary.md) —
+use the YAML verbatim in hillclimb. If a card needs edits, update the card itself so the
+next person can use it unchanged.
+
 ```yaml
 # add-pipx-install.yml
 key: add-pipx-install

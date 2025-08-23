@@ -20,7 +20,8 @@ def load_repos(path: Path | None = None) -> List[str]:
     """Load repository URLs from a text file.
 
     Trailing slashes are stripped to keep entries canonical and duplicates are
-    removed case-insensitively while preserving the first occurrence.
+    removed case-insensitively while preserving the first occurrence's case.
+    The resulting list is sorted alphabetically, ignoring case.
     """
     if path is None:
         path = get_repo_file()
@@ -36,6 +37,7 @@ def load_repos(path: Path | None = None) -> List[str]:
             if line and key not in seen:
                 repos.append(line)
                 seen.add(key)
+    repos.sort(key=str.lower)
     return repos
 
 

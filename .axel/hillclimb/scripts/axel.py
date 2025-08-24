@@ -82,7 +82,8 @@ def write(path, content):
 
 
 def read(p):
-    return Path(p).read_text(encoding="utf-8")
+    path = Path(p)
+    return path.read_text(encoding="utf-8") if path.exists() else ""
 
 
 def fingerprint_patch(repo_dir):

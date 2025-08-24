@@ -6,6 +6,7 @@ slug: 'prompts-hillclimb'
 # Hillclimb Prompts
 
 Combined planner, coder and critique prompts used by Axel's hillclimb mode.
+The hillclimb CLI loads these prompts from `.axel/hillclimb/prompts/`.
 
 ## Plan Prompt
 

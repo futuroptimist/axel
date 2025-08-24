@@ -34,7 +34,7 @@ This launches the token.place server, relay and a mock LLM using one command.
 - [x] represent personal flywheel of projects and highlight cross-pollination (see repo list below)
 - [x] document workflow for a private `local/` directory (see local setup below)
 - [x] track tasks with markdown files in the `issues/` folder
-- [x] verify `local/` directories are gitignored (see `.gitignore`)
+- [x] verify `local/` directories are ignored by Git (see `.gitignore`)
 - [x] add `THREAT_MODEL.md` with cross-repo considerations (see `docs/THREAT_MODEL.md`)
 - [x] provide token rotation guidance in docs (see `docs/ROTATING_TOKENS.md`)
 - [x] adopt [`flywheel`](https://github.com/futuroptimist/flywheel) template for new repositories
@@ -66,7 +66,8 @@ pre-commit install
 3. Remove a repo with `python -m axel.repo_manager remove <url>`.
 4. Replace `repos.txt` with the authenticated user's repos via
    `python -m axel.repo_manager fetch`. Pass `--token` or set ``GH_TOKEN`` or
-   ``GITHUB_TOKEN``.
+   ``GITHUB_TOKEN``. Use `--visibility public|private|all` to filter the
+   repositories returned by the GitHub API.
 5. Run `pre-commit run --all-files` before committing to check formatting and tests.
 6. Pass `--path <file>` or set `AXEL_REPO_FILE` to use a custom repo list.
 7. Coverage reports are uploaded to [Codecov](https://codecov.io/gh/futuroptimist/axel) via CI.
@@ -84,7 +85,7 @@ pre-commit install
 ## local setup
 
 To keep personal notes and repo lists private, set `AXEL_REPO_FILE` to a path
-under `local/`, which is gitignored. The repo manager creates the directory
+under `local/`, which is ignored by Git. The repo manager creates the directory
 automatically if it doesn't already exist. Paths beginning with `~` expand to
 the user's home directory.
 
@@ -130,6 +131,7 @@ from axel import add_repo, list_repos, strip_ansi
 add_repo("https://github.com/example/repo")
 print(list_repos())
 strip_ansi("\x1b[2K\x1b[31merror\x1b[0m")  # -> "error"
+strip_ansi("\x1b]0;title\x07error")  # OSC sequences removed -> "error"
 strip_ansi(b"\x1b[31merror\x1b[0m")  # bytes are accepted
 strip_ansi(bytearray(b"\x1b[31merror\x1b[0m"))  # bytearrays are accepted
 strip_ansi(memoryview(b"\x1b[31merror\x1b[0m"))  # memoryviews are accepted
@@ -148,7 +150,8 @@ Before flipping this repository to public, search the codebase for accidental cr
 A quick sanity check is:
 
 ```bash
-git ls-files -z | xargs -0 grep -i --line-number --context=1 -e token -e secret -e password
+git ls-files -z | xargs -0 grep -i --line-number --context=1 \
+  -e token -e secret -e password -e api_key -e api-key
 ```
 
 Review the output and remove any sensitive data. Make sure `repos.txt` contains only repositories you wish to share.
@@ -159,7 +162,8 @@ For staged changes, run:
 git diff --cached | python scripts/scan-secrets.py
 ```
 
-This helper flags suspicious lines in the diff before they reach the commit history.
+This helper flags suspicious lines containing keywords like "token", "secret",
+"password", or "api key" in the diff before they reach the commit history.
 
 The repos in `repos.txt` come from various projects like
 [`dspace`](https://github.com/democratizedspace/dspace) and

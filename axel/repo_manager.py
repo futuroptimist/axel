@@ -97,11 +97,15 @@ def list_repos(path: Path | None = None) -> List[str]:
     return load_repos(path)
 
 
-def fetch_repo_urls(token: str | None = None) -> List[str]:
+def fetch_repo_urls(
+    token: str | None = None, visibility: str | None = None
+) -> List[str]:
     """Fetch repositories for the authenticated user via GitHub API.
 
     The token may be provided directly or read from ``GH_TOKEN`` or
-    ``GITHUB_TOKEN``.
+    ``GITHUB_TOKEN``. When ``visibility`` is set to ``"public"`` or
+    ``"private"``, only repositories matching that visibility are returned.
+    ``None`` (the default) requests all repositories.
     """
     if token is None:
         token = os.getenv("GH_TOKEN") or os.getenv("GITHUB_TOKEN")
@@ -111,10 +115,13 @@ def fetch_repo_urls(token: str | None = None) -> List[str]:
     page = 1
     repos: List[str] = []
     while True:
+        params = {"per_page": 100, "page": page}
+        if visibility:
+            params["visibility"] = visibility
         resp = requests.get(
             "https://api.github.com/user/repos",
             headers=headers,
-            params={"per_page": 100, "page": page},
+            params=params,
             timeout=10,
         )
         resp.raise_for_status()
@@ -127,15 +134,20 @@ def fetch_repo_urls(token: str | None = None) -> List[str]:
     return repos
 
 
-def fetch_repos(path: Path | None = None, token: str | None = None) -> List[str]:
+def fetch_repos(
+    path: Path | None = None,
+    token: str | None = None,
+    visibility: str | None = None,
+) -> List[str]:
     """Fetch repo URLs and replace the repo list file.
 
     ``token`` overrides ``GH_TOKEN``/``GITHUB_TOKEN`` when provided.
+    ``visibility`` filters repositories returned by the GitHub API.
     """
     if path is None:
         path = get_repo_file()
     path.parent.mkdir(parents=True, exist_ok=True)
-    repos = fetch_repo_urls(token=token)
+    repos = fetch_repo_urls(token=token, visibility=visibility)
     text = "\n".join(repos)
     if text:
         text += "\n"
@@ -163,6 +175,12 @@ def main(argv: List[str] | None = None) -> None:
     sub.add_parser("list", help="List repositories")
     fetch_p = sub.add_parser("fetch", help="Fetch repositories from GitHub")
     fetch_p.add_argument("--token", help="GitHub token", default=None)
+    fetch_p.add_argument(
+        "--visibility",
+        choices=["public", "private", "all"],
+        help="Limit fetched repositories by visibility",
+        default=None,
+    )
 
     args = parser.parse_args(argv)
 
@@ -171,7 +189,9 @@ def main(argv: List[str] | None = None) -> None:
     elif args.cmd == "remove":
         repos = remove_repo(args.url, path=args.path)
     elif args.cmd == "fetch":
-        repos = fetch_repos(path=args.path, token=args.token)
+        repos = fetch_repos(
+            path=args.path, token=args.token, visibility=args.visibility
+        )
     else:
         repos = list_repos(path=args.path)
     for repo in repos:

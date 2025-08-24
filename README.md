@@ -130,6 +130,7 @@ from axel import add_repo, list_repos, strip_ansi
 add_repo("https://github.com/example/repo")
 print(list_repos())
 strip_ansi("\x1b[2K\x1b[31merror\x1b[0m")  # -> "error"
+strip_ansi("\x1b]0;title\x07error")  # OSC sequences removed -> "error"
 strip_ansi(b"\x1b[31merror\x1b[0m")  # bytes are accepted
 strip_ansi(bytearray(b"\x1b[31merror\x1b[0m"))  # bytearrays are accepted
 strip_ansi(memoryview(b"\x1b[31merror\x1b[0m"))  # memoryviews are accepted

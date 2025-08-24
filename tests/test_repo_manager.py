@@ -422,6 +422,45 @@ def test_cli_fetch_accepts_token_flag(monkeypatch, tmp_path: Path, capsys) -> No
     assert repo_file.read_text() == "https://github.com/u/a\nhttps://github.com/u/b\n"
 
 
+def test_cli_fetch_accepts_visibility_flag(monkeypatch, tmp_path: Path) -> None:
+    """``--visibility`` limits repositories returned from GitHub."""
+    repo_file = tmp_path / "repos.txt"
+    captured: dict[str, str | None] = {}
+
+    def fake_get(url, headers=None, params=None, timeout=0):
+        captured["visibility"] = params.get("visibility")
+
+        class Resp:
+            def __init__(self):
+                self._data = []
+
+            def json(self):
+                return self._data
+
+            def raise_for_status(self):
+                return None
+
+        return Resp()
+
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.setattr(requests, "get", fake_get)
+    from axel import repo_manager as rm
+
+    rm.main(
+        [
+            "--path",
+            str(repo_file),
+            "fetch",
+            "--token",
+            "token",
+            "--visibility",
+            "public",
+        ]
+    )
+    assert captured["visibility"] == "public"
+
+
 def test_fetch_repo_urls_requires_token(monkeypatch) -> None:
     """Fetching without ``GH_TOKEN``/``GITHUB_TOKEN`` raises an error."""
     monkeypatch.delenv("GH_TOKEN", raising=False)
@@ -454,6 +493,33 @@ def test_fetch_repo_urls_uses_github_token(monkeypatch) -> None:
     from axel import repo_manager as rm
 
     assert rm.fetch_repo_urls() == []
+
+
+def test_fetch_repo_urls_accepts_visibility(monkeypatch) -> None:
+    """The optional ``visibility`` parameter is passed to the API."""
+    captured: dict[str, str | None] = {}
+
+    def fake_get(url, headers=None, params=None, timeout=0):
+        captured["visibility"] = params.get("visibility")
+
+        class Resp:
+            def __init__(self):
+                self._data = []
+
+            def json(self):
+                return self._data
+
+            def raise_for_status(self):
+                return None
+
+        return Resp()
+
+    monkeypatch.setenv("GH_TOKEN", "token")
+    monkeypatch.setattr(requests, "get", fake_get)
+    from axel import repo_manager as rm
+
+    rm.fetch_repo_urls(visibility="private")
+    assert captured["visibility"] == "private"
 
 
 def test_fetch_repos_defaults(monkeypatch, tmp_path: Path) -> None:

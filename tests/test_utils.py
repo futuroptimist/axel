@@ -28,3 +28,9 @@ def test_strip_ansi_invalid_type_raises() -> None:
     """Non-string inputs should raise ``TypeError``."""
     with pytest.raises(TypeError):
         strip_ansi(123)  # type: ignore[arg-type]
+
+
+def test_strip_ansi_removes_osc_sequences() -> None:
+    """OSC sequences like ``ESC]0;`` should be stripped."""
+    text = "\x1b]0;title\x07error"
+    assert strip_ansi(text) == "error"

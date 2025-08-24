@@ -150,7 +150,8 @@ Before flipping this repository to public, search the codebase for accidental cr
 A quick sanity check is:
 
 ```bash
-git ls-files -z | xargs -0 grep -i --line-number --context=1 -e token -e secret -e password
+git ls-files -z | xargs -0 grep -i --line-number --context=1 \
+  -e token -e secret -e password -e api_key -e api-key
 ```
 
 Review the output and remove any sensitive data. Make sure `repos.txt` contains only repositories you wish to share.
@@ -161,7 +162,8 @@ For staged changes, run:
 git diff --cached | python scripts/scan-secrets.py
 ```
 
-This helper flags suspicious lines in the diff before they reach the commit history.
+This helper flags suspicious lines containing keywords like "token", "secret",
+"password", or "api key" in the diff before they reach the commit history.
 
 The repos in `repos.txt` come from various projects like
 [`dspace`](https://github.com/democratizedspace/dspace) and

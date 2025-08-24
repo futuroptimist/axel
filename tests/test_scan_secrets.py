@@ -1,6 +1,8 @@
 import subprocess
 import sys
 
+import pytest
+
 
 def run_scan(data: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
@@ -21,3 +23,10 @@ def test_allows_safe_text() -> None:
     result = run_scan("hello world")
     assert result.returncode == 0
     assert result.stderr == ""
+
+
+@pytest.mark.parametrize("var", ["apikey", "api_key", "api-key"])
+def test_detects_api_keys(var: str) -> None:
+    result = run_scan(f"{var}=123")
+    assert result.returncode == 1
+    assert var in result.stderr.lower()

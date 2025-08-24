@@ -66,7 +66,8 @@ pre-commit install
 3. Remove a repo with `python -m axel.repo_manager remove <url>`.
 4. Replace `repos.txt` with the authenticated user's repos via
    `python -m axel.repo_manager fetch`. Pass `--token` or set ``GH_TOKEN`` or
-   ``GITHUB_TOKEN``.
+   ``GITHUB_TOKEN``. Use `--visibility public|private|all` to filter the
+   repositories returned by the GitHub API.
 5. Run `pre-commit run --all-files` before committing to check formatting and tests.
 6. Pass `--path <file>` or set `AXEL_REPO_FILE` to use a custom repo list.
 7. Coverage reports are uploaded to [Codecov](https://codecov.io/gh/futuroptimist/axel) via CI.

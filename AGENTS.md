@@ -37,7 +37,7 @@ pytest --cov=axel --cov=tests
 - Set `AXEL_REPO_FILE` for a custom repo list
 - Keep the [roadmap](README.md#roadmap) updated
 - Suggest quests that link multiple projects from `repos.txt`
-- Document private notes in `local/` (gitignored)
+- Document private notes in `local/` (ignored by Git)
 - Scan for secrets with the command in `README.md` before publishing
 - Integrate `token.place` clients and coordinate with [gabriel](https://github.com/futuroptimist/gabriel)
 - Use [`futuroptimist/flywheel`](https://github.com/futuroptimist/flywheel) when starting new repositories to

@@ -11,7 +11,7 @@ that ingests messages from your server.
   information.
 - When the bot is mentioned in a reply, download the parent message and store a
   local copy for future reference.
-- Persist messages under `local/discord/` which is gitignored by default.
+- Persist messages under `local/discord/`, which is ignored by Git by default.
 
 ## Launching the Bot
 

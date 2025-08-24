@@ -34,7 +34,7 @@ This launches the token.place server, relay and a mock LLM using one command.
 - [x] represent personal flywheel of projects and highlight cross-pollination (see repo list below)
 - [x] document workflow for a private `local/` directory (see local setup below)
 - [x] track tasks with markdown files in the `issues/` folder
-- [x] verify `local/` directories are gitignored (see `.gitignore`)
+- [x] verify `local/` directories are ignored by Git (see `.gitignore`)
 - [x] add `THREAT_MODEL.md` with cross-repo considerations (see `docs/THREAT_MODEL.md`)
 - [x] provide token rotation guidance in docs (see `docs/ROTATING_TOKENS.md`)
 - [x] adopt [`flywheel`](https://github.com/futuroptimist/flywheel) template for new repositories
@@ -84,7 +84,7 @@ pre-commit install
 ## local setup
 
 To keep personal notes and repo lists private, set `AXEL_REPO_FILE` to a path
-under `local/`, which is gitignored. The repo manager creates the directory
+under `local/`, which is ignored by Git. The repo manager creates the directory
 automatically if it doesn't already exist. Paths beginning with `~` expand to
 the user's home directory.
 

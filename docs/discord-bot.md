@@ -1,48 +1,68 @@
-# Self-Hosted Discord Bot
+# Discord Bot Integration Prompt
 
-This document outlines a proposed architecture for running a local Discord bot
-that ingests messages from your server.
+This guide describes a self-hosted Discord bot that captures contextual messages from a
+private server and saves them for offline analysis with a local language model.
 
 ## Goals
 
-- Allow a user to invite a bot to their personal server using the standard
-  Discord bot OAuth flow.
-- Keep all bot logic and data on the user's machine to avoid leaking private
-  information.
-- When the bot is mentioned in a reply, download the parent message and store a
-  local copy for future reference.
-- Persist messages under `local/discord/` which is gitignored by default.
+- Run entirely on the user's machine to avoid leaking private data.
+- Support the standard Discord OAuth flow so the bot can be invited to any personal server.
+- When the bot is mentioned in a reply or thread, persist the referenced message and its
+  metadata under a gitignored directory.
+- Use the saved context to enrich repository knowledge, especially when the Discord channel
+  name matches a configured repository name.
 
-## Launching the Bot
+## Setup
 
 ```bash
 uv pip install discord.py
 python -m axel.discord_bot
 ```
 
-This will start the bot using the token set in the `DISCORD_BOT_TOKEN`
-environment variable. Once running, it appears online in the server.
+The bot reads its token from the `DISCORD_BOT_TOKEN` environment variable and requires the
+**Message Content Intent** in the Discord Developer Portal.
 
-Ensure the **Message Content Intent** is enabled for the bot in the Discord
-Developer Portal so it can read message text. The client enables this intent
-when starting.
+Messages are stored under `local/discord/` (configurable via `AXEL_DISCORD_DIR`) which is
+already listed in `.gitignore`.
 
-## Usage
+## Workflow
 
-Mention the bot in reply to any message you want to save. The bot fetches the
-original message and writes a markdown file under
-`local/discord/<message_id>.md`. The directory is created automatically if it
-doesn't exist. Each file records the author's display name, an ISO 8601
-timestamp, and the message content.
+1. In a private server, reply to an existing message or start a thread.
+2. Mention the bot in that reply or thread opener.
+3. The bot records a markdown file under
+   `local/discord/<channel>/<message_id>.md` containing:
+   - author display name
+   - ISO 8601 timestamp
+   - message content
+   - original message link
+   - channel name and thread (if applicable)
+4. If the channel name matches a repository listed in the project's repo list
+   (`repos.txt` or a file pointed to by `AXEL_REPO_FILE`), treat the capture as
+   project knowledge for that repo.
 
-Set the ``AXEL_DISCORD_DIR`` environment variable to change the save location:
+### Supported Content Types
 
-```bash
-export AXEL_DISCORD_DIR=/path/to/notes
-```
+- **Text** – stored verbatim in the markdown file.
+- **Hyperlinks** – saved alongside the message content.
 
-Paths beginning with ``~`` are expanded to the user's home directory.
+## Analyzing Captured Messages
 
-Future iterations can analyze these notes alongside `token.place` and
-[`gabriel`](https://github.com/futuroptimist/gabriel) to suggest quests across
-repositories.
+Saved files can be processed with local LLMs such as
+[`llama_cpp_python`](https://pypi.org/project/llama-cpp-python/) or
+[Ollama](https://github.com/ollama/ollama). Combine the markdown content and metadata to
+summarize discussions, extract tasks, or generate project insights.
+
+## Roadmap
+
+Future improvements will expand the bot's capabilities:
+
+- **Attachments** – download files with `Attachment.save()` into
+  `local/discord/<channel>/<message_id>/` and reference them from the markdown for
+  future multimodal models.
+- **Thread history** – when mentioned inside a thread, call
+  `thread.history()` (or `channel.history()` for replies) to capture context
+  before saving.
+- **Command interface** – provide slash commands such as `/axel summarize`
+  or `/axel search` that run the local LLM on stored messages.
+
+Contributions and ideas are welcome. Keep all bot logic local and respect user privacy.

@@ -18,7 +18,7 @@ PURPOSE:
 Keep the project healthy by making small, well-tested improvements.
 
 CONTEXT:
-- Follow the conventions in [AGENTS.md](../AGENTS.md) and [README.md](../README.md).
+- Follow the conventions in [AGENTS.md](../../AGENTS.md) and [README.md](../../README.md).
 - Scan for secrets:
 
   ```bash
@@ -123,7 +123,7 @@ Run `flake8 axel tests`, `pytest --cov=axel --cov=tests`, and
 `pre-commit run --all-files` before committing.
 
 USER:
-1. Pick one prompt doc under `docs/` (for example, `prompts-codex.md`).
+1. Pick one prompt doc under `docs/prompts/codex/` (for example, `prompts-codex.md`).
 2. Fix outdated instructions, links or formatting.
 3. Run the checks above.
 

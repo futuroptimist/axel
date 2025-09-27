@@ -17,7 +17,7 @@ Keep Markdown documentation free of spelling errors.
 CONTEXT:
 - Check Markdown files using `codespell` (install with `uv pip install codespell` if missing).
 - Add unknown but legitimate words to `dict/allow.txt`.
-- Follow AGENTS.md and ensure `pre-commit run --all-files` passes.
+- Follow [AGENTS.md](../../AGENTS.md) and ensure `pre-commit run --all-files` passes.
 
 REQUEST:
 1. Run `codespell` over README and `docs/`.

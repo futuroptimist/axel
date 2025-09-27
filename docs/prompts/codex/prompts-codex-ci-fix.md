@@ -25,7 +25,7 @@ CONTEXT:
   well-tested pull request that makes the workflow green again.
 - Constraints:
   * Do not break existing functionality.
-  * Follow AGENTS.md and README.md.
+  * Follow [AGENTS.md](../../AGENTS.md) and [README.md](../../README.md).
   * Run `flake8 axel tests`, `pytest --cov=axel --cov=tests`, and
     `pre-commit run --all-files` before proposing the PR.
   * Update tests and docs as needed.

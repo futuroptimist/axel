@@ -30,12 +30,16 @@ already listed in `.gitignore`.
 1. In a private server, reply to an existing message or start a thread.
 2. Mention the bot in that reply or thread opener.
 3. The bot records a markdown file under
-   `local/discord/<channel>/<message_id>.md` containing:
+   `local/discord/<channel>/<message_id>.md`. Channel names are sanitized so they
+   remain filesystem-safe. Each capture includes:
    - author display name
    - ISO 8601 timestamp
-   - message content
-   - original message link
    - channel name and thread (if applicable)
+   - original message link
+   - message content
+
+   The saved format is covered by `tests/test_discord_bot.py` to prevent future
+   regressions.
 4. If the channel name matches a repository listed in the project's repo list
    (`repos.txt` or a file pointed to by `AXEL_REPO_FILE`), treat the capture as
    project knowledge for that repo.

@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 
 import discord
 
 SAVE_DIR = Path("local/discord")
+TOKEN_ENV_VAR = "DISCORD_BOT_TOKEN"
+SAFE_COMPONENT_RE = re.compile(r"[^A-Za-z0-9._-]+")
 
 
 def _get_save_dir() -> Path:
@@ -19,18 +22,58 @@ def _get_save_dir() -> Path:
     return Path(env).expanduser() if env else SAVE_DIR
 
 
+def _sanitize_component(value: str, fallback: str) -> str:
+    """Return a filesystem-safe path component."""
+
+    value = str(value).strip()
+    sanitized = SAFE_COMPONENT_RE.sub("-", value)
+    sanitized = sanitized.strip("-._")
+    return sanitized or fallback
+
+
 def save_message(message: discord.Message) -> Path:
-    """Persist the provided message as markdown.
+    """Persist the provided message as markdown with metadata.
 
     Ensures the save directory exists before writing. The directory can be overridden
-    via the ``AXEL_DISCORD_DIR`` environment variable.
+    via the ``AXEL_DISCORD_DIR`` environment variable. Files are stored under
+    ``<save_dir>/<channel>/<message_id>.md``.
     """
+
     save_dir = _get_save_dir()
-    save_dir.mkdir(parents=True, exist_ok=True)
-    path = save_dir / f"{message.id}.md"
+
+    channel = getattr(message, "channel", None)
+    channel_name = "channel"
+    thread_name: str | None = None
+    if channel is not None:
+        base_name = getattr(channel, "name", None) or channel_name
+        parent = getattr(channel, "parent", None)
+        if parent is not None:
+            channel_name = getattr(parent, "name", None) or base_name
+            thread_name = getattr(channel, "name", None) or None
+        else:
+            channel_name = base_name
+
+    channel_dir = save_dir / _sanitize_component(channel_name, "channel")
+    channel_dir.mkdir(parents=True, exist_ok=True)
+    path = channel_dir / f"{message.id}.md"
+
     timestamp = message.created_at.isoformat()
-    content = f"# {message.author.display_name}\n\n{timestamp}\n\n{message.content}\n"
-    path.write_text(content)
+    jump_url = getattr(message, "jump_url", "")
+    content_lines = [
+        f"# {message.author.display_name}",
+        "",
+        f"- timestamp: {timestamp}",
+        f"- channel: {channel_name}",
+    ]
+    if thread_name:
+        content_lines.append(f"- thread: {thread_name}")
+    if jump_url:
+        content_lines.append(f"- link: {jump_url}")
+    content_lines.append("")
+    content_lines.append(str(message.content or ""))
+    content_lines.append("")
+
+    path.write_text("\n".join(content_lines), encoding="utf-8")
     return path
 
 
@@ -48,9 +91,9 @@ class AxelClient(discord.Client):
 
 
 def run() -> None:
-    token = os.environ.get("DISCORD_BOT_TOKEN")
+    token = os.environ.get(TOKEN_ENV_VAR)
     if not token:
-        raise SystemExit("DISCORD_BOT_TOKEN not set")
+        raise SystemExit(f"{TOKEN_ENV_VAR} not set")
     intents = discord.Intents.default()
     intents.message_content = True
     client = AxelClient(intents=intents)

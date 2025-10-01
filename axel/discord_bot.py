@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 
 import discord
@@ -19,18 +20,51 @@ def _get_save_dir() -> Path:
     return Path(env).expanduser() if env else SAVE_DIR
 
 
+_SAFE_COMPONENT = re.compile(r"[^A-Za-z0-9._-]+")
+
+
+def _sanitize_component(name: str | None) -> str:
+    cleaned = (name or "unknown").strip()
+    sanitized = _SAFE_COMPONENT.sub("_", cleaned)
+    return sanitized or "unknown"
+
+
 def save_message(message: discord.Message) -> Path:
     """Persist the provided message as markdown.
 
     Ensures the save directory exists before writing. The directory can be overridden
-    via the ``AXEL_DISCORD_DIR`` environment variable.
+    via the ``AXEL_DISCORD_DIR`` environment variable. Messages are grouped by channel
+    name to match the documented layout ``local/discord/<channel>/<message_id>.md`` and
+    include channel/thread metadata, timestamps, and the source link.
     """
     save_dir = _get_save_dir()
-    save_dir.mkdir(parents=True, exist_ok=True)
-    path = save_dir / f"{message.id}.md"
+    channel = getattr(message, "channel", None)
+    channel_name: str | None = None
+    thread_name: str | None = None
+    if channel is not None:
+        parent = getattr(channel, "parent", None)
+        if parent is not None and getattr(parent, "name", None):
+            channel_name = parent.name
+            thread_name = getattr(channel, "name", None)
+        else:
+            channel_name = getattr(channel, "name", None)
+    channel_component = _sanitize_component(channel_name)
+    channel_dir = save_dir / channel_component
+    channel_dir.mkdir(parents=True, exist_ok=True)
+
+    path = channel_dir / f"{message.id}.md"
     timestamp = message.created_at.isoformat()
-    content = f"# {message.author.display_name}\n\n{timestamp}\n\n{message.content}\n"
-    path.write_text(content)
+    author = message.author.display_name
+    link = getattr(message, "jump_url", "")
+
+    lines = [f"# {author}", "", f"- Channel: {channel_name or 'unknown'}"]
+    if thread_name:
+        lines.append(f"- Thread: {thread_name}")
+    lines.append(f"- Timestamp: {timestamp}")
+    if link:
+        lines.append(f"- Link: {link}")
+    lines.extend(["", message.content, ""])
+    path.write_text("\n".join(lines))
     return path
 
 

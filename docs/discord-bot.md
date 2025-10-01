@@ -52,6 +52,10 @@ Saved files can be processed with local LLMs such as
 [Ollama](https://github.com/ollama/ollama). Combine the markdown content and metadata to
 summarize discussions, extract tasks, or generate project insights.
 
+Automated coverage for the capture format lives in
+`tests/test_discord_bot.py::test_save_message_includes_metadata` and
+`tests/test_discord_bot.py::test_save_message_records_thread_metadata`.
+
 ## Roadmap
 
 Future improvements will expand the bot's capabilities:

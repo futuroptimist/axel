@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+import sys
 from pathlib import Path
 
 import discord
@@ -12,10 +13,8 @@ SAVE_DIR = Path("local/discord")
 
 
 def _get_save_dir() -> Path:
-    """Return directory for saving Discord messages.
+    """Return directory for saving Discord messages."""
 
-    Honors ``AXEL_DISCORD_DIR`` and expands ``~`` to the user's home.
-    """
     env = os.getenv("AXEL_DISCORD_DIR")
     return Path(env).expanduser() if env else SAVE_DIR
 
@@ -24,13 +23,29 @@ _SAFE_COMPONENT = re.compile(r"[^A-Za-z0-9._-]+")
 
 
 def _sanitize_component(name: str | None) -> str:
+    """Return a filesystem-friendly version of ``name``."""
+
     cleaned = (name or "unknown").strip()
     sanitized = _SAFE_COMPONENT.sub("_", cleaned)
     return sanitized or "unknown"
 
 
+def _channel_metadata(message: discord.Message) -> tuple[str, str | None]:
+    """Return channel and optional thread names for ``message``."""
+
+    channel = getattr(message, "channel", None)
+    if channel is None:
+        return ("direct-message", None)
+
+    parent = getattr(channel, "parent", None)
+    channel_name = getattr(channel, "name", "direct-message")
+    if parent and getattr(parent, "name", None):
+        return (str(parent.name), str(channel_name))
+    return (str(channel_name), None)
+
+
 def save_message(message: discord.Message) -> Path:
-    """Persist the provided message as markdown.
+    """Persist the provided message as markdown with metadata.
 
     Ensures the save directory exists before writing. The directory can be overridden
     via the ``AXEL_DISCORD_DIR`` environment variable. Messages are grouped by channel
@@ -38,33 +53,27 @@ def save_message(message: discord.Message) -> Path:
     include channel/thread metadata, timestamps, and the source link.
     """
     save_dir = _get_save_dir()
-    channel = getattr(message, "channel", None)
-    channel_name: str | None = None
-    thread_name: str | None = None
-    if channel is not None:
-        parent = getattr(channel, "parent", None)
-        if parent is not None and getattr(parent, "name", None):
-            channel_name = parent.name
-            thread_name = getattr(channel, "name", None)
-        else:
-            channel_name = getattr(channel, "name", None)
-    channel_component = _sanitize_component(channel_name)
-    channel_dir = save_dir / channel_component
+    channel_name, thread_name = _channel_metadata(message)
+    channel_dir = save_dir / _sanitize_component(channel_name)
     channel_dir.mkdir(parents=True, exist_ok=True)
 
     path = channel_dir / f"{message.id}.md"
     timestamp = message.created_at.isoformat()
     author = message.author.display_name
-    link = getattr(message, "jump_url", "")
+    jump_url = getattr(message, "jump_url", "")
 
-    lines = [f"# {author}", "", f"- Channel: {channel_name or 'unknown'}"]
+    lines = [f"# {author}", ""]
+    lines.append(f"- Channel: {channel_name or 'unknown'}")
     if thread_name:
         lines.append(f"- Thread: {thread_name}")
     lines.append(f"- Timestamp: {timestamp}")
-    if link:
-        lines.append(f"- Link: {link}")
-    lines.extend(["", message.content, ""])
-    path.write_text("\n".join(lines))
+    if jump_url:
+        lines.append(f"- Link: {jump_url}")
+    lines.append("")
+    lines.append(message.content)
+    lines.append("")
+
+    path.write_text("\n".join(lines), encoding="utf-8")
     return path
 
 

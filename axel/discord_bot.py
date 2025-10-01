@@ -18,12 +18,15 @@ def _get_save_dir() -> Path:
     return Path(env).expanduser() if env else SAVE_DIR
 
 
-def _sanitize_component(name: str) -> str:
+_SAFE_COMPONENT = re.compile(r"[^A-Za-z0-9._-]+")
+
+
+def _sanitize_component(name: str | None) -> str:
     """Return a filesystem-friendly version of ``name``."""
 
-    sanitized = re.sub(r"[^\w.-]+", "-", name.strip())
-    sanitized = sanitized.strip("-")
-    return sanitized or "channel"
+    cleaned = (name or "unknown").strip()
+    sanitized = _SAFE_COMPONENT.sub("_", cleaned)
+    return sanitized or "unknown"
 
 
 def _channel_metadata(message: discord.Message) -> tuple[str, str | None]:
@@ -41,8 +44,13 @@ def _channel_metadata(message: discord.Message) -> tuple[str, str | None]:
 
 
 def save_message(message: discord.Message) -> Path:
-    """Persist the provided message as markdown with metadata."""
+    """Persist the provided message as markdown with metadata.
 
+    Ensures the save directory exists before writing. The directory can be overridden
+    via the ``AXEL_DISCORD_DIR`` environment variable. Messages are grouped by channel
+    name to match the documented layout ``local/discord/<channel>/<message_id>.md`` and
+    include channel/thread metadata, timestamps, and the source link.
+    """
     save_dir = _get_save_dir()
     channel_name, thread_name = _channel_metadata(message)
     channel_dir = save_dir / _sanitize_component(channel_name)
@@ -50,15 +58,16 @@ def save_message(message: discord.Message) -> Path:
 
     path = channel_dir / f"{message.id}.md"
     timestamp = message.created_at.isoformat()
+    author = message.author.display_name
     jump_url = getattr(message, "jump_url", "")
 
-    lines = [f"# {message.author.display_name}", ""]
-    lines.append(f"- **Timestamp:** {timestamp}")
-    lines.append(f"- **Channel:** {channel_name}")
+    lines = [f"# {author}", ""]
+    lines.append(f"- Channel: {channel_name or 'unknown'}")
     if thread_name:
-        lines.append(f"- **Thread:** {thread_name}")
+        lines.append(f"- Thread: {thread_name}")
+    lines.append(f"- Timestamp: {timestamp}")
     if jump_url:
-        lines.append(f"- **Link:** {jump_url}")
+        lines.append(f"- Link: {jump_url}")
     lines.append("")
     lines.append(message.content)
     lines.append("")

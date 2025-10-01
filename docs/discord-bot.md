@@ -30,12 +30,12 @@ already listed in `.gitignore`.
 1. In a private server, reply to an existing message or start a thread.
 2. Mention the bot in that reply or thread opener.
 3. The bot records a markdown file under
-   `local/discord/<channel>/<message_id>.md` (folder names are slugified) containing:
-   - author display name
-   - ISO 8601 timestamp
-   - message content
-   - original message link
-   - channel name and thread (if applicable)
+   `local/discord/<channel>/<message_id>.md`, where `<channel>` is sanitized to remove
+   filesystem-unsafe characters. Each file contains:
+   - author display name as the heading
+   - bullet-point metadata for the channel, optional thread name, ISO 8601 timestamp,
+     and original message link
+   - the original message content beneath the metadata
 4. If the channel name matches a repository listed in the project's repo list
    (`repos.txt` or a file pointed to by `AXEL_REPO_FILE`), treat the capture as
    project knowledge for that repo.
@@ -70,3 +70,6 @@ Future improvements will expand the bot's capabilities:
   or `/axel search` that run the local LLM on stored messages.
 
 Contributions and ideas are welcome. Keep all bot logic local and respect user privacy.
+Automated coverage lives in `tests/test_discord_bot.py`, including
+`test_save_message_in_thread`, which exercises the channel/thread metadata described
+above.

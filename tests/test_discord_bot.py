@@ -50,9 +50,9 @@ def test_save_message_includes_metadata(tmp_path: Path) -> None:
     assert path == tmp_path / "general" / "1.md"
     assert read_markdown(path) == (
         "# user\n\n"
-        "- **Timestamp:** 2024-01-01T00:00:00+00:00\n"
-        "- **Channel:** general\n"
-        "- **Link:** https://discord.com/channels/1/2/3\n\n"
+        "- Channel: general\n"
+        "- Timestamp: 2024-01-01T00:00:00+00:00\n"
+        "- Link: https://discord.com/channels/1/2/3\n\n"
         "hello\n"
     )
 

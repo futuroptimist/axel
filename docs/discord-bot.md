@@ -30,7 +30,7 @@ already listed in `.gitignore`.
 1. In a private server, reply to an existing message or start a thread.
 2. Mention the bot in that reply or thread opener.
 3. The bot records a markdown file under
-   `local/discord/<channel>/<message_id>.md` containing:
+   `local/discord/<channel>/<message_id>.md` (folder names are slugified) containing:
    - author display name
    - ISO 8601 timestamp
    - message content
@@ -51,6 +51,10 @@ Saved files can be processed with local LLMs such as
 [`llama_cpp_python`](https://pypi.org/project/llama-cpp-python/) or
 [Ollama](https://github.com/ollama/ollama). Combine the markdown content and metadata to
 summarize discussions, extract tasks, or generate project insights.
+
+Automated coverage for the capture format lives in
+`tests/test_discord_bot.py::test_save_message_includes_metadata` and
+`tests/test_discord_bot.py::test_save_message_records_thread_metadata`.
 
 ## Roadmap
 

@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import inspect
 import os
 import re
 from pathlib import Path
+from typing import Sequence
 
 import discord
 
@@ -43,13 +45,18 @@ def _channel_metadata(message: discord.Message) -> tuple[str, str | None]:
     return (str(channel_name), None)
 
 
-def save_message(message: discord.Message) -> Path:
+def save_message(
+    message: discord.Message,
+    *,
+    attachments: Sequence[tuple[str, Path]] | None = None,
+) -> Path:
     """Persist the provided message as markdown with metadata.
 
     Ensures the save directory exists before writing. The directory can be overridden
     via the ``AXEL_DISCORD_DIR`` environment variable. Messages are grouped by channel
     name to match the documented layout ``local/discord/<channel>/<message_id>.md`` and
-    include channel/thread metadata, timestamps, and the source link.
+    include channel/thread metadata, timestamps, the source link, and optional
+    attachment references when provided.
     """
     save_dir = _get_save_dir()
     channel_name, thread_name = _channel_metadata(message)
@@ -71,9 +78,55 @@ def save_message(message: discord.Message) -> Path:
     lines.append("")
     lines.append(message.content)
     lines.append("")
+    if attachments:
+        lines.append("## Attachments")
+        for display_name, relative_path in attachments:
+            rel = relative_path.as_posix()
+            if not rel.startswith("./") and not rel.startswith("../"):
+                rel = f"./{rel}"
+            lines.append(f"- [{display_name}]({rel})")
+        lines.append("")
 
     path.write_text("\n".join(lines), encoding="utf-8")
     return path
+
+
+async def _download_attachments(
+    message: discord.Message, channel_dir: Path
+) -> list[tuple[str, Path]]:
+    """Download attachments for ``message`` into ``channel_dir``.
+
+    Returns a list of ``(display_name, relative_path)`` tuples suitable for
+    ``save_message``.
+    """
+
+    attachments = list(getattr(message, "attachments", []) or [])
+    if not attachments:
+        return []
+
+    attachment_dir = channel_dir / str(message.id)
+    attachment_dir.mkdir(parents=True, exist_ok=True)
+    saved: list[tuple[str, Path]] = []
+    for index, attachment in enumerate(attachments, start=1):
+        filename = getattr(attachment, "filename", f"attachment-{index}")
+        sanitized = _sanitize_component(Path(filename).name)
+        destination = attachment_dir / sanitized
+        result = attachment.save(destination)
+        if inspect.isawaitable(result):
+            await result
+        saved.append((filename, Path(str(message.id)) / sanitized))
+    return saved
+
+
+async def capture_message(message: discord.Message) -> Path:
+    """Download attachments (if any) and persist ``message`` to disk."""
+
+    save_dir = _get_save_dir()
+    channel_name, _ = _channel_metadata(message)
+    channel_dir = save_dir / _sanitize_component(channel_name)
+    channel_dir.mkdir(parents=True, exist_ok=True)
+    attachments = await _download_attachments(message, channel_dir)
+    return save_message(message, attachments=attachments)
 
 
 class AxelClient(discord.Client):
@@ -85,7 +138,7 @@ class AxelClient(discord.Client):
             return
         if self.user.mentioned_in(message) and message.reference:
             original = await message.channel.fetch_message(message.reference.message_id)
-            path = save_message(original)
+            path = await capture_message(original)
             await message.channel.send(f"Saved to {path}")
 
 

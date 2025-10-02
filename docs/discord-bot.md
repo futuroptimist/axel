@@ -40,6 +40,8 @@ tests.
    - a `## Context` section containing the latest thread or reply history (up to five
      messages) when the bot is mentioned inside a conversation
    - the original message content beneath the metadata
+   - a **Context** section summarizing recent thread or channel history (oldest first) when
+     available, including author names, timestamps and links to the source messages
 4. If the channel name matches a repository listed in the project's repo list
    (`repos.txt` or a file pointed to by `AXEL_REPO_FILE`), treat the capture as
    project knowledge for that repo.

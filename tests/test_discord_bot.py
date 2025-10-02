@@ -320,7 +320,7 @@ def test_capture_message_includes_thread_history(tmp_path: Path) -> None:
             limit: int | None = None,
             before: DummyMessage | None = None,
         ):
-            return AsyncHistory(self._history_messages)
+            return DummyAsyncHistory(self._history_messages)
 
     thread = ThreadChannel("feature-chat", parent=parent)
 

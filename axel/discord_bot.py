@@ -5,7 +5,7 @@ from __future__ import annotations
 import inspect
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Sequence
 
@@ -179,6 +179,8 @@ async def capture_message(
     channel_name, _ = _channel_metadata(message)
     channel_dir = save_dir / _sanitize_component(channel_name)
     channel_dir.mkdir(parents=True, exist_ok=True)
+    if context is None:
+        context = await _collect_context(message)
     attachments = await _download_attachments(message, channel_dir)
     return save_message(message, attachments=attachments, context=context)
 
@@ -199,6 +201,98 @@ async def _gather_context(
     async for item in history:
         messages.append(item)
     return messages
+
+
+_MIN_CONTEXT_TIMESTAMP = datetime.min.replace(tzinfo=timezone.utc)
+
+
+async def _collect_context(
+    trigger_message: discord.Message, *, limit: int = CONTEXT_LIMIT
+) -> list[discord.Message]:
+    """Return recent channel history while ignoring failures.
+
+    The helper mirrors :func:`_gather_context` but guards against ``discord``
+    permission errors, unexpected return types (plain lists), and iteration
+    failures. Since context is a best-effort feature, any problem encountered
+    while reading history results in an empty list instead of propagating.
+    """
+
+    channel = getattr(trigger_message, "channel", None)
+    if channel is None or not hasattr(channel, "history"):
+        return []
+
+    call_variants = [
+        {"limit": limit, "before": trigger_message, "oldest_first": True},
+        {"limit": limit, "before": trigger_message},
+        {"limit": limit},
+    ]
+
+    history_result: object | None = None
+    for kwargs in call_variants:
+        try:
+            history_result = channel.history(**kwargs)
+        except TypeError:
+            continue
+        except Exception:
+            return []
+        else:
+            break
+
+    if history_result is None:
+        return []
+
+    try:
+        if inspect.isawaitable(history_result):
+            history_result = await history_result
+    except Exception:
+        return []
+
+    collected: list[discord.Message] = []
+
+    def _append(item: object) -> None:
+        if not item:
+            return
+        if getattr(item, "id", None) == getattr(trigger_message, "id", None):
+            return
+        collected.append(item)  # type: ignore[arg-type]
+
+    if hasattr(history_result, "__aiter__"):
+        iterator = history_result  # type: ignore[assignment]
+        try:
+            async for entry in iterator:
+                _append(entry)
+        except Exception:
+            return []
+    else:
+        try:
+            iterator = iter(history_result)  # type: ignore[arg-type]
+        except TypeError:
+            return []
+        try:
+            for entry in iterator:
+                _append(entry)
+        except Exception:
+            return []
+
+    if not collected:
+        return []
+
+    def _sort_key(message: discord.Message) -> datetime:
+        timestamp = getattr(message, "created_at", None)
+        if isinstance(timestamp, datetime):
+            if timestamp.tzinfo is None:
+                return timestamp.replace(tzinfo=timezone.utc)
+            return timestamp
+        return _MIN_CONTEXT_TIMESTAMP
+
+    try:
+        collected.sort(key=_sort_key)
+    except Exception:
+        pass
+
+    if limit is not None:
+        return collected[:limit]
+    return collected
 
 
 class AxelClient(discord.Client):

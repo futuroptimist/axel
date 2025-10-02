@@ -46,6 +46,48 @@ def read_markdown(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def test_save_message_includes_context(tmp_path: Path) -> None:
+    """Thread or reply context is recorded alongside the saved message."""
+
+    db.SAVE_DIR = tmp_path
+    context = [
+        DummyMessage("earlier", mid=10),
+        DummyMessage("mention", mid=11),
+    ]
+    msg = DummyMessage("final", mid=12, channel=DummyChannel("general"))
+
+    path = db.save_message(msg, context=context)
+
+    assert path == tmp_path / "general" / "12.md"
+    content = read_markdown(path)
+    assert "## Context" in content
+    assert "earlier" in content
+    assert "mention" in content
+
+
+def test_save_message_context_skips_self(tmp_path: Path) -> None:
+    """Context entries skip the saved message and handle missing author data."""
+
+    db.SAVE_DIR = tmp_path
+    msg = DummyMessage("final", mid=13, channel=DummyChannel("updates"))
+
+    class ContextMessage(DummyMessage):
+        def __init__(self) -> None:
+            super().__init__("", mid=14)
+            self.author = object()
+            self.created_at = None
+
+    context = [msg, ContextMessage()]
+
+    path = db.save_message(msg, context=context)
+
+    content = read_markdown(path)
+    assert "## Context" in content
+    assert "unknown" in content
+    assert "(no content)" in content
+    assert "final" in content
+
+
 def test_save_message_includes_metadata(tmp_path: Path) -> None:
     db.SAVE_DIR = tmp_path
     msg = DummyMessage("hello", channel=DummyChannel("general"))
@@ -149,6 +191,90 @@ def test_capture_message_downloads_attachments(tmp_path: Path) -> None:
     assert "## Attachments" in content
     assert "[report.pdf](./7/report.pdf)" in content
     assert "[diagram.png](./7/diagram.png)" in content
+
+
+class DummyAsyncHistory:
+    def __init__(self, messages: list[DummyMessage]) -> None:
+        self._messages = list(messages)
+
+    def __aiter__(self) -> "DummyAsyncHistory":
+        self._iter = iter(self._messages)
+        return self
+
+    async def __anext__(self) -> DummyMessage:
+        try:
+            return next(self._iter)
+        except StopIteration as exc:
+            raise StopAsyncIteration from exc
+
+
+class HistoryChannel(DummyChannel):
+    def __init__(self, name: str, history_messages: list[DummyMessage]):
+        super().__init__(name)
+        self._history_messages = history_messages
+        self.history_calls: list[dict[str, object]] = []
+
+    def history(self, *, limit: int | None = None, oldest_first: bool | None = None):
+        self.history_calls.append({"limit": limit, "oldest_first": oldest_first})
+        return DummyAsyncHistory(self._history_messages)
+
+
+def test_gather_context_reads_channel_history(tmp_path: Path) -> None:
+    db.SAVE_DIR = tmp_path
+
+    history_messages = [
+        DummyMessage("context-1", mid=20),
+        DummyMessage("context-2", mid=21),
+    ]
+    channel = HistoryChannel("threads", history_messages)
+    trigger = DummyMessage("mention", mid=30, channel=channel)
+
+    result = asyncio.run(db._gather_context(trigger, limit=2))
+
+    assert len(result) == 2
+    assert [msg.id for msg in result] == [20, 21]
+    assert channel.history_calls == [{"limit": 2, "oldest_first": True}]
+
+
+def test_gather_context_without_history_returns_empty(tmp_path: Path) -> None:
+    db.SAVE_DIR = tmp_path
+
+    class NoHistoryChannel(DummyChannel):
+        pass
+
+    trigger = DummyMessage("mention", mid=40, channel=NoHistoryChannel("chat"))
+
+    result = asyncio.run(db._gather_context(trigger))
+
+    assert result == []
+
+
+def test_gather_context_typeerror_fallback(tmp_path: Path) -> None:
+    db.SAVE_DIR = tmp_path
+
+    class TypeErrorChannel(DummyChannel):
+        def __init__(self, name: str, history_messages: list[DummyMessage]):
+            super().__init__(name)
+            self._history_messages = history_messages
+            self.calls: list[dict[str, object]] = []
+
+        def history(self, *args, **kwargs):
+            self.calls.append(kwargs)
+            if "oldest_first" in kwargs:
+                raise TypeError("unexpected keyword")
+            return DummyAsyncHistory(self._history_messages)
+
+    history_messages = [DummyMessage("context", mid=50)]
+    channel = TypeErrorChannel("threads", history_messages)
+    trigger = DummyMessage("mention", mid=60, channel=channel)
+
+    result = asyncio.run(db._gather_context(trigger, limit=1))
+
+    assert [msg.id for msg in result] == [50]
+    assert channel.calls == [
+        {"limit": 1, "oldest_first": True},
+        {"limit": 1},
+    ]
 
 
 def test_capture_message_without_attachments(tmp_path: Path) -> None:

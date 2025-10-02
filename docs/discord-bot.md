@@ -37,6 +37,8 @@ tests.
    - author display name as the heading
    - bullet-point metadata for the channel, optional thread name, ISO 8601 timestamp,
      and original message link
+   - a `## Context` section containing the latest thread or reply history (up to five
+     messages) when the bot is mentioned inside a conversation
    - the original message content beneath the metadata
 4. If the channel name matches a repository listed in the project's repo list
    (`repos.txt` or a file pointed to by `AXEL_REPO_FILE`), treat the capture as
@@ -58,16 +60,15 @@ summarize discussions, extract tasks, or generate project insights.
 
 Automated coverage for the capture format lives in
 `tests/test_discord_bot.py::test_save_message_includes_metadata`,
-`tests/test_discord_bot.py::test_save_message_records_thread_metadata`, and
+`tests/test_discord_bot.py::test_save_message_records_thread_metadata`,
+`tests/test_discord_bot.py::test_save_message_includes_context`,
+`tests/test_discord_bot.py::test_gather_context_reads_channel_history`, and
 `tests/test_discord_bot.py::test_capture_message_downloads_attachments`.
 
 ## Roadmap
 
 Future improvements will expand the bot's capabilities:
 
-- **Thread history** – when mentioned inside a thread, call
-  `thread.history()` (or `channel.history()` for replies) to capture context
-  before saving.
 - **Command interface** – provide slash commands such as `/axel summarize`
   or `/axel search` that run the local LLM on stored messages.
 

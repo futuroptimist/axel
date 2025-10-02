@@ -23,7 +23,9 @@ The bot reads its token from the `DISCORD_BOT_TOKEN` environment variable and re
 **Message Content Intent** in the Discord Developer Portal.
 
 Messages are stored under `local/discord/` (configurable via `AXEL_DISCORD_DIR`) which is
-already listed in `.gitignore`.
+already listed in `.gitignore`. The helper `axel.discord_bot.capture_message` downloads
+attachments before writing the markdown file, making it easy to exercise the behavior in
+tests.
 
 ## Workflow
 
@@ -44,6 +46,8 @@ already listed in `.gitignore`.
 
 - **Text** – stored verbatim in the markdown file.
 - **Hyperlinks** – saved alongside the message content.
+- **Attachments** – saved to `local/discord/<channel>/<message_id>/` with references inside the
+  markdown (see `tests/test_discord_bot.py::test_capture_message_downloads_attachments`).
 
 ## Analyzing Captured Messages
 
@@ -53,16 +57,14 @@ Saved files can be processed with local LLMs such as
 summarize discussions, extract tasks, or generate project insights.
 
 Automated coverage for the capture format lives in
-`tests/test_discord_bot.py::test_save_message_includes_metadata` and
-`tests/test_discord_bot.py::test_save_message_records_thread_metadata`.
+`tests/test_discord_bot.py::test_save_message_includes_metadata`,
+`tests/test_discord_bot.py::test_save_message_records_thread_metadata`, and
+`tests/test_discord_bot.py::test_capture_message_downloads_attachments`.
 
 ## Roadmap
 
 Future improvements will expand the bot's capabilities:
 
-- **Attachments** – download files with `Attachment.save()` into
-  `local/discord/<channel>/<message_id>/` and reference them from the markdown for
-  future multimodal models.
 - **Thread history** – when mentioned inside a thread, call
   `thread.history()` (or `channel.history()` for replies) to capture context
   before saving.
@@ -70,6 +72,4 @@ Future improvements will expand the bot's capabilities:
   or `/axel search` that run the local LLM on stored messages.
 
 Contributions and ideas are welcome. Keep all bot logic local and respect user privacy.
-Automated coverage lives in `tests/test_discord_bot.py`, including
-`test_save_message_in_thread`, which exercises the channel/thread metadata described
-above.
+Automated coverage lives in `tests/test_discord_bot.py` (see the tests referenced above).

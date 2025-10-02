@@ -1,3 +1,4 @@
+import asyncio
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -30,6 +31,7 @@ class DummyMessage:
         created_at: datetime | None = None,
         channel: DummyChannel | None = None,
         jump_url: str | None = None,
+        attachments: list[object] | None = None,
     ) -> None:
         self.content = content
         self.id = mid
@@ -37,6 +39,7 @@ class DummyMessage:
         self.created_at = created_at or datetime(2024, 1, 1, tzinfo=timezone.utc)
         self.channel = channel or DummyChannel("general")
         self.jump_url = jump_url or "https://discord.com/channels/1/2/3"
+        self.attachments = attachments or []
 
 
 def read_markdown(path: Path) -> str:
@@ -109,6 +112,53 @@ def test_save_message_without_channel(tmp_path: Path) -> None:
     assert path == tmp_path / "direct-message" / "6.md"
     content = read_markdown(path)
     assert "direct-message" in content
+
+
+def test_capture_message_downloads_attachments(tmp_path: Path) -> None:
+    db.SAVE_DIR = tmp_path
+
+    saved: list[Path] = []
+
+    class DummyAttachment:
+        def __init__(self, filename: str, data: bytes) -> None:
+            self.filename = filename
+            self._data = data
+
+        async def save(self, destination: Path) -> None:
+            destination = Path(destination)
+            destination.write_bytes(self._data)
+            saved.append(destination)
+
+    attachments = [
+        DummyAttachment("report.pdf", b"pdf-data"),
+        DummyAttachment("diagram.png", b"png-data"),
+    ]
+    msg = DummyMessage("with attachments", mid=7, attachments=attachments)
+
+    path = asyncio.run(db.capture_message(msg))
+
+    assert path == tmp_path / "general" / "7.md"
+    attachment_dir = tmp_path / "general" / "7"
+    assert attachment_dir.is_dir()
+    assert saved == [
+        attachment_dir / "report.pdf",
+        attachment_dir / "diagram.png",
+    ]
+
+    content = read_markdown(path)
+    assert "## Attachments" in content
+    assert "[report.pdf](./7/report.pdf)" in content
+    assert "[diagram.png](./7/diagram.png)" in content
+
+
+def test_capture_message_without_attachments(tmp_path: Path) -> None:
+    db.SAVE_DIR = tmp_path
+    msg = DummyMessage("just text", mid=8)
+    path = asyncio.run(db.capture_message(msg))
+    assert path == tmp_path / "general" / "8.md"
+    content = read_markdown(path)
+    assert "just text" in content
+    assert "## Attachments" not in content
 
 
 def test_run_missing_token(monkeypatch) -> None:

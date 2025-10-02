@@ -38,7 +38,7 @@ This launches the token.place server, relay and a mock LLM using one command.
 - [x] add `THREAT_MODEL.md` with cross-repo considerations (see `docs/THREAT_MODEL.md`)
 - [x] provide token rotation guidance in docs (see `docs/ROTATING_TOKENS.md`)
 - [x] adopt [`flywheel`](https://github.com/futuroptimist/flywheel) template for new repositories
-- [ ] encrypt notes saved under `local/discord/`
+- [x] encrypt notes saved under `local/discord/`
 - [x] review permissions for integrated tools (token.place, gabriel) (see docs/THREAT_MODEL.md)
 - [x] achieve 100% test coverage
 

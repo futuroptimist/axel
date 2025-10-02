@@ -4,12 +4,21 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
+from cryptography.fernet import Fernet
 
 discord = pytest.importorskip("discord")
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))  # noqa: E402
 
 import axel.discord_bot as db  # noqa: E402
+
+TEST_KEY = Fernet.generate_key().decode()
+
+
+@pytest.fixture(autouse=True)
+def configure_encryption(monkeypatch):
+    monkeypatch.setenv("AXEL_DISCORD_KEY", TEST_KEY)
+    monkeypatch.delenv("AXEL_DISCORD_KEY_FILE", raising=False)
 
 
 class DummyAuthor:
@@ -42,16 +51,16 @@ class DummyMessage:
         self.attachments = attachments or []
 
 
-def read_markdown(path: Path) -> str:
-    return path.read_text(encoding="utf-8")
+def read_capture(path: Path) -> str:
+    return db.decrypt_message(path, key=TEST_KEY)
 
 
 def test_save_message_includes_metadata(tmp_path: Path) -> None:
     db.SAVE_DIR = tmp_path
     msg = DummyMessage("hello", channel=DummyChannel("general"))
     path = db.save_message(msg)
-    assert path == tmp_path / "general" / "1.md"
-    assert read_markdown(path) == (
+    assert path == tmp_path / "general" / "1.md.enc"
+    assert read_capture(path) == (
         "# user\n\n"
         "- Channel: general\n"
         "- Timestamp: 2024-01-01T00:00:00+00:00\n"
@@ -60,13 +69,61 @@ def test_save_message_includes_metadata(tmp_path: Path) -> None:
     )
 
 
+def test_save_message_encrypts_content(tmp_path: Path) -> None:
+    db.SAVE_DIR = tmp_path
+    msg = DummyMessage("super secret", channel=DummyChannel("general"))
+    path = db.save_message(msg)
+    assert b"super secret" not in path.read_bytes()
+    assert "super secret" in read_capture(path)
+
+
+def test_save_message_generates_key_file(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv("AXEL_DISCORD_KEY", raising=False)
+    monkeypatch.delenv("AXEL_DISCORD_KEY_FILE", raising=False)
+    db.SAVE_DIR = tmp_path
+    msg = DummyMessage("needs key", channel=DummyChannel("general"), mid=11)
+    path = db.save_message(msg)
+
+    key_file = tmp_path / ".axel-discord.key"
+    assert key_file.is_file()
+    assert key_file.read_text().strip()
+
+    monkeypatch.delenv("AXEL_DISCORD_KEY", raising=False)
+    assert "needs key" in db.decrypt_message(path)
+
+
+def test_save_message_respects_key_file_env(tmp_path: Path, monkeypatch) -> None:
+    custom_key = tmp_path / "secret.key"
+    monkeypatch.delenv("AXEL_DISCORD_KEY", raising=False)
+    monkeypatch.setenv("AXEL_DISCORD_KEY_FILE", str(custom_key))
+    db.SAVE_DIR = tmp_path / "captures"
+    msg = DummyMessage("custom key", channel=DummyChannel("general"), mid=12)
+    path = db.save_message(msg)
+
+    assert custom_key.is_file()
+    monkeypatch.delenv("AXEL_DISCORD_KEY", raising=False)
+    monkeypatch.setenv("AXEL_DISCORD_KEY_FILE", str(custom_key))
+    assert "custom key" in db.decrypt_message(path)
+
+
+def test_decrypt_message_without_key_raises(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv("AXEL_DISCORD_KEY", raising=False)
+    monkeypatch.delenv("AXEL_DISCORD_KEY_FILE", raising=False)
+    path = tmp_path / "general" / "13.md.enc"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"encrypted")
+
+    with pytest.raises(FileNotFoundError):
+        db.decrypt_message(path)
+
+
 def test_save_message_creates_channel_dir(tmp_path: Path) -> None:
     missing = tmp_path / "discord"
     db.SAVE_DIR = missing
     msg = DummyMessage("hi", mid=2, channel=DummyChannel("updates"))
     path = db.save_message(msg)
-    assert path == missing / "updates" / "2.md"
-    assert read_markdown(path).endswith("hi\n")
+    assert path == missing / "updates" / "2.md.enc"
+    assert read_capture(path).endswith("hi\n")
     assert (missing / "updates").is_dir()
 
 
@@ -74,8 +131,8 @@ def test_save_message_respects_env(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("AXEL_DISCORD_DIR", str(tmp_path))
     msg = DummyMessage("hey", mid=3, channel=DummyChannel("announcements"))
     path = db.save_message(msg)
-    assert path == tmp_path / "announcements" / "3.md"
-    assert "hey" in read_markdown(path)
+    assert path == tmp_path / "announcements" / "3.md.enc"
+    assert "hey" in read_capture(path)
 
 
 def test_save_message_env_expands_user(tmp_path: Path, monkeypatch) -> None:
@@ -83,8 +140,8 @@ def test_save_message_env_expands_user(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("AXEL_DISCORD_DIR", "~/discord")
     msg = DummyMessage("home", mid=4, channel=DummyChannel("general"))
     path = db.save_message(msg)
-    assert path == tmp_path / "discord" / "general" / "4.md"
-    assert "home" in read_markdown(path)
+    assert path == tmp_path / "discord" / "general" / "4.md.enc"
+    assert "home" in read_capture(path)
 
 
 def test_save_message_records_thread_metadata(tmp_path: Path) -> None:
@@ -93,8 +150,8 @@ def test_save_message_records_thread_metadata(tmp_path: Path) -> None:
     thread = DummyChannel("feature-chat", parent=parent)
     msg = DummyMessage("thread message", mid=5, channel=thread)
     path = db.save_message(msg)
-    assert path == tmp_path / "general" / "5.md"
-    content = read_markdown(path)
+    assert path == tmp_path / "general" / "5.md.enc"
+    content = read_capture(path)
     assert "feature-chat" in content
     assert "general" in content
 
@@ -109,8 +166,8 @@ def test_save_message_without_channel(tmp_path: Path) -> None:
 
     msg = NoChannelMessage()
     path = db.save_message(msg)
-    assert path == tmp_path / "direct-message" / "6.md"
-    content = read_markdown(path)
+    assert path == tmp_path / "direct-message" / "6.md.enc"
+    content = read_capture(path)
     assert "direct-message" in content
 
 
@@ -137,7 +194,7 @@ def test_capture_message_downloads_attachments(tmp_path: Path) -> None:
 
     path = asyncio.run(db.capture_message(msg))
 
-    assert path == tmp_path / "general" / "7.md"
+    assert path == tmp_path / "general" / "7.md.enc"
     attachment_dir = tmp_path / "general" / "7"
     assert attachment_dir.is_dir()
     assert saved == [
@@ -145,7 +202,7 @@ def test_capture_message_downloads_attachments(tmp_path: Path) -> None:
         attachment_dir / "diagram.png",
     ]
 
-    content = read_markdown(path)
+    content = read_capture(path)
     assert "## Attachments" in content
     assert "[report.pdf](./7/report.pdf)" in content
     assert "[diagram.png](./7/diagram.png)" in content
@@ -155,8 +212,8 @@ def test_capture_message_without_attachments(tmp_path: Path) -> None:
     db.SAVE_DIR = tmp_path
     msg = DummyMessage("just text", mid=8)
     path = asyncio.run(db.capture_message(msg))
-    assert path == tmp_path / "general" / "8.md"
-    content = read_markdown(path)
+    assert path == tmp_path / "general" / "8.md.enc"
+    content = read_capture(path)
     assert "just text" in content
     assert "## Attachments" not in content
 

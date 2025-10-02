@@ -23,17 +23,19 @@ The bot reads its token from the `DISCORD_BOT_TOKEN` environment variable and re
 **Message Content Intent** in the Discord Developer Portal.
 
 Messages are stored under `local/discord/` (configurable via `AXEL_DISCORD_DIR`) which is
-already listed in `.gitignore`. The helper `axel.discord_bot.capture_message` downloads
-attachments before writing the markdown file, making it easy to exercise the behavior in
-tests.
+already listed in `.gitignore`. Content is encrypted with a Fernet key loaded from
+`AXEL_DISCORD_KEY` or (if unset) a gitignored key file generated alongside the captures.
+Use `AXEL_DISCORD_KEY_FILE` to point at a custom key location. The helper
+`axel.discord_bot.capture_message` downloads attachments before writing the encrypted
+markdown file, making it easy to exercise the behavior in tests.
 
 ## Workflow
 
 1. In a private server, reply to an existing message or start a thread.
 2. Mention the bot in that reply or thread opener.
-3. The bot records a markdown file under
-   `local/discord/<channel>/<message_id>.md`, where `<channel>` is sanitized to remove
-   filesystem-unsafe characters. Each file contains:
+3. The bot records an encrypted markdown file under
+   `local/discord/<channel>/<message_id>.md.enc`, where `<channel>` is sanitized to remove
+   filesystem-unsafe characters. Each file contains (after decryption):
    - author display name as the heading
    - bullet-point metadata for the channel, optional thread name, ISO 8601 timestamp,
      and original message link
@@ -44,7 +46,7 @@ tests.
 
 ### Supported Content Types
 
-- **Text** – stored verbatim in the markdown file.
+- **Text** – stored verbatim in the encrypted markdown file.
 - **Hyperlinks** – saved alongside the message content.
 - **Attachments** – saved to `local/discord/<channel>/<message_id>/` with references inside the
   markdown (see `tests/test_discord_bot.py::test_capture_message_downloads_attachments`).
@@ -53,13 +55,16 @@ tests.
 
 Saved files can be processed with local LLMs such as
 [`llama_cpp_python`](https://pypi.org/project/llama-cpp-python/) or
-[Ollama](https://github.com/ollama/ollama). Combine the markdown content and metadata to
-summarize discussions, extract tasks, or generate project insights.
+[Ollama](https://github.com/ollama/ollama). First decrypt them with
+`axel.discord_bot.decrypt_message` (or by providing the Fernet key directly) and then
+combine the markdown content and metadata to summarize discussions, extract tasks, or
+generate project insights.
 
 Automated coverage for the capture format lives in
 `tests/test_discord_bot.py::test_save_message_includes_metadata`,
-`tests/test_discord_bot.py::test_save_message_records_thread_metadata`, and
-`tests/test_discord_bot.py::test_capture_message_downloads_attachments`.
+`tests/test_discord_bot.py::test_save_message_records_thread_metadata`,
+`tests/test_discord_bot.py::test_capture_message_downloads_attachments`, and
+`tests/test_discord_bot.py::test_save_message_encrypts_content`.
 
 ## Roadmap
 

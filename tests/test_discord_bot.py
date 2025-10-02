@@ -456,6 +456,126 @@ def test_collect_context_handles_awaitable_and_list_history() -> None:
     assert ids == [202, 201]
 
 
+def test_collect_context_skips_falsy_and_self_entries() -> None:
+    class FalsyChannel(DummyChannel):
+        def history(
+            self,
+            *,
+            limit: int | None = None,
+            before: DummyMessage | None = None,
+            **_: object,
+        ):
+            return [None, before]
+
+    target = DummyMessage("target", channel=FalsyChannel("general"))
+    context = asyncio.run(db._collect_context(target))
+
+    assert context == []
+
+
+def test_collect_context_handles_non_iterable_history() -> None:
+    class NonIterableChannel(DummyChannel):
+        def history(
+            self,
+            *,
+            limit: int | None = None,
+            before: DummyMessage | None = None,
+            **_: object,
+        ):
+            return 42
+
+    msg = DummyMessage("history", channel=NonIterableChannel("general"))
+    context = asyncio.run(db._collect_context(msg))
+
+    assert context == []
+
+
+def test_collect_context_returns_empty_on_sync_iteration_error() -> None:
+    class BadIterable:
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            raise RuntimeError("sync failure")
+
+    class SyncErrorChannel(DummyChannel):
+        def history(
+            self,
+            *,
+            limit: int | None = None,
+            before: DummyMessage | None = None,
+            **_: object,
+        ):
+            return BadIterable()
+
+    msg = DummyMessage("history", channel=SyncErrorChannel("general"))
+    context = asyncio.run(db._collect_context(msg))
+
+    assert context == []
+
+
+def test_collect_context_normalizes_naive_timestamps_when_unbounded() -> None:
+    class MixedTimestampChannel(DummyChannel):
+        def history(
+            self,
+            *,
+            limit: int | None = None,
+            before: DummyMessage | None = None,
+            **_: object,
+        ):
+            older = DummyMessage(
+                "older",
+                mid=310,
+                channel=self,
+                created_at=datetime(2024, 1, 1, 0, 3),
+            )
+            newer = DummyMessage(
+                "newer",
+                mid=311,
+                channel=self,
+                created_at=datetime(2024, 1, 1, 0, 4, tzinfo=timezone.utc),
+            )
+            return [newer, older, before]
+
+    channel = MixedTimestampChannel("general")
+    target = DummyMessage(
+        "latest",
+        mid=312,
+        channel=channel,
+        created_at=datetime(2024, 1, 1, 0, 5, tzinfo=timezone.utc),
+    )
+
+    context = asyncio.run(db._collect_context(target, limit=None))
+
+    assert [ctx.id for ctx in context] == [310, 311]
+
+
+def test_collect_context_ignores_sort_failures() -> None:
+    class ExplodingMessage(DummyMessage):
+        @property
+        def created_at(self):
+            raise RuntimeError("boom")
+
+        @created_at.setter
+        def created_at(self, value):
+            self._created_at = value
+
+    class ExplodingChannel(DummyChannel):
+        def history(
+            self,
+            *,
+            limit: int | None = None,
+            before: DummyMessage | None = None,
+            **_: object,
+        ):
+            return [ExplodingMessage("ctx", mid=410, channel=self)]
+
+    target = DummyMessage("latest", mid=411, channel=ExplodingChannel("general"))
+    context = asyncio.run(db._collect_context(target))
+
+    assert [ctx.id for ctx in context] == [410]
+
+
 def test_run_missing_token(monkeypatch) -> None:
     """``run`` exits if ``DISCORD_BOT_TOKEN`` is not set."""
     monkeypatch.delenv("DISCORD_BOT_TOKEN", raising=False)

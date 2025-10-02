@@ -5,6 +5,7 @@ from __future__ import annotations
 import inspect
 import os
 import re
+from datetime import datetime
 from pathlib import Path
 from typing import Sequence
 
@@ -49,6 +50,7 @@ def save_message(
     message: discord.Message,
     *,
     attachments: Sequence[tuple[str, Path]] | None = None,
+    context: Sequence[discord.Message] | None = None,
 ) -> Path:
     """Persist the provided message as markdown with metadata.
 
@@ -78,6 +80,24 @@ def save_message(
     lines.append("")
     lines.append(message.content)
     lines.append("")
+
+    if context:
+        lines.append("## Context")
+        for ctx in context:
+            author = getattr(getattr(ctx, "author", None), "display_name", "unknown")
+            timestamp = getattr(ctx, "created_at", None)
+            ts = timestamp.isoformat() if isinstance(timestamp, datetime) else ""
+            jump_url = getattr(ctx, "jump_url", "")
+            entry = f"- {author}"
+            if ts:
+                entry += f" @ {ts}"
+            if jump_url:
+                entry += f" ({jump_url})"
+            lines.append(entry)
+            content = getattr(ctx, "content", "")
+            if content:
+                lines.append(f"  {content}")
+        lines.append("")
     if attachments:
         lines.append("## Attachments")
         for display_name, relative_path in attachments:
@@ -126,7 +146,58 @@ async def capture_message(message: discord.Message) -> Path:
     channel_dir = save_dir / _sanitize_component(channel_name)
     channel_dir.mkdir(parents=True, exist_ok=True)
     attachments = await _download_attachments(message, channel_dir)
-    return save_message(message, attachments=attachments)
+    context = await _collect_context(message)
+    return save_message(message, attachments=attachments, context=context)
+
+
+async def _collect_context(
+    message: discord.Message, *, limit: int = 10
+) -> list[discord.Message]:
+    """Return surrounding channel or thread messages for ``message``."""
+
+    channel = getattr(message, "channel", None)
+    if channel is None:
+        return []
+
+    history_fn = getattr(channel, "history", None)
+    if history_fn is None or not callable(history_fn):
+        return []
+
+    try:
+        history = history_fn(limit=limit, before=message)
+    except TypeError:
+        history = history_fn(limit=limit)
+
+    if history is None:
+        return []
+
+    if inspect.isawaitable(history):
+        history = await history
+
+    collected: list[discord.Message] = []
+    if hasattr(history, "__aiter__"):
+        async for item in history:
+            collected.append(item)
+    else:
+        collected.extend(list(history))
+
+    filtered = [
+        ctx
+        for ctx in collected
+        if getattr(ctx, "id", None) != getattr(message, "id", None)
+    ]
+
+    def _sort_key(ctx: discord.Message) -> float:
+        created = getattr(ctx, "created_at", None)
+        if isinstance(created, datetime):
+            try:
+                return float(created.timestamp())
+            except OSError:  # pragma: no cover - extremely old timestamps
+                return float("-inf")
+        return float("-inf")
+
+    filtered.sort(key=_sort_key)
+    return filtered
 
 
 class AxelClient(discord.Client):

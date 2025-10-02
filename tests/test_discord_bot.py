@@ -46,6 +46,23 @@ def read_markdown(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+class AsyncHistory:
+    """Minimal async iterator for channel history tests."""
+
+    def __init__(self, messages: list[DummyMessage]) -> None:
+        self._messages = list(messages)
+
+    def __aiter__(self):  # noqa: D401 - asyncio protocol
+        self._iter = iter(self._messages)
+        return self
+
+    async def __anext__(self):  # noqa: D401 - asyncio protocol
+        try:
+            return next(self._iter)
+        except StopIteration as exc:  # pragma: no cover - defensive
+            raise StopAsyncIteration from exc
+
+
 def test_save_message_includes_metadata(tmp_path: Path) -> None:
     db.SAVE_DIR = tmp_path
     msg = DummyMessage("hello", channel=DummyChannel("general"))
@@ -159,6 +176,123 @@ def test_capture_message_without_attachments(tmp_path: Path) -> None:
     content = read_markdown(path)
     assert "just text" in content
     assert "## Attachments" not in content
+
+
+def test_capture_message_without_channel_context(tmp_path: Path) -> None:
+    db.SAVE_DIR = tmp_path
+
+    class NoChannelMessage(DummyMessage):
+        def __init__(self) -> None:
+            super().__init__("dm capture", mid=99, channel=None)
+            del self.channel
+
+    msg = NoChannelMessage()
+    path = asyncio.run(db.capture_message(msg))
+
+    assert path == tmp_path / "direct-message" / "99.md"
+    content = read_markdown(path)
+    assert "dm capture" in content
+    assert "## Context" not in content
+
+
+def test_capture_message_includes_thread_history(tmp_path: Path) -> None:
+    db.SAVE_DIR = tmp_path
+
+    parent = DummyChannel("general")
+
+    class ThreadChannel(DummyChannel):
+        def __init__(self, name: str, parent: DummyChannel) -> None:
+            super().__init__(name, parent=parent)
+            self._history_messages: list[DummyMessage] = []
+
+        def history(
+            self,
+            *,
+            limit: int | None = None,
+            before: DummyMessage | None = None,
+        ):
+            return AsyncHistory(self._history_messages)
+
+    thread = ThreadChannel("feature-chat", parent=parent)
+
+    context_messages = [
+        DummyMessage(
+            "initial note",
+            mid=101,
+            channel=thread,
+            created_at=datetime(2024, 1, 1, 0, 0, tzinfo=timezone.utc),
+        ),
+        DummyMessage(
+            "follow-up",
+            mid=102,
+            channel=thread,
+            created_at=datetime(2024, 1, 1, 0, 5, tzinfo=timezone.utc),
+        ),
+    ]
+
+    thread._history_messages = context_messages  # type: ignore[attr-defined]
+
+    target = DummyMessage(
+        "decision recorded",
+        mid=103,
+        channel=thread,
+        created_at=datetime(2024, 1, 1, 0, 10, tzinfo=timezone.utc),
+    )
+
+    path = asyncio.run(db.capture_message(target))
+
+    assert path == tmp_path / "general" / "103.md"
+
+    content = read_markdown(path)
+    assert "## Context" in content
+    assert "initial note" in content
+    assert "follow-up" in content
+    first_index = content.index("initial note")
+    second_index = content.index("follow-up")
+    assert first_index < second_index
+
+
+def test_collect_context_handles_history_type_error() -> None:
+    class LimitedHistoryChannel(DummyChannel):
+        def history(self, *, limit: int | None = None):
+            return None
+
+    msg = DummyMessage("history", channel=LimitedHistoryChannel("general"))
+    context = asyncio.run(db._collect_context(msg))
+    assert context == []
+
+
+def test_collect_context_handles_awaitable_and_list_history() -> None:
+    parent = DummyChannel("general")
+
+    class AwaitableChannel(DummyChannel):
+        async def history(
+            self,
+            *,
+            limit: int | None = None,
+            before: DummyMessage | None = None,
+        ):
+            ctx1 = DummyMessage(
+                "older",
+                mid=201,
+                channel=self,
+                created_at=datetime(2024, 1, 1, 0, 1, tzinfo=timezone.utc),
+            )
+            ctx2 = DummyMessage("unknown", mid=202, channel=self)
+            ctx2.created_at = None
+            return [before, ctx1, ctx2]
+
+    thread = AwaitableChannel("thread", parent=parent)
+    target = DummyMessage(
+        "latest",
+        mid=200,
+        channel=thread,
+        created_at=datetime(2024, 1, 1, 0, 2, tzinfo=timezone.utc),
+    )
+
+    context = asyncio.run(db._collect_context(target))
+    ids = [ctx.id for ctx in context]
+    assert ids == [202, 201]
 
 
 def test_run_missing_token(monkeypatch) -> None:

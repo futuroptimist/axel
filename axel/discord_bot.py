@@ -164,22 +164,31 @@ async def _collect_context(
         return []
 
     try:
-        history = history_fn(limit=limit, before=message)
-    except TypeError:
-        history = history_fn(limit=limit)
+        try:
+            history = history_fn(limit=limit, before=message)
+        except TypeError:
+            history = history_fn(limit=limit)
+    except Exception:
+        return []
 
     if history is None:
         return []
 
-    if inspect.isawaitable(history):
-        history = await history
+    try:
+        if inspect.isawaitable(history):
+            history = await history
+    except Exception:
+        return []
 
     collected: list[discord.Message] = []
-    if hasattr(history, "__aiter__"):
-        async for item in history:
-            collected.append(item)
-    else:
-        collected.extend(list(history))
+    try:
+        if hasattr(history, "__aiter__"):
+            async for item in history:
+                collected.append(item)
+        else:
+            collected.extend(list(history))
+    except Exception:
+        return []
 
     filtered = [
         ctx

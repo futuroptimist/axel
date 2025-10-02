@@ -262,6 +262,58 @@ def test_collect_context_handles_history_type_error() -> None:
     assert context == []
 
 
+def test_collect_context_returns_empty_on_history_error() -> None:
+    class ErrorChannel(DummyChannel):
+        def history(
+            self,
+            *,
+            limit: int | None = None,
+            before: DummyMessage | None = None,
+        ):
+            raise RuntimeError("missing permissions")
+
+    msg = DummyMessage("history", channel=ErrorChannel("general"))
+    context = asyncio.run(db._collect_context(msg))
+    assert context == []
+
+
+def test_collect_context_returns_empty_on_iteration_error() -> None:
+    class BrokenHistory:
+        def __aiter__(self):
+            return self
+
+        async def __anext__(self):
+            raise RuntimeError("iteration failure")
+
+    class BrokenChannel(DummyChannel):
+        def history(
+            self,
+            *,
+            limit: int | None = None,
+            before: DummyMessage | None = None,
+        ):
+            return BrokenHistory()
+
+    msg = DummyMessage("history", channel=BrokenChannel("general"))
+    context = asyncio.run(db._collect_context(msg))
+    assert context == []
+
+
+def test_collect_context_returns_empty_on_await_error() -> None:
+    class AwaitErrorChannel(DummyChannel):
+        async def history(
+            self,
+            *,
+            limit: int | None = None,
+            before: DummyMessage | None = None,
+        ) -> list[DummyMessage]:
+            raise RuntimeError("network failure")
+
+    msg = DummyMessage("history", channel=AwaitErrorChannel("general"))
+    context = asyncio.run(db._collect_context(msg))
+    assert context == []
+
+
 def test_collect_context_handles_awaitable_and_list_history() -> None:
     parent = DummyChannel("general")
 

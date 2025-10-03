@@ -361,6 +361,49 @@ def test_capture_message_includes_thread_history(tmp_path: Path) -> None:
     assert first_index < second_index
 
 
+def test_axel_client_captures_thread_mentions(monkeypatch, tmp_path: Path) -> None:
+    """Mentions inside thread openers are saved even without message references."""
+
+    captured: dict[str, object] = {}
+
+    async def fake_capture(message, *, context=None):
+        captured["message"] = message
+        captured["context"] = list(context or [])
+        return tmp_path / "general" / "1.md"
+
+    async def fake_gather(trigger):
+        captured["gathered"] = trigger
+        return [DummyMessage("history", mid=2)]
+
+    async def fake_send(content: str) -> None:
+        captured["reply"] = content
+
+    thread_parent = DummyChannel("general")
+    thread = DummyChannel("thread", parent=thread_parent)
+    thread.send = fake_send  # type: ignore[attr-defined]
+
+    message = DummyMessage("thread opener", mid=1, channel=thread)
+    message.reference = None  # type: ignore[attr-defined]
+
+    monkeypatch.setattr(db, "capture_message", fake_capture)
+    monkeypatch.setattr(db, "_gather_context", fake_gather)
+
+    intents = discord.Intents.none()
+    client = db.AxelClient(intents=intents)
+
+    class DummyUser:
+        def mentioned_in(self, _: object) -> bool:
+            return True
+
+    client._connection.user = DummyUser()  # type: ignore[attr-defined]
+
+    asyncio.run(client.on_message(message))
+
+    assert captured["message"] is message
+    assert captured["context"] and captured["context"][0].content == "history"
+    assert captured["reply"] == f"Saved to {tmp_path / 'general' / '1.md'}"
+
+
 def test_collect_context_handles_history_type_error() -> None:
     class LimitedHistoryChannel(DummyChannel):
         def history(self, *, limit: int | None = None):

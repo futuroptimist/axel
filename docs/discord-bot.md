@@ -30,7 +30,8 @@ tests.
 ## Workflow
 
 1. In a private server, reply to an existing message or start a thread.
-2. Mention the bot in that reply or thread opener.
+2. Mention the bot in that reply or thread opener. Mentions inside thread openers are
+   captured even when Discord omits a ``message.reference`` pointer.
 3. The bot records a markdown file under
    `local/discord/<channel>/<message_id>.md`, where `<channel>` is sanitized to remove
    filesystem-unsafe characters. Each file contains:
@@ -64,8 +65,9 @@ Automated coverage for the capture format lives in
 `tests/test_discord_bot.py::test_save_message_includes_metadata`,
 `tests/test_discord_bot.py::test_save_message_records_thread_metadata`,
 `tests/test_discord_bot.py::test_save_message_includes_context`,
-`tests/test_discord_bot.py::test_gather_context_reads_channel_history`, and
-`tests/test_discord_bot.py::test_capture_message_downloads_attachments`.
+`tests/test_discord_bot.py::test_gather_context_reads_channel_history`,
+`tests/test_discord_bot.py::test_capture_message_downloads_attachments`, and
+`tests/test_discord_bot.py::test_axel_client_captures_thread_mentions`.
 
 ## Roadmap
 

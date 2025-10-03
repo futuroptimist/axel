@@ -45,7 +45,8 @@ once decrypted.
 ## Workflow
 
 1. In a private server, reply to an existing message or start a thread.
-2. Mention the bot in that reply or thread opener.
+2. Mention the bot in that reply or thread opener. Mentions inside thread openers are
+   captured even when Discord omits a ``message.reference`` pointer.
 3. The bot records a markdown file under
    `local/discord/<channel>/<message_id>.md`, where `<channel>` is sanitized to remove
    filesystem-unsafe characters. Each file contains:

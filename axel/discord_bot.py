@@ -312,16 +312,31 @@ class AxelClient(discord.Client):
     async def on_message(self, message: discord.Message) -> None:  # pragma: no cover
         if self.user is None or message.author == self.user:
             return
-        if self.user.mentioned_in(message) and message.reference:
-            original = await message.channel.fetch_message(message.reference.message_id)
-            context = await _gather_context(message)
-            context = [
-                ctx
-                for ctx in context
-                if getattr(ctx, "id", None) != getattr(original, "id", None)
-            ]
-            path = await capture_message(original, context=context)
-            await message.channel.send(f"Saved to {path}")
+        if not self.user.mentioned_in(message):
+            return
+
+        context = await _gather_context(message)
+
+        original: discord.Message | None = None
+        reference = getattr(message, "reference", None)
+        message_id = getattr(reference, "message_id", None)
+
+        if message_id is not None and hasattr(message.channel, "fetch_message"):
+            try:
+                original = await message.channel.fetch_message(message_id)
+            except Exception:
+                original = None
+
+        if original is None:
+            original = message
+
+        filtered_context = [
+            ctx
+            for ctx in context
+            if getattr(ctx, "id", None) != getattr(original, "id", None)
+        ]
+        path = await capture_message(original, context=filtered_context)
+        await message.channel.send(f"Saved to {path}")
 
 
 def run() -> None:

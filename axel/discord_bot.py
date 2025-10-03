@@ -97,25 +97,6 @@ def save_message(
                 continue
             author = _display_name(getattr(ctx, "author", None))
             timestamp = getattr(ctx, "created_at", None)
-            ts_str = timestamp.isoformat() if hasattr(timestamp, "isoformat") else ""
-            body = getattr(ctx, "content", "") or "(no content)"
-            entry = f"- {author}: {body}"
-            if ts_str:
-                entry += f" ({ts_str})"
-            context_lines.append(entry)
-    if context_lines:
-        lines.append("## Context")
-        lines.extend(context_lines)
-        lines.append("")
-
-    lines.append(message.content)
-    lines.append("")
-
-    if context:
-        lines.append("## Context")
-        for ctx in context:
-            author = getattr(getattr(ctx, "author", None), "display_name", "unknown")
-            timestamp = getattr(ctx, "created_at", None)
             ts = timestamp.isoformat() if isinstance(timestamp, datetime) else ""
             jump_url = getattr(ctx, "jump_url", "")
             entry = f"- {author}"
@@ -123,11 +104,19 @@ def save_message(
                 entry += f" @ {ts}"
             if jump_url:
                 entry += f" ({jump_url})"
-            lines.append(entry)
-            content = getattr(ctx, "content", "")
-            if content:
-                lines.append(f"  {content}")
+            context_lines.append(entry)
+            body = getattr(ctx, "content", "")
+            if body:
+                context_lines.append(f"  {body}")
+            else:
+                context_lines.append("  (no content)")
+    if context_lines:
+        lines.append("## Context")
+        lines.extend(context_lines)
         lines.append("")
+
+    lines.append(message.content)
+    lines.append("")
     if attachments:
         lines.append("## Attachments")
         for display_name, relative_path in attachments:

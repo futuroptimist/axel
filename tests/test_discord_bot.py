@@ -65,6 +65,34 @@ def test_save_message_includes_context(tmp_path: Path) -> None:
     assert "mention" in content
 
 
+def test_save_message_writes_single_context_section(tmp_path: Path) -> None:
+    """Context history is emitted once with metadata for each message."""
+
+    db.SAVE_DIR = tmp_path
+    context = [
+        DummyMessage(
+            "earlier",
+            mid=20,
+            created_at=datetime(2024, 1, 1, 0, 0, tzinfo=timezone.utc),
+        ),
+        DummyMessage(
+            "mention",
+            mid=21,
+            created_at=datetime(2024, 1, 1, 0, 5, tzinfo=timezone.utc),
+        ),
+    ]
+    msg = DummyMessage("final", mid=22, channel=DummyChannel("general"))
+
+    path = db.save_message(msg, context=context)
+
+    content = read_markdown(path)
+    assert content.count("## Context") == 1
+    assert "earlier" in content
+    assert "mention" in content
+    context_section = content.split("## Context", 1)[1]
+    assert context_section.count("- user @") == 2
+
+
 def test_save_message_context_skips_self(tmp_path: Path) -> None:
     """Context entries skip the saved message and handle missing author data."""
 

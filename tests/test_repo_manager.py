@@ -100,6 +100,15 @@ def test_load_repos_sorts_entries(tmp_path: Path) -> None:
     ]
 
 
+def test_add_repo_expands_user_home(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    file = Path("~/repos.txt")
+    add_repo("https://example.com/repo", path=file)
+    expected = tmp_path / "repos.txt"
+    assert expected.exists()
+    assert load_repos(path=file) == ["https://example.com/repo"]
+
+
 def test_add_repo_no_duplicates(tmp_path: Path):
     file = tmp_path / "repos.txt"
     add_repo("https://example.com/repo", path=file)

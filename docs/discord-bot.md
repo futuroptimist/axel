@@ -27,6 +27,21 @@ already listed in `.gitignore`. The helper `axel.discord_bot.capture_message` do
 attachments before writing the markdown file, making it easy to exercise the behavior in
 tests.
 
+## Encrypting Captures
+
+Set `AXEL_DISCORD_ENCRYPTION_KEY` to a
+[Fernet](https://cryptography.io/en/latest/fernet/) key to encrypt saved markdown files.
+When the variable is set, `save_message` writes an encrypted token instead of plaintext
+markdown. Generate a key locally with:
+
+```bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+Store the key securely (for example, in a password manager) and export it before running
+the bot. Attachments remain on disk in plaintext so they can be referenced by the markdown
+once decrypted.
+
 ## Workflow
 
 1. In a private server, reply to an existing message or start a thread.
@@ -63,9 +78,9 @@ Automated coverage for the capture format lives in
 `tests/test_discord_bot.py::test_save_message_includes_metadata`,
 `tests/test_discord_bot.py::test_save_message_records_thread_metadata`,
 `tests/test_discord_bot.py::test_save_message_includes_context`,
-`tests/test_discord_bot.py::test_save_message_writes_single_context_section`,
-`tests/test_discord_bot.py::test_gather_context_reads_channel_history`, and
-`tests/test_discord_bot.py::test_capture_message_downloads_attachments`.
+`tests/test_discord_bot.py::test_gather_context_reads_channel_history`,
+`tests/test_discord_bot.py::test_capture_message_downloads_attachments`, and
+`tests/test_discord_bot.py::test_save_message_encrypts_when_key_set`.
 
 ## Roadmap
 

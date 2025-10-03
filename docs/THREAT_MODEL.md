@@ -5,7 +5,8 @@ Axel coordinates multiple repositories and stores user notes locally. This docum
 - Secrets such as API keys should be stored in environment variables or encrypted files, never committed to source control.
 - The `local/` directory is ignored by Git by default. Verify this with `git check-ignore -v local/` after setup.
 - When using `token.place` or `gabriel`, review their permissions and rotate tokens regularly. See [docs/ROTATING_TOKENS.md](ROTATING_TOKENS.md) for detailed steps.
-- Notes saved under `local/discord/` stay on your machine. Future work may encrypt these files.
+- Notes saved under `local/discord/` stay on your machine. Set `AXEL_DISCORD_ENCRYPTION_KEY`
+  with a Fernet key to encrypt captures at rest.
 - Before publishing the repository, scan for accidental secrets with:
 
   ```bash

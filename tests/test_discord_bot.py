@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
+from cryptography.fernet import Fernet
 
 discord = pytest.importorskip("discord")
 
@@ -155,6 +156,24 @@ def test_save_message_env_expands_user(tmp_path: Path, monkeypatch) -> None:
     path = db.save_message(msg)
     assert path == tmp_path / "discord" / "general" / "4.md"
     assert "home" in read_markdown(path)
+
+
+def test_save_message_encrypts_when_key_set(tmp_path: Path, monkeypatch) -> None:
+    """When an encryption key is configured the saved file is encrypted."""
+
+    key = Fernet.generate_key()
+    db.SAVE_DIR = Path("local/discord")
+    monkeypatch.setenv("AXEL_DISCORD_DIR", str(tmp_path))
+    monkeypatch.setenv("AXEL_DISCORD_ENCRYPTION_KEY", key.decode())
+    msg = DummyMessage("secret payload", mid=99, channel=DummyChannel("general"))
+
+    path = db.save_message(msg)
+
+    assert path == tmp_path / "general" / "99.md"
+    raw = path.read_bytes()
+    assert b"secret payload" not in raw
+    decrypted = Fernet(key).decrypt(raw).decode()
+    assert "secret payload" in decrypted
 
 
 def test_save_message_records_thread_metadata(tmp_path: Path) -> None:

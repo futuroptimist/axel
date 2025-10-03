@@ -16,6 +16,14 @@ def get_repo_file() -> Path:
     return Path(os.getenv("AXEL_REPO_FILE", DEFAULT_REPO_FILE)).expanduser()
 
 
+def _resolve_path(path: Path | None) -> Path:
+    """Return ``path`` with ``~`` expanded, defaulting to :func:`get_repo_file`."""
+
+    if path is None:
+        return get_repo_file()
+    return Path(path).expanduser()
+
+
 def load_repos(path: Path | None = None) -> List[str]:
     """Load repository URLs from a text file.
 
@@ -23,8 +31,7 @@ def load_repos(path: Path | None = None) -> List[str]:
     removed case-insensitively while preserving the first occurrence's case.
     The resulting list is sorted alphabetically, ignoring case.
     """
-    if path is None:
-        path = get_repo_file()
+    path = _resolve_path(path)
     if not path.exists():
         return []
     repos: List[str] = []
@@ -48,8 +55,7 @@ def add_repo(url: str, path: Path | None = None) -> List[str]:
     in ``url`` are removed before processing. Comparison is case-insensitive. The
     resulting list is kept sorted alphabetically regardless of case.
     """
-    if path is None:
-        path = get_repo_file()
+    path = _resolve_path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     url = url.strip().rstrip("/")
     if "://" not in url:
@@ -72,8 +78,7 @@ def remove_repo(url: str, path: Path | None = None) -> List[str]:
     case-insensitive. The remaining list is kept sorted alphabetically,
     ignoring case.
     """
-    if path is None:
-        path = get_repo_file()
+    path = _resolve_path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     url = url.strip().rstrip("/")
     repos = load_repos(path)
@@ -144,8 +149,7 @@ def fetch_repos(
     ``token`` overrides ``GH_TOKEN``/``GITHUB_TOKEN`` when provided.
     ``visibility`` filters repositories returned by the GitHub API.
     """
-    if path is None:
-        path = get_repo_file()
+    path = _resolve_path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     repos = fetch_repo_urls(token=token, visibility=visibility)
     text = "\n".join(repos)

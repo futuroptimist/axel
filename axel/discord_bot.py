@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Sequence
 
 import discord
+from cryptography.fernet import Fernet
 
 SAVE_DIR = Path("local/discord")
 CONTEXT_LIMIT = 5
@@ -31,6 +32,20 @@ def _sanitize_component(name: str | None) -> str:
     cleaned = (name or "unknown").strip()
     sanitized = _SAFE_COMPONENT.sub("_", cleaned)
     return sanitized or "unknown"
+
+
+def _get_encrypter() -> Fernet | None:
+    """Return a Fernet instance when encryption is enabled."""
+
+    key = os.getenv("AXEL_DISCORD_ENCRYPTION_KEY", "").strip()
+    if not key:
+        return None
+    try:
+        return Fernet(key.encode())
+    except (TypeError, ValueError) as exc:  # pragma: no cover - defensive
+        raise RuntimeError(
+            "AXEL_DISCORD_ENCRYPTION_KEY must be a valid Fernet key"
+        ) from exc
 
 
 def _channel_metadata(message: discord.Message) -> tuple[str, str | None]:
@@ -126,7 +141,13 @@ def save_message(
             lines.append(f"- [{display_name}]({rel})")
         lines.append("")
 
-    path.write_text("\n".join(lines), encoding="utf-8")
+    rendered = "\n".join(lines)
+    encrypter = _get_encrypter()
+    if encrypter:
+        token = encrypter.encrypt(rendered.encode("utf-8"))
+        path.write_bytes(token)
+    else:
+        path.write_text(rendered, encoding="utf-8")
     return path
 
 

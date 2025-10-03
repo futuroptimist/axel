@@ -12,13 +12,20 @@ def get_task_file() -> Path:
     return Path(os.getenv("AXEL_TASK_FILE", DEFAULT_TASK_FILE)).expanduser()
 
 
+def _resolve_path(path: Path | None) -> Path:
+    """Return ``path`` with ``~`` expanded, defaulting to :func:`get_task_file`."""
+
+    if path is None:
+        return get_task_file()
+    return Path(path).expanduser()
+
+
 def load_tasks(path: Path | None = None) -> List[Dict]:
     """Load tasks from a JSON file.
 
     Returns an empty list for missing, empty, invalid, or non-list JSON files.
     """
-    if path is None:
-        path = get_task_file()
+    path = _resolve_path(path)
     if not path.exists():
         return []
     try:
@@ -37,8 +44,7 @@ def add_task(description: str, path: Path | None = None) -> List[Dict]:
 
     ``description`` is stripped of surrounding whitespace and must not be empty.
     """
-    if path is None:
-        path = get_task_file()
+    path = _resolve_path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     description = description.strip()
     if not description:
@@ -56,8 +62,7 @@ def add_task(description: str, path: Path | None = None) -> List[Dict]:
 
 def complete_task(task_id: int, path: Path | None = None) -> List[Dict]:
     """Mark the task with ``task_id`` as completed."""
-    if path is None:
-        path = get_task_file()
+    path = _resolve_path(path)
     tasks = load_tasks(path)
     for task in tasks:
         if task["id"] == task_id:
@@ -72,8 +77,7 @@ def complete_task(task_id: int, path: Path | None = None) -> List[Dict]:
 
 def remove_task(task_id: int, path: Path | None = None) -> List[Dict]:
     """Remove the task with ``task_id`` from the JSON database."""
-    if path is None:
-        path = get_task_file()
+    path = _resolve_path(path)
     tasks = load_tasks(path)
     new_tasks = [t for t in tasks if t["id"] != task_id]
     if len(new_tasks) == len(tasks):
@@ -92,8 +96,7 @@ def list_tasks(path: Path | None = None) -> List[Dict]:
 
 def clear_tasks(path: Path | None = None) -> List[Dict]:
     """Remove all tasks from the JSON database."""
-    if path is None:
-        path = get_task_file()
+    path = _resolve_path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("[]\n", encoding="utf-8")
     return []

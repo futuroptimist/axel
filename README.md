@@ -87,7 +87,9 @@ pre-commit install
 To keep personal notes and repo lists private, set `AXEL_REPO_FILE` to a path
 under `local/`, which is ignored by Git. The repo manager creates the directory
 automatically if it doesn't already exist. Paths beginning with `~` expand to
-the user's home directory.
+the user's home directory. Automated coverage for this behavior lives in
+`tests/test_repo_manager.py::test_add_repo_expands_user_home` and
+`tests/test_task_manager.py::test_add_task_expands_user_home`.
 
 Example:
 

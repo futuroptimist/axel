@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
+from cryptography.fernet import Fernet
 
 discord = pytest.importorskip("discord")
 
@@ -63,6 +64,34 @@ def test_save_message_includes_context(tmp_path: Path) -> None:
     assert "## Context" in content
     assert "earlier" in content
     assert "mention" in content
+
+
+def test_save_message_writes_single_context_section(tmp_path: Path) -> None:
+    """Context history is emitted once with metadata for each message."""
+
+    db.SAVE_DIR = tmp_path
+    context = [
+        DummyMessage(
+            "earlier",
+            mid=20,
+            created_at=datetime(2024, 1, 1, 0, 0, tzinfo=timezone.utc),
+        ),
+        DummyMessage(
+            "mention",
+            mid=21,
+            created_at=datetime(2024, 1, 1, 0, 5, tzinfo=timezone.utc),
+        ),
+    ]
+    msg = DummyMessage("final", mid=22, channel=DummyChannel("general"))
+
+    path = db.save_message(msg, context=context)
+
+    content = read_markdown(path)
+    assert content.count("## Context") == 1
+    assert "earlier" in content
+    assert "mention" in content
+    context_section = content.split("## Context", 1)[1]
+    assert context_section.count("- user @") == 2
 
 
 def test_save_message_context_skips_self(tmp_path: Path) -> None:
@@ -127,6 +156,24 @@ def test_save_message_env_expands_user(tmp_path: Path, monkeypatch) -> None:
     path = db.save_message(msg)
     assert path == tmp_path / "discord" / "general" / "4.md"
     assert "home" in read_markdown(path)
+
+
+def test_save_message_encrypts_when_key_set(tmp_path: Path, monkeypatch) -> None:
+    """When an encryption key is configured the saved file is encrypted."""
+
+    key = Fernet.generate_key()
+    db.SAVE_DIR = Path("local/discord")
+    monkeypatch.setenv("AXEL_DISCORD_DIR", str(tmp_path))
+    monkeypatch.setenv("AXEL_DISCORD_ENCRYPTION_KEY", key.decode())
+    msg = DummyMessage("secret payload", mid=99, channel=DummyChannel("general"))
+
+    path = db.save_message(msg)
+
+    assert path == tmp_path / "general" / "99.md"
+    raw = path.read_bytes()
+    assert b"secret payload" not in raw
+    decrypted = Fernet(key).decrypt(raw).decode()
+    assert "secret payload" in decrypted
 
 
 def test_save_message_records_thread_metadata(tmp_path: Path) -> None:

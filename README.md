@@ -38,7 +38,7 @@ This launches the token.place server, relay and a mock LLM using one command.
 - [x] add `THREAT_MODEL.md` with cross-repo considerations (see `docs/THREAT_MODEL.md`)
 - [x] provide token rotation guidance in docs (see `docs/ROTATING_TOKENS.md`)
 - [x] adopt [`flywheel`](https://github.com/futuroptimist/flywheel) template for new repositories
-- [ ] encrypt notes saved under `local/discord/`
+- [x] encrypt notes saved under `local/discord/`
 - [x] review permissions for integrated tools (token.place, gabriel) (see docs/THREAT_MODEL.md)
 - [x] achieve 100% test coverage
 
@@ -81,13 +81,16 @@ pre-commit install
 11. Clear all tasks with `python -m axel.task_manager clear`.
 12. Pass `--path <file>` or set `AXEL_TASK_FILE` to use a custom task list.
 13. Empty, invalid, or non-list `tasks.json` files are treated as containing no tasks.
+14. Set `AXEL_DISCORD_ENCRYPTION_KEY` to a Fernet key to encrypt Discord captures on disk.
 
 ## local setup
 
 To keep personal notes and repo lists private, set `AXEL_REPO_FILE` to a path
 under `local/`, which is ignored by Git. The repo manager creates the directory
 automatically if it doesn't already exist. Paths beginning with `~` expand to
-the user's home directory.
+the user's home directory. Automated coverage for this behavior lives in
+`tests/test_repo_manager.py::test_add_repo_expands_user_home` and
+`tests/test_task_manager.py::test_add_task_expands_user_home`.
 
 Example:
 

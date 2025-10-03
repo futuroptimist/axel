@@ -75,6 +75,18 @@ def test_remove_task_missing_id(tmp_path: Path) -> None:
         remove_task(2, path=file)
 
 
+def test_add_task_expands_user_home(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    target = Path("~/tasks.json")
+    add_task("home scoped", path=target)
+    expected = tmp_path / "tasks.json"
+    assert expected.exists()
+    tasks = load_tasks(path=target)
+    assert tasks == [
+        {"id": 1, "description": "home scoped", "completed": False},
+    ]
+
+
 def test_cli_add(tmp_path: Path) -> None:
     file = tmp_path / "tasks.json"
     result = subprocess.run(

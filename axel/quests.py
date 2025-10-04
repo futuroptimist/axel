@@ -75,7 +75,8 @@ _KEYWORD_TEMPLATES: tuple[KeywordTemplate, ...] = (
 )
 
 _DEFAULT_DETAIL = (
-    "Plan a quest where {a} and {b} share context to unlock a cross-repo improvement."
+    "Plan a quest where {a} and {b} share context to unlock a cross-repo "
+    "improvement."
 )
 
 

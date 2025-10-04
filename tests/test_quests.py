@@ -87,6 +87,22 @@ def test_suggest_cross_repo_quests_handles_incomplete_urls() -> None:
     assert any("share context" in item["details"] for item in suggestions)
 
 
+def test_suggest_cross_repo_quests_formats_default_detail() -> None:
+    from axel.quests import suggest_cross_repo_quests
+
+    repos = [
+        "https://github.com/example/alpha",
+        "https://github.com/example/beta",
+    ]
+
+    suggestions = suggest_cross_repo_quests(repos, limit=1)
+
+    assert suggestions[0]["details"] == (
+        "Plan a quest where example/alpha and example/beta share context to "
+        "unlock a cross-repo improvement."
+    )
+
+
 def test_suggest_cross_repo_quests_respects_limit_zero() -> None:
     from axel.quests import suggest_cross_repo_quests
 

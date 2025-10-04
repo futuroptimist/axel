@@ -53,9 +53,10 @@ once decrypted.
    - author display name as the heading
    - bullet-point metadata for the channel, optional thread name, ISO 8601 timestamp,
      and original message link
-   - a `## Context` section (when available) listing up to five prior messages in
-     oldest-first order. Each entry records the author, timestamp, source link, and an
-     indented line with the original message text (or `(no content)` when empty).
+  - a `## Context` section (when available) listing up to five prior messages in
+    oldest-first order, even when Discord's API returns them newest-first. Each entry records
+    the author, timestamp, source link, and an indented line with the original message text
+    (or `(no content)` when empty).
    - the captured message content beneath the metadata and context
 4. If the channel name matches a repository listed in the project's repo list
    (`repos.txt` or a file pointed to by `AXEL_REPO_FILE`), treat the capture as
@@ -79,6 +80,7 @@ Automated coverage for the capture format lives in
 `tests/test_discord_bot.py::test_save_message_includes_metadata`,
 `tests/test_discord_bot.py::test_save_message_records_thread_metadata`,
 `tests/test_discord_bot.py::test_save_message_includes_context`,
+`tests/test_discord_bot.py::test_save_message_orders_context_oldest_first`,
 `tests/test_discord_bot.py::test_gather_context_reads_channel_history`,
 `tests/test_discord_bot.py::test_capture_message_downloads_attachments`, and
 `tests/test_discord_bot.py::test_save_message_encrypts_when_key_set`.

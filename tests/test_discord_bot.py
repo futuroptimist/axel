@@ -117,6 +117,29 @@ def test_save_message_context_skips_self(tmp_path: Path) -> None:
     assert "final" in content
 
 
+def test_save_message_orders_context_oldest_first(tmp_path: Path) -> None:
+    """Context entries render in chronological order even when unsorted."""
+
+    db.SAVE_DIR = tmp_path
+    earlier = DummyMessage(
+        "earlier",
+        mid=30,
+        created_at=datetime(2024, 1, 1, 0, 0, tzinfo=timezone.utc),
+    )
+    later = DummyMessage(
+        "later",
+        mid=31,
+        created_at=datetime(2024, 1, 1, 0, 5, tzinfo=timezone.utc),
+    )
+    msg = DummyMessage("final", mid=32, channel=DummyChannel("general"))
+
+    path = db.save_message(msg, context=[later, earlier])
+
+    content = read_markdown(path)
+    context_section = content.split("## Context", 1)[1]
+    assert context_section.index("earlier") < context_section.index("later")
+
+
 def test_save_message_includes_metadata(tmp_path: Path) -> None:
     db.SAVE_DIR = tmp_path
     msg = DummyMessage("hello", channel=DummyChannel("general"))

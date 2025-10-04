@@ -140,6 +140,28 @@ def test_save_message_orders_context_oldest_first(tmp_path: Path) -> None:
     assert context_section.index("earlier") < context_section.index("later")
 
 
+def test_save_message_ignores_context_sort_errors(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Failures while sorting context should not prevent rendering."""
+
+    db.SAVE_DIR = tmp_path
+    first = DummyMessage("first", mid=40)
+    second = DummyMessage("second", mid=41)
+    msg = DummyMessage("final", mid=42, channel=DummyChannel("general"))
+
+    def boom(_: object) -> datetime:
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(db, "_context_sort_key", boom)
+
+    path = db.save_message(msg, context=[first, second])
+
+    content = read_markdown(path)
+    context_section = content.split("## Context", 1)[1]
+    assert "first" in context_section and "second" in context_section
+
+
 def test_save_message_includes_metadata(tmp_path: Path) -> None:
     db.SAVE_DIR = tmp_path
     msg = DummyMessage("hello", channel=DummyChannel("general"))
@@ -687,6 +709,36 @@ def test_collect_context_ignores_sort_failures() -> None:
     context = asyncio.run(db._collect_context(target))
 
     assert [ctx.id for ctx in context] == [410]
+
+
+def test_collect_context_handles_sort_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Errors during context sorting should not break collection."""
+
+    class SortyChannel(DummyChannel):
+        def history(
+            self,
+            *,
+            limit: int | None = None,
+            before: DummyMessage | None = None,
+            **_: object,
+        ):
+            return [
+                DummyMessage("ctx-1", mid=420, channel=self),
+                DummyMessage("ctx-2", mid=421, channel=self),
+            ]
+
+    target = DummyMessage("latest", mid=422, channel=SortyChannel("general"))
+
+    def boom(_: object) -> datetime:
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(db, "_context_sort_key", boom)
+
+    context = asyncio.run(db._collect_context(target))
+
+    assert [ctx.id for ctx in context] == [420, 421]
 
 
 def test_run_missing_token(monkeypatch) -> None:

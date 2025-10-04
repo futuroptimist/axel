@@ -78,10 +78,28 @@ pre-commit install
    Listings show `[ ]` for pending tasks and `[x]` when completed.
 9. Remove a task with `python -m axel.task_manager remove 1`.
 10. Mark a task complete with `python -m axel.task_manager complete 1`.
+
+## quests
+
+Generate cross-repo quests with `python -m axel.quests --limit 3`. The helper reads
+`repos.txt` (or the path supplied via `--path`/`AXEL_REPO_FILE`) and emits deterministic
+pairings that highlight how multiple repositories can collaborate on a shared goal. This
+module powers the "suggest quests" promise described in the roadmap and is covered by
+`tests/test_quests.py::test_suggest_cross_repo_quests_links_repos` and
+`tests/test_quests.py::test_cli_prints_suggestions`.
 11. Clear all tasks with `python -m axel.task_manager clear`.
 12. Pass `--path <file>` or set `AXEL_TASK_FILE` to use a custom task list.
 13. Empty, invalid, or non-list `tasks.json` files are treated as containing no tasks.
 14. Set `AXEL_DISCORD_ENCRYPTION_KEY` to a Fernet key to encrypt Discord captures on disk.
+
+## quests
+
+Generate cross-repo quests with `python -m axel.quests --limit 3`. The helper reads
+`repos.txt` (or the path supplied via `--path`/`AXEL_REPO_FILE`) and emits deterministic
+pairings that highlight how multiple repositories can collaborate on a shared goal. This
+module powers the "suggest quests" promise described in the roadmap and is covered by
+`tests/test_quests.py::test_suggest_cross_repo_quests_links_repos` and
+`tests/test_quests.py::test_cli_prints_suggestions`.
 
 ## local setup
 

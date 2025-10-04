@@ -24,6 +24,7 @@ def _get_save_dir() -> Path:
 
 
 _SAFE_COMPONENT = re.compile(r"[^A-Za-z0-9._-]+")
+_NORMALIZE_REPO_NAME = re.compile(r"[^a-z0-9]+")
 
 
 def _sanitize_component(name: str | None) -> str:
@@ -32,6 +33,35 @@ def _sanitize_component(name: str | None) -> str:
     cleaned = (name or "unknown").strip()
     sanitized = _SAFE_COMPONENT.sub("_", cleaned)
     return sanitized or "unknown"
+
+
+def _normalize_repo_key(value: str | None) -> str:
+    """Return a normalized key for repository or channel comparisons."""
+
+    if not value:
+        return ""
+    return _NORMALIZE_REPO_NAME.sub("", value.lower())
+
+
+def _matching_repo_urls(channel_name: str | None) -> list[str]:
+    """Return repo URLs whose slug matches ``channel_name`` ignoring punctuation."""
+
+    key = _normalize_repo_key(channel_name)
+    if not key:
+        return []
+
+    from .repo_manager import load_repos
+
+    matches: list[str] = []
+    seen: set[str] = set()
+    for repo in load_repos():
+        slug = repo.rstrip("/").rsplit("/", 1)[-1]
+        if not slug:
+            continue
+        if _normalize_repo_key(slug) == key and repo not in seen:
+            matches.append(repo)
+            seen.add(repo)
+    return matches
 
 
 def _get_encrypter() -> Fernet | None:
@@ -100,6 +130,8 @@ def save_message(
     lines.append(f"- Channel: {channel_name or 'unknown'}")
     if thread_name:
         lines.append(f"- Thread: {thread_name}")
+    for repo_url in _matching_repo_urls(channel_name):
+        lines.append(f"- Repository: {repo_url}")
     lines.append(f"- Timestamp: {timestamp}")
     if jump_url:
         lines.append(f"- Link: {jump_url}")

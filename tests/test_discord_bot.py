@@ -131,6 +131,71 @@ def test_save_message_includes_metadata(tmp_path: Path) -> None:
     )
 
 
+def test_save_message_includes_repository_metadata(tmp_path: Path, monkeypatch) -> None:
+    """Channel names map captures to repos listed in ``AXEL_REPO_FILE``."""
+
+    repo_file = tmp_path / "repos.txt"
+    repo_file.write_text(
+        "https://github.com/example/project.one\n" "https://github.com/example/other\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("AXEL_REPO_FILE", str(repo_file))
+
+    db.SAVE_DIR = tmp_path
+    msg = DummyMessage("repo insight", channel=DummyChannel("project-one"))
+
+    path = db.save_message(msg)
+
+    assert path == tmp_path / "project-one" / "1.md"
+    content = read_markdown(path)
+    assert "- Channel: project-one" in content
+    assert "- Repository: https://github.com/example/project.one" in content
+
+
+def test_save_message_with_blank_channel_skips_repository_lookup(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Empty channel names do not attempt repository matching."""
+
+    repo_file = tmp_path / "repos.txt"
+    repo_file.write_text("https://github.com/example/project\n", encoding="utf-8")
+    monkeypatch.setenv("AXEL_REPO_FILE", str(repo_file))
+
+    db.SAVE_DIR = tmp_path
+
+    class BlankChannel(DummyChannel):
+        def __init__(self) -> None:
+            super().__init__("")
+
+    msg = DummyMessage("blank", channel=BlankChannel())
+
+    path = db.save_message(msg)
+
+    content = read_markdown(path)
+    assert "- Channel: unknown" in content
+    assert "Repository:" not in content
+
+
+def test_save_message_skips_empty_repo_entries(tmp_path: Path, monkeypatch) -> None:
+    """Repository matching ignores empty entries from ``load_repos``."""
+
+    import axel.repo_manager as repo_manager
+
+    monkeypatch.setattr(
+        repo_manager,
+        "load_repos",
+        lambda path=None: ["", "https://github.com/example/project"],
+    )
+
+    db.SAVE_DIR = tmp_path
+    msg = DummyMessage("note", channel=DummyChannel("project"))
+
+    path = db.save_message(msg)
+
+    content = read_markdown(path)
+    assert "- Repository: https://github.com/example/project" in content
+
+
 def test_save_message_creates_channel_dir(tmp_path: Path) -> None:
     missing = tmp_path / "discord"
     db.SAVE_DIR = missing

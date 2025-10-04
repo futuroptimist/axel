@@ -14,6 +14,21 @@ from cryptography.fernet import Fernet
 
 SAVE_DIR = Path("local/discord")
 CONTEXT_LIMIT = 5
+_MIN_CONTEXT_TIMESTAMP = datetime.min.replace(tzinfo=timezone.utc)
+
+
+def _context_sort_key(message: discord.Message) -> datetime:
+    """Return a datetime sort key for ``message`` timestamps."""
+
+    try:
+        timestamp = getattr(message, "created_at", None)
+    except Exception:
+        return _MIN_CONTEXT_TIMESTAMP
+    if isinstance(timestamp, datetime):
+        if timestamp.tzinfo is None:
+            return timestamp.replace(tzinfo=timezone.utc)
+        return timestamp
+    return _MIN_CONTEXT_TIMESTAMP
 
 
 def _get_save_dir() -> Path:
@@ -139,9 +154,16 @@ def save_message(
 
     context_lines: list[str] = []
     if context:
-        for ctx in context:
-            if getattr(ctx, "id", None) == message.id:
-                continue
+        entries = [
+            ctx
+            for ctx in list(context)
+            if getattr(ctx, "id", None) != getattr(message, "id", None)
+        ]
+        try:
+            entries.sort(key=_context_sort_key)
+        except Exception:
+            pass
+        for ctx in entries:
             author = _display_name(getattr(ctx, "author", None))
             timestamp = getattr(ctx, "created_at", None)
             ts = timestamp.isoformat() if isinstance(timestamp, datetime) else ""
@@ -245,9 +267,6 @@ async def _gather_context(
     return messages
 
 
-_MIN_CONTEXT_TIMESTAMP = datetime.min.replace(tzinfo=timezone.utc)
-
-
 async def _collect_context(
     trigger_message: discord.Message, *, limit: int = CONTEXT_LIMIT
 ) -> list[discord.Message]:
@@ -319,16 +338,8 @@ async def _collect_context(
     if not collected:
         return []
 
-    def _sort_key(message: discord.Message) -> datetime:
-        timestamp = getattr(message, "created_at", None)
-        if isinstance(timestamp, datetime):
-            if timestamp.tzinfo is None:
-                return timestamp.replace(tzinfo=timezone.utc)
-            return timestamp
-        return _MIN_CONTEXT_TIMESTAMP
-
     try:
-        collected.sort(key=_sort_key)
+        collected.sort(key=_context_sort_key)
     except Exception:
         pass
 

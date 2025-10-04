@@ -1,5 +1,6 @@
 """axel package."""
 
+from .quests import suggest_cross_repo_quests
 from .repo_manager import add_repo, get_repo_file, list_repos, load_repos, remove_repo
 from .task_manager import (
     add_task,
@@ -29,6 +30,7 @@ __all__ = [
     "remove_repo",
     "run_discord_bot",
     "strip_ansi",
+    "suggest_cross_repo_quests",
     "add_task",
     "complete_task",
     "get_task_file",

@@ -87,6 +87,9 @@ pairings that highlight how multiple repositories can collaborate on a shared go
 module powers the "suggest quests" promise described in the roadmap and is covered by
 `tests/test_quests.py::test_suggest_cross_repo_quests_links_repos` and
 `tests/test_quests.py::test_cli_prints_suggestions`.
+Quests that involve token.place automatically reference `gabriel` to reinforce the
+security layer described in `issues/0003-gabriel-security-layer.md`; see
+`tests/test_quests.py::test_suggest_cross_repo_quests_mentions_gabriel_for_sensitive_pairs`.
 11. Clear all tasks with `python -m axel.task_manager clear`.
 12. Pass `--path <file>` or set `AXEL_TASK_FILE` to use a custom task list.
 13. Empty, invalid, or non-list `tasks.json` files are treated as containing no tasks.
@@ -100,6 +103,9 @@ pairings that highlight how multiple repositories can collaborate on a shared go
 module powers the "suggest quests" promise described in the roadmap and is covered by
 `tests/test_quests.py::test_suggest_cross_repo_quests_links_repos` and
 `tests/test_quests.py::test_cli_prints_suggestions`.
+Quests that involve token.place automatically reference `gabriel` to reinforce the
+security layer described in `issues/0003-gabriel-security-layer.md`; see
+`tests/test_quests.py::test_suggest_cross_repo_quests_mentions_gabriel_for_sensitive_pairs`.
 
 ## local setup
 

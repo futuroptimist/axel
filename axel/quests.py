@@ -47,8 +47,8 @@ _KEYWORD_TEMPLATES: tuple[KeywordTemplate, ...] = (
     (
         "token",
         (
-            "{primary} can broker token.place authentication to streamline onboarding "
-            "for {secondary}."
+            "{primary} can broker token.place auth while gabriel audits secrets "
+            "so {secondary} ships safely."
         ),
     ),
     (

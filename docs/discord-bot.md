@@ -71,6 +71,15 @@ once decrypted.
 - **Attachments** – saved to `local/discord/<channel>/<message_id>/` with references inside the
   markdown (see `tests/test_discord_bot.py::test_capture_message_downloads_attachments`).
 
+## Slash Commands
+
+The bot registers a `/axel search` slash command that scans saved markdown captures for the
+provided keyword and returns up to ten matching files with helpful excerpts. Searches are
+case-insensitive, respect the `AXEL_DISCORD_DIR` override, and automatically decrypt captures
+when `AXEL_DISCORD_ENCRYPTION_KEY` is configured. Automated coverage lives in
+`tests/test_discord_bot.py::test_search_saved_messages_returns_matches` and
+`tests/test_discord_bot.py::test_search_saved_messages_decrypts_results`.
+
 ## Analyzing Captured Messages
 
 Saved files can be processed with local LLMs such as
@@ -92,8 +101,8 @@ Automated coverage for the capture format lives in
 
 Future improvements will expand the bot's capabilities:
 
-- **Command interface** – provide slash commands such as `/axel summarize`
-  or `/axel search` that run the local LLM on stored messages.
+- **Summaries** – provide slash commands such as `/axel summarize`
+  that run the local LLM on stored messages.
 
 Contributions and ideas are welcome. Keep all bot logic local and respect user privacy.
 Automated coverage lives in `tests/test_discord_bot.py` (see the tests referenced above).

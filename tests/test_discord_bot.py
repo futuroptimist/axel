@@ -47,6 +47,44 @@ def read_markdown(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def test_search_saved_messages_returns_matches(tmp_path: Path) -> None:
+    """Search helper locates captures that include the query string."""
+
+    db.SAVE_DIR = tmp_path
+    channel_dir = tmp_path / "general"
+    channel_dir.mkdir()
+    match = channel_dir / "1.md"
+    match.write_text("intro\nQuest sync tomorrow\n", encoding="utf-8")
+    (channel_dir / "2.md").write_text("nothing to see\n", encoding="utf-8")
+
+    results = db.search_saved_messages("quest")
+
+    assert len(results) == 1
+    assert results[0].path == match
+    assert "Quest sync tomorrow" in results[0].excerpt
+
+
+def test_search_saved_messages_decrypts_results(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Encrypted captures are decrypted when the Fernet key is set."""
+
+    save_dir = tmp_path / "discord"
+    monkeypatch.setenv("AXEL_DISCORD_DIR", str(save_dir))
+    key = Fernet.generate_key().decode()
+    monkeypatch.setenv("AXEL_DISCORD_ENCRYPTION_KEY", key)
+
+    channel = DummyChannel("ops")
+    message = DummyMessage("Encrypted quest agenda", channel=channel, mid=99)
+
+    db.save_message(message)
+
+    results = db.search_saved_messages("agenda")
+
+    assert [result.path.name for result in results] == ["99.md"]
+    assert "Encrypted quest agenda" in results[0].excerpt
+
+
 def test_save_message_includes_context(tmp_path: Path) -> None:
     """Thread or reply context is recorded alongside the saved message."""
 

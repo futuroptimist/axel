@@ -5,16 +5,26 @@ from __future__ import annotations
 import inspect
 import os
 import re
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Sequence
 
 import discord
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
+from discord import app_commands
 
 SAVE_DIR = Path("local/discord")
 CONTEXT_LIMIT = 5
 _MIN_CONTEXT_TIMESTAMP = datetime.min.replace(tzinfo=timezone.utc)
+
+
+@dataclass(frozen=True)
+class SearchResult:
+    """Result for a saved-message search."""
+
+    path: Path
+    excerpt: str
 
 
 def _context_sort_key(message: discord.Message) -> datetime:
@@ -77,6 +87,85 @@ def _matching_repo_urls(channel_name: str | None) -> list[str]:
             matches.append(repo)
             seen.add(repo)
     return matches
+
+
+def _read_capture(path: Path, encrypter: Fernet | None) -> str:
+    """Return plaintext contents for the saved capture at ``path``."""
+
+    data = path.read_bytes()
+    if not data:
+        return ""
+    if encrypter is not None:
+        try:
+            decrypted = encrypter.decrypt(data)
+        except InvalidToken:
+            pass
+        else:
+            return decrypted.decode("utf-8", "ignore")
+    return data.decode("utf-8", "ignore")
+
+
+def _truncate_excerpt(text: str, *, limit: int = 140) -> str:
+    """Return ``text`` limited to ``limit`` characters with ellipsis."""
+
+    text = text.strip()
+    if len(text) <= limit:
+        return text
+    return text[: limit - 1].rstrip() + "\u2026"
+
+
+def _build_excerpt(text: str, query: str) -> str:
+    """Return a representative excerpt that includes ``query`` when possible."""
+
+    lower_query = query.lower()
+    for line in text.splitlines():
+        cleaned = line.strip()
+        if cleaned and lower_query in cleaned.lower():
+            return _truncate_excerpt(cleaned)
+    for line in text.splitlines():
+        cleaned = line.strip()
+        if cleaned:
+            return _truncate_excerpt(cleaned)
+    return ""
+
+
+def search_saved_messages(
+    query: str, *, limit: int = 5, directory: Path | str | None = None
+) -> list[SearchResult]:
+    """Return saved Discord captures that match ``query``.
+
+    Searches are case-insensitive, traverse channel subdirectories recursively, and
+    respect the ``AXEL_DISCORD_DIR`` override unless ``directory`` is provided
+    explicitly. Encrypted captures are decrypted automatically when
+    ``AXEL_DISCORD_ENCRYPTION_KEY`` is configured with the correct Fernet key.
+    """
+
+    query = query.strip()
+    if not query or limit <= 0:
+        return []
+
+    if directory is None:
+        base_dir = _get_save_dir()
+    else:
+        base_dir = Path(directory).expanduser()
+    if not base_dir.exists():
+        return []
+
+    encrypter = _get_encrypter()
+    lower_query = query.lower()
+    results: list[SearchResult] = []
+    for path in sorted(base_dir.rglob("*.md"), key=lambda item: item.as_posix()):
+        if not path.is_file():
+            continue
+        text = _read_capture(path, encrypter)
+        if not text:
+            continue
+        if lower_query in text.lower():
+            excerpt = _build_excerpt(text, lower_query)
+            results.append(SearchResult(path=path, excerpt=excerpt))
+            if len(results) >= limit:
+                break
+    return results
 
 
 def _get_encrypter() -> Fernet | None:
@@ -348,7 +437,55 @@ async def _collect_context(
     return collected
 
 
+def _register_commands(tree: app_commands.CommandTree) -> None:
+    """Register slash commands on ``tree``."""
+
+    @tree.command(name="search", description="Search saved Discord captures")
+    @app_commands.describe(
+        query="Text to search for within saved captures",
+        limit="Maximum number of results to return (default 5)",
+    )
+    async def search(
+        interaction: discord.Interaction,
+        query: str,
+        limit: app_commands.Range[int, 1, 10] = 5,
+    ) -> None:
+        try:
+            results = search_saved_messages(query, limit=int(limit))
+        except RuntimeError as exc:
+            await interaction.response.send_message(
+                f"Search failed: {exc}", ephemeral=True
+            )
+            return
+
+        base_dir = _get_save_dir()
+        if not results:
+            await interaction.response.send_message(
+                f"No captures found for '{query}'.", ephemeral=True
+            )
+            return
+
+        lines = [f"Matches for '{query}':"]
+        for result in results:
+            try:
+                relative = result.path.relative_to(base_dir)
+                display = relative.as_posix()
+            except ValueError:
+                display = result.path.as_posix()
+            lines.append(f"- {display}: {result.excerpt}")
+        message = "\n".join(lines)
+        await interaction.response.send_message(message, ephemeral=True)
+
+
 class AxelClient(discord.Client):
+    def __init__(self, *, intents: discord.Intents) -> None:
+        super().__init__(intents=intents)
+        self.tree: app_commands.CommandTree = app_commands.CommandTree(self)
+        _register_commands(self.tree)
+
+    async def setup_hook(self) -> None:  # pragma: no cover - network call
+        await self.tree.sync()
+
     async def on_ready(self) -> None:  # pragma: no cover - network call
         print(f"Logged in as {self.user}")
 

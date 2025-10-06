@@ -56,6 +56,102 @@ def test_main_add_accepts_path_after_subcommand(
     assert "https://example.com/repo" in capsys.readouterr().out
 
 
+def test_main_add_uses_default_repo_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from axel import repo_manager
+
+    default_file = tmp_path / "repos.txt"
+    monkeypatch.setattr(repo_manager, "get_repo_file", lambda: default_file)
+
+    repo_manager.main(["add", "https://example.com/repo"])
+
+    assert load_repos(path=default_file) == ["https://example.com/repo"]
+
+
+def test_main_add_supports_path_equals_form(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from axel import repo_manager
+
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+
+    target = Path("~") / "nested" / "repos.txt"
+
+    repo_manager.main(
+        [
+            "add",
+            "https://example.com/repo",
+            f"--path={target}",
+        ]
+    )
+
+    expected_file = home / "nested" / "repos.txt"
+    assert load_repos(path=expected_file) == ["https://example.com/repo"]
+
+
+def test_main_add_accepts_path_before_subcommand(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from axel import repo_manager
+
+    class SneakyStr(str):
+        def __eq__(self, other: object) -> bool:
+            return False
+
+        __hash__ = str.__hash__
+
+    file = tmp_path / "repos.txt"
+    argv = [
+        SneakyStr("--path"),
+        str(file),
+        "add",
+        "https://example.com/repo",
+    ]
+
+    repo_manager.main(argv)
+
+    assert load_repos(path=file) == ["https://example.com/repo"]
+
+
+def test_main_uses_sys_argv_when_none(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from axel import repo_manager
+    import types
+
+    file = tmp_path / "repos.txt"
+
+    monkeypatch.setattr(
+        repo_manager,
+        "sys",
+        types.SimpleNamespace(
+            argv=[
+                "prog",
+                "add",
+                "https://example.com/repo",
+                "--path",
+                str(file),
+            ]
+        ),
+    )
+
+    repo_manager.main(None)
+
+    assert load_repos(path=file) == ["https://example.com/repo"]
+
+
+def test_main_rejects_path_without_value() -> None:
+    from axel.repo_manager import main
+
+    with pytest.raises(SystemExit) as excinfo:
+        main(["add", "https://example.com/repo", "--path"])
+
+    assert excinfo.value.code != 0
+
+
 def test_cli_remove(tmp_path: Path):
     file = tmp_path / "repos.txt"
     add_repo("https://example.com/repo", path=file)

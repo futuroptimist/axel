@@ -112,6 +112,28 @@ def test_cli_add(tmp_path: Path) -> None:
     assert "1 [ ] write code" in result.stdout
 
 
+def test_main_add_accepts_path_after_subcommand(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from axel.task_manager import main
+
+    file = tmp_path / "tasks.json"
+
+    main(
+        [
+            "add",
+            "write docs",
+            "--path",
+            str(file),
+        ]
+    )
+
+    assert load_tasks(path=file) == [
+        {"id": 1, "description": "write docs", "completed": False},
+    ]
+    assert "1 [ ] write docs" in capsys.readouterr().out
+
+
 def test_cli_complete(tmp_path: Path) -> None:
     file = tmp_path / "tasks.json"
     add_task("write docs", path=file)

@@ -36,6 +36,26 @@ def test_cli_list_with_path(tmp_path: Path):
     assert "https://example.com/repo" in result.stdout
 
 
+def test_main_add_accepts_path_after_subcommand(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from axel.repo_manager import main
+
+    file = tmp_path / "repos.txt"
+
+    main(
+        [
+            "add",
+            "https://example.com/repo",
+            "--path",
+            str(file),
+        ]
+    )
+
+    assert load_repos(path=file) == ["https://example.com/repo"]
+    assert "https://example.com/repo" in capsys.readouterr().out
+
+
 def test_cli_remove(tmp_path: Path):
     file = tmp_path / "repos.txt"
     add_repo("https://example.com/repo", path=file)

@@ -55,7 +55,8 @@ once decrypted.
      URLs when the channel corresponds to an entry in the repo list, ISO 8601 timestamp,
      and original message link
   - a `## Context` section (when available) listing up to five prior messages in
-    oldest-first order, even when Discord's API returns them newest-first. Each entry records
+    oldest-first order, even when Discord's API returns them newest-first. The
+    triggering mention is excluded so only earlier context appears. Each entry records
     the author, timestamp, source link, and an indented line with the original message text
     (or `(no content)` when empty).
    - the captured message content beneath the metadata and context
@@ -87,7 +88,8 @@ Automated coverage for the capture format lives in
 `tests/test_discord_bot.py::test_save_message_limits_context_entries`,
 `tests/test_discord_bot.py::test_gather_context_reads_channel_history`,
 `tests/test_discord_bot.py::test_capture_message_downloads_attachments`, and
-`tests/test_discord_bot.py::test_save_message_encrypts_when_key_set`.
+`tests/test_discord_bot.py::test_save_message_encrypts_when_key_set`,
+`tests/test_discord_bot.py::test_axel_client_excludes_trigger_from_context`.
 
 ## Roadmap
 

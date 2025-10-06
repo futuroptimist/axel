@@ -140,6 +140,29 @@ def test_save_message_orders_context_oldest_first(tmp_path: Path) -> None:
     assert context_section.index("earlier") < context_section.index("later")
 
 
+def test_save_message_limits_context_entries(tmp_path: Path) -> None:
+    """No more than ``CONTEXT_LIMIT`` prior messages are recorded."""
+
+    db.SAVE_DIR = tmp_path
+    context = [
+        DummyMessage(
+            f"context-{index}",
+            mid=100 + index,
+            created_at=datetime(2024, 1, 1, 0, index, tzinfo=timezone.utc),
+        )
+        for index in range(db.CONTEXT_LIMIT + 3)
+    ]
+    msg = DummyMessage("final", mid=200, channel=DummyChannel("general"))
+
+    path = db.save_message(msg, context=context)
+
+    content = read_markdown(path)
+    # Only the most recent ``CONTEXT_LIMIT`` entries appear, still oldest-first.
+    assert content.count("- user @") == db.CONTEXT_LIMIT
+    assert "context-0" not in content
+    assert f"context-{db.CONTEXT_LIMIT}" in content
+
+
 def test_save_message_ignores_context_sort_errors(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -84,6 +84,7 @@ Automated coverage for the capture format lives in
 `tests/test_discord_bot.py::test_save_message_records_thread_metadata`,
 `tests/test_discord_bot.py::test_save_message_includes_context`,
 `tests/test_discord_bot.py::test_save_message_orders_context_oldest_first`,
+`tests/test_discord_bot.py::test_save_message_limits_context_entries`,
 `tests/test_discord_bot.py::test_gather_context_reads_channel_history`,
 `tests/test_discord_bot.py::test_capture_message_downloads_attachments`, and
 `tests/test_discord_bot.py::test_save_message_encrypts_when_key_set`.

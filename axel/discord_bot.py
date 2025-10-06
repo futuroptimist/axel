@@ -163,6 +163,8 @@ def save_message(
             entries.sort(key=_context_sort_key)
         except Exception:
             pass
+        if CONTEXT_LIMIT is not None and len(entries) > CONTEXT_LIMIT:
+            entries = entries[-CONTEXT_LIMIT:]
         for ctx in entries:
             author = _display_name(getattr(ctx, "author", None))
             timestamp = getattr(ctx, "created_at", None)

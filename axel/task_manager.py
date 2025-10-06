@@ -1,8 +1,9 @@
 import argparse
 import json
 import os
+import sys
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Sequence
 
 DEFAULT_TASK_FILE = Path(__file__).resolve().parent.parent / "tasks.json"
 
@@ -102,14 +103,40 @@ def clear_tasks(path: Path | None = None) -> List[Dict]:
     return []
 
 
-def main(argv: List[str] | None = None) -> None:
+def main(argv: Sequence[str] | None = None) -> None:
     """Simple command-line interface for managing tasks."""
+    if argv is None:
+        argv = sys.argv[1:]
+    else:
+        argv = list(argv)
+
+    args_list: list[str] = list(argv)
+    path_override: str | None = None
+    cleaned: list[str] = []
+    i = 0
+    while i < len(args_list):
+        arg = args_list[i]
+        if arg == "--path":
+            if i + 1 >= len(args_list):
+                cleaned.append(arg)
+                i += 1
+                continue
+            path_override = args_list[i + 1]
+            i += 2
+            continue
+        if arg.startswith("--path="):
+            path_override = arg.split("=", 1)[1]
+            i += 1
+            continue
+        cleaned.append(arg)
+        i += 1
+
     parser = argparse.ArgumentParser(description="Manage task list")
     parser.add_argument(
         "--path",
         type=Path,
-        default=get_task_file(),
-        help="Path to task database",
+        default=None,
+        help="Path to task database (defaults to AXEL_TASK_FILE or tasks.json)",
     )
     sub = parser.add_subparsers(dest="cmd")
 
@@ -126,7 +153,15 @@ def main(argv: List[str] | None = None) -> None:
 
     sub.add_parser("clear", help="Remove all tasks")
 
-    args = parser.parse_args(argv)
+    args = parser.parse_args(cleaned)
+
+    if path_override is not None:
+        path = Path(path_override).expanduser()
+    elif args.path is not None:
+        path = Path(args.path).expanduser()
+    else:
+        path = get_task_file()
+    args.path = path
 
     if args.cmd == "add":
         tasks = add_task(args.description, path=args.path)

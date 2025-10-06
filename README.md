@@ -69,7 +69,9 @@ pre-commit install
    ``GITHUB_TOKEN``. Use `--visibility public|private|all` to filter the
    repositories returned by the GitHub API.
 5. Run `pre-commit run --all-files` before committing to check formatting and tests.
-6. Pass `--path <file>` or set `AXEL_REPO_FILE` to use a custom repo list.
+6. Pass `--path <file>` or set `AXEL_REPO_FILE` to use a custom repo list. The CLI accepts
+   `--path` before or after the subcommand (see
+   `tests/test_repo_manager.py::test_main_add_accepts_path_after_subcommand`).
 7. Coverage reports are uploaded to [Codecov](https://codecov.io/gh/futuroptimist/axel) via CI.
 8. Add a task with `python -m axel.task_manager add "write docs"`. Tasks are
    saved in `tasks.json` and listed with `python -m axel.task_manager list`.
@@ -91,7 +93,9 @@ Quests that involve token.place automatically reference `gabriel` to reinforce t
 security layer described in `issues/0003-gabriel-security-layer.md`; see
 `tests/test_quests.py::test_suggest_cross_repo_quests_mentions_gabriel_for_sensitive_pairs`.
 11. Clear all tasks with `python -m axel.task_manager clear`.
-12. Pass `--path <file>` or set `AXEL_TASK_FILE` to use a custom task list.
+12. Pass `--path <file>` or set `AXEL_TASK_FILE` to use a custom task list. The task CLI also
+    accepts `--path` before or after the subcommand (see
+    `tests/test_task_manager.py::test_main_add_accepts_path_after_subcommand`).
 13. Empty, invalid, or non-list `tasks.json` files are treated as containing no tasks.
 14. Set `AXEL_DISCORD_ENCRYPTION_KEY` to a Fernet key to encrypt Discord captures on disk.
 

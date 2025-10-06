@@ -112,6 +112,133 @@ def test_cli_add(tmp_path: Path) -> None:
     assert "1 [ ] write code" in result.stdout
 
 
+def test_main_add_accepts_path_after_subcommand(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from axel.task_manager import main
+
+    file = tmp_path / "tasks.json"
+
+    main(
+        [
+            "add",
+            "write docs",
+            "--path",
+            str(file),
+        ]
+    )
+
+    assert load_tasks(path=file) == [
+        {"id": 1, "description": "write docs", "completed": False},
+    ]
+    assert "1 [ ] write docs" in capsys.readouterr().out
+
+
+def test_main_add_uses_default_task_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from axel import task_manager
+
+    default_file = tmp_path / "tasks.json"
+    monkeypatch.setattr(task_manager, "get_task_file", lambda: default_file)
+
+    task_manager.main(["add", "write docs"])
+
+    assert load_tasks(path=default_file) == [
+        {"id": 1, "description": "write docs", "completed": False},
+    ]
+
+
+def test_main_add_supports_path_equals_form(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from axel import task_manager
+
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+
+    target = Path("~") / "nested" / "tasks.json"
+
+    task_manager.main(
+        [
+            "add",
+            "write docs",
+            f"--path={target}",
+        ]
+    )
+
+    expected_file = home / "nested" / "tasks.json"
+    assert load_tasks(path=expected_file) == [
+        {"id": 1, "description": "write docs", "completed": False},
+    ]
+
+
+def test_main_add_accepts_path_before_subcommand(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from axel import task_manager
+
+    class SneakyStr(str):
+        def __eq__(self, other: object) -> bool:
+            return False
+
+        __hash__ = str.__hash__
+
+    file = tmp_path / "tasks.json"
+    argv = [
+        SneakyStr("--path"),
+        str(file),
+        "add",
+        "write docs",
+    ]
+
+    task_manager.main(argv)
+
+    assert load_tasks(path=file) == [
+        {"id": 1, "description": "write docs", "completed": False},
+    ]
+
+
+def test_main_uses_sys_argv_when_none(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import types
+
+    from axel import task_manager
+
+    file = tmp_path / "tasks.json"
+
+    monkeypatch.setattr(
+        task_manager,
+        "sys",
+        types.SimpleNamespace(
+            argv=[
+                "prog",
+                "add",
+                "write docs",
+                "--path",
+                str(file),
+            ]
+        ),
+    )
+
+    task_manager.main(None)
+
+    assert load_tasks(path=file) == [
+        {"id": 1, "description": "write docs", "completed": False},
+    ]
+
+
+def test_main_rejects_path_without_value() -> None:
+    from axel.task_manager import main
+
+    with pytest.raises(SystemExit) as excinfo:
+        main(["add", "write docs", "--path"])
+
+    assert excinfo.value.code != 0
+
+
 def test_cli_complete(tmp_path: Path) -> None:
     file = tmp_path / "tasks.json"
     add_task("write docs", path=file)

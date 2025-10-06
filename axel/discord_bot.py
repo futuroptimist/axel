@@ -373,10 +373,12 @@ class AxelClient(discord.Client):
         if original is None:
             original = message
 
+        original_id = getattr(original, "id", None)
+        trigger_id = getattr(message, "id", None)
         filtered_context = [
             ctx
             for ctx in context
-            if getattr(ctx, "id", None) != getattr(original, "id", None)
+            if getattr(ctx, "id", None) not in {original_id, trigger_id}
         ]
         path = await capture_message(original, context=filtered_context)
         await message.channel.send(f"Saved to {path}")

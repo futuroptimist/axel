@@ -2,6 +2,7 @@ import asyncio
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from cryptography.fernet import Fernet
@@ -559,6 +560,63 @@ def test_axel_client_captures_thread_mentions(monkeypatch, tmp_path: Path) -> No
     assert captured["message"] is message
     assert captured["context"] and captured["context"][0].content == "history"
     assert captured["reply"] == f"Saved to {tmp_path / 'general' / '1.md'}"
+
+
+def test_axel_client_excludes_trigger_from_context(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Context passed to ``capture_message`` omits the trigger mention itself."""
+
+    captured: dict[str, object] = {}
+
+    parent = DummyMessage("parent message", mid=5)
+    channel = DummyChannel("general")
+    message = DummyMessage("bot please log", mid=6, channel=channel)
+    message.reference = SimpleNamespace(  # type: ignore[attr-defined]
+        message_id=parent.id,
+    )
+
+    async def fake_capture(original, *, context=None):
+        captured["original"] = original
+        captured["context"] = list(context or [])
+        return tmp_path / "general" / "5.md"
+
+    async def fake_gather(trigger):
+        captured["trigger"] = trigger
+        return [
+            parent,
+            trigger,
+            DummyMessage("earlier note", mid=7),
+        ]
+
+    async def fake_fetch_message(message_id: int):
+        captured["fetched"] = message_id
+        return parent
+
+    async def fake_send(content: str) -> None:
+        captured["reply"] = content
+
+    channel.fetch_message = fake_fetch_message  # type: ignore[attr-defined]
+    channel.send = fake_send  # type: ignore[attr-defined]
+
+    monkeypatch.setattr(db, "capture_message", fake_capture)
+    monkeypatch.setattr(db, "_gather_context", fake_gather)
+
+    intents = discord.Intents.none()
+    client = db.AxelClient(intents=intents)
+
+    class DummyUser:
+        def mentioned_in(self, _: object) -> bool:
+            return True
+
+    client._connection.user = DummyUser()  # type: ignore[attr-defined]
+
+    asyncio.run(client.on_message(message))
+
+    assert captured["original"] is parent
+    context_ids = [msg.id for msg in captured["context"]]
+    assert context_ids == [7]
+    assert captured["reply"] == f"Saved to {tmp_path / 'general' / '5.md'}"
 
 
 def test_collect_context_handles_history_type_error() -> None:

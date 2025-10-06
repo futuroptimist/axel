@@ -203,8 +203,9 @@ def test_main_add_accepts_path_before_subcommand(
 def test_main_uses_sys_argv_when_none(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from axel import task_manager
     import types
+
+    from axel import task_manager
 
     file = tmp_path / "tasks.json"
 

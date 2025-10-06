@@ -39,6 +39,21 @@ def test_suggest_cross_repo_quests_mentions_gabriel_for_sensitive_pairs() -> Non
     assert "gabriel" in suggestions[0]["details"].lower()
 
 
+def test_suggest_cross_repo_quests_prioritizes_token_template() -> None:
+    from axel.quests import suggest_cross_repo_quests
+
+    repos = [
+        "https://github.com/futuroptimist/token.place",
+        "https://github.com/futuroptimist/blog",
+    ]
+
+    suggestions = suggest_cross_repo_quests(repos, limit=1)
+    details = suggestions[0]["details"].lower()
+
+    assert "gabriel" in details
+    assert "token.place" in details
+
+
 @pytest.mark.parametrize(
     "repos",
     [

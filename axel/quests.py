@@ -47,8 +47,8 @@ _KEYWORD_TEMPLATES: tuple[KeywordTemplate, ...] = (
     (
         "token",
         (
-            "{primary} can broker token.place authentication to streamline onboarding "
-            "for {secondary}."
+            "{primary} can broker token.place auth while gabriel audits secrets "
+            "so {secondary} ships safely."
         ),
     ),
     (
@@ -74,6 +74,8 @@ _KEYWORD_TEMPLATES: tuple[KeywordTemplate, ...] = (
     ),
 )
 
+_KEYWORD_LOOKUP = {keyword: template for keyword, template in _KEYWORD_TEMPLATES}
+
 _DEFAULT_DETAIL = (
     "Plan a quest where {a} and {b} share context to unlock a cross-repo "
     "improvement."
@@ -94,9 +96,20 @@ def _build_suggestion(left: RepoInfo, right: RepoInfo) -> tuple[Suggestion, int]
 
 
 def _select_detail(primary: RepoInfo, secondary: RepoInfo) -> tuple[str, int]:
-    for repo, other in ((primary, secondary), (secondary, primary)):
+    ordered = ((primary, secondary), (secondary, primary))
+
+    # ``token`` quests must always reference gabriel even when the paired repo
+    # also matches a different keyword (e.g. ``blog`` or ``discord``).
+    for repo, other in ordered:
+        if "token" in repo.slug.lower():
+            template = _KEYWORD_LOOKUP["token"]
+            return template.format(primary=repo.slug, secondary=other.slug), 1
+
+    for repo, other in ordered:
         lower = repo.slug.lower()
         for keyword, template in _KEYWORD_TEMPLATES:
+            if keyword == "token":
+                continue
             if keyword in lower:
                 return template.format(primary=repo.slug, secondary=other.slug), 1
     return _DEFAULT_DETAIL.format(a=primary.slug, b=secondary.slug), 0

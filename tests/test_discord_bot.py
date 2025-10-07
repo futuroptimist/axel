@@ -93,6 +93,39 @@ def test_read_capture_decodes_with_ignore_when_utf8_invalid(tmp_path: Path) -> N
     assert db._read_capture(encrypted_path, DummyEncrypter()) == ""
 
 
+def test_summarize_capture_extracts_message_body(tmp_path: Path) -> None:
+    capture = tmp_path / "general" / "1.md"
+    capture.parent.mkdir(parents=True)
+    capture.write_text(
+        "\n".join(
+            [
+                "# user",
+                "",
+                "- Channel: general",
+                "- Timestamp: 2024-01-01T00:00:00+00:00",
+                "",
+                "## Context",
+                "- helper @ 2024-01-01T00:00:00+00:00",
+                "  helper message",
+                "",
+                "Key insight from the captured message.",
+                "Follow-up action items listed here.",
+                "",
+                "## Attachments",
+                "- [report.pdf](./1/report.pdf)",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    summary = db.summarize_capture(capture)
+
+    assert summary is not None
+    assert "Key insight" in summary
+    assert "helper" not in summary  # context lines are skipped
+    assert "Channel" not in summary  # metadata lines are skipped
+
+
 def test_save_message_includes_context(tmp_path: Path) -> None:
     """Thread or reply context is recorded alongside the saved message."""
 
@@ -880,6 +913,36 @@ def test_axel_search_command_replies_with_matches(
     assert interaction.response.ephemeral is True
     assert interaction.response.content is not None
     assert "updates/20.md" in interaction.response.content
+
+
+def test_axel_summarize_command_replies_with_summary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AXEL_DISCORD_DIR", str(tmp_path))
+    msg = DummyMessage(
+        "Summary focus with actionable outcomes.",
+        mid=21,
+        channel=DummyChannel("updates"),
+    )
+    db.save_message(msg)
+
+    intents = discord.Intents.none()
+    client = db.AxelClient(intents=intents)
+
+    axel_command = client.tree.get_command("axel")
+    assert axel_command is not None
+    summarize_command = next(
+        cmd for cmd in getattr(axel_command, "commands", []) if cmd.name == "summarize"
+    )
+
+    interaction = DummyInteraction()
+    asyncio.run(summarize_command.callback(interaction, query="summary"))
+
+    assert interaction.response.ephemeral is True
+    assert interaction.response.content is not None
+    assert "updates/21.md" in interaction.response.content
+    assert "Summary for 'summary'" in interaction.response.content
+    assert "actionable outcomes" in interaction.response.content
 
 
 def test_collect_context_handles_history_type_error() -> None:

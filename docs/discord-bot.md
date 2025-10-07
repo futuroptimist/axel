@@ -86,6 +86,13 @@ keyword. Results list relative file paths and the first matching line, returned 
 ephemeral response so only the requester sees the output. Coverage lives in
 `tests/test_discord_bot.py::test_axel_search_command_replies_with_matches`.
 
+Use `/axel summarize` to generate a quick synopsis of the first capture that matches the
+provided query. The helper prioritizes the saved message body, skipping metadata and
+thread context so the summary stays focused on the actionable text. Summaries surface the
+relative file path alongside the condensed content in an ephemeral response. Coverage
+spans `tests/test_discord_bot.py::test_summarize_capture_extracts_message_body` and
+`tests/test_discord_bot.py::test_axel_summarize_command_replies_with_summary`.
+
 ## Analyzing Captured Messages
 
 Saved files can be processed with local LLMs such as
@@ -109,9 +116,8 @@ Automated coverage for the capture format lives in
 
 Future improvements will expand the bot's capabilities:
 
-- **Command interface** – extend the existing `/axel search` command with
-  additional actions such as `/axel summarize` that run local LLM workflows on
-  stored messages.
+- **Command interface** – extend the existing `/axel search` and `/axel summarize`
+  commands with additional local LLM workflows that operate on stored messages.
 
 Contributions and ideas are welcome. Keep all bot logic local and respect user privacy.
 Automated coverage lives in `tests/test_discord_bot.py` (see the tests referenced above).

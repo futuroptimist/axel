@@ -17,6 +17,8 @@ from discord import app_commands
 SAVE_DIR = Path("local/discord")
 CONTEXT_LIMIT = 5
 _MIN_CONTEXT_TIMESTAMP = datetime.min.replace(tzinfo=timezone.utc)
+SUMMARY_LINE_LIMIT = 2
+SUMMARY_MAX_CHARS = 280
 
 
 @dataclass(frozen=True)
@@ -149,6 +151,50 @@ def search_captures(query: str, *, limit: int = 5) -> list[SearchResult]:
             break
 
     return matches
+
+
+def summarize_capture(
+    path: Path, *, line_limit: int = SUMMARY_LINE_LIMIT
+) -> str | None:
+    """Return a short summary for the capture stored at ``path``.
+
+    Summaries favor the message body over metadata and context. When the
+    capture cannot be read or lacks meaningful content, ``None`` is returned.
+    """
+
+    text = _read_capture(path, _get_encrypter())
+    if not text:
+        return None
+
+    summary_lines: list[str] = []
+    for raw_line in text.splitlines():
+        stripped = raw_line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("##"):
+            continue
+        if stripped.startswith("#"):
+            continue
+        if stripped.startswith("- "):
+            continue
+        if raw_line.startswith("  "):
+            continue
+        summary_lines.append(stripped)
+        if len(summary_lines) >= line_limit:
+            break
+
+    if summary_lines:
+        summary = " ".join(summary_lines)
+    else:
+        stripped_text = text.strip()
+        if not stripped_text:
+            return None
+        summary = stripped_text.splitlines()[0].strip()
+
+    summary = re.sub(r"\s+", " ", summary).strip()
+    if len(summary) > SUMMARY_MAX_CHARS:
+        summary = summary[: SUMMARY_MAX_CHARS - 3].rstrip() + "..."
+    return summary
 
 
 def _get_encrypter() -> Fernet | None:
@@ -463,6 +509,42 @@ class AxelClient(discord.Client):
                 "\n".join(lines),
                 ephemeral=True,
             )
+
+        @axel_group.command(
+            name="summarize",
+            description="Summarize the first capture that matches the query.",
+        )
+        @app_commands.describe(
+            query="Text to locate a capture before summarizing it.",
+        )
+        async def _summarize_command(
+            interaction: discord.Interaction, query: str
+        ) -> None:
+            results = search_captures(query, limit=1)
+            if not results:
+                await interaction.response.send_message(
+                    f"No captures found for '{query}'.",
+                    ephemeral=True,
+                )
+                return
+
+            result = results[0]
+            root = _get_save_dir()
+            try:
+                relative = result.path.relative_to(root)
+            except ValueError:
+                relative = result.path
+
+            summary = summarize_capture(result.path)
+            if not summary:
+                message = (
+                    "Capture "
+                    f"{relative.as_posix()} has no readable content to summarize."
+                )
+            else:
+                message = f"Summary for '{query}' ({relative.as_posix()}): {summary}"
+
+            await interaction.response.send_message(message, ephemeral=True)
 
         self.tree.add_command(axel_group)
 

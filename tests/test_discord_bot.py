@@ -126,6 +126,56 @@ def test_summarize_capture_extracts_message_body(tmp_path: Path) -> None:
     assert "Channel" not in summary  # metadata lines are skipped
 
 
+def test_summarize_capture_uses_first_line_when_body_missing(tmp_path: Path) -> None:
+    capture = tmp_path / "random" / "2.md"
+    capture.parent.mkdir(parents=True)
+    capture.write_text(
+        "\n".join(
+            [
+                "# user",  # stripped headline should be used in fallback path
+                "",  # blank line ignored
+                "- Channel: random",  # metadata filtered out
+                "- Timestamp: 2024-02-02T02:02:02+00:00",
+                "",  # still no message body content available
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    summary = db.summarize_capture(capture)
+
+    assert summary == "# user"
+
+
+def test_summarize_capture_truncates_long_summary(tmp_path: Path) -> None:
+    capture = tmp_path / "updates" / "3.md"
+    capture.parent.mkdir(parents=True)
+    capture.write_text(
+        "\n".join(
+            [
+                "# user",  # ignored header
+                "",  # blank separator
+                "Long form insight " + "very " * 100,  # exceeds SUMMARY_MAX_CHARS
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    summary = db.summarize_capture(capture)
+
+    assert summary is not None
+    assert summary.endswith("...")
+    assert len(summary) == db.SUMMARY_MAX_CHARS
+
+
+def test_summarize_capture_returns_none_for_blank_file(tmp_path: Path) -> None:
+    capture = tmp_path / "updates" / "4.md"
+    capture.parent.mkdir(parents=True)
+    capture.write_text("\n\n\t\n", encoding="utf-8")
+
+    assert db.summarize_capture(capture) is None
+
+
 def test_save_message_includes_context(tmp_path: Path) -> None:
     """Thread or reply context is recorded alongside the saved message."""
 
@@ -943,6 +993,75 @@ def test_axel_summarize_command_replies_with_summary(
     assert "updates/21.md" in interaction.response.content
     assert "Summary for 'summary'" in interaction.response.content
     assert "actionable outcomes" in interaction.response.content
+
+
+def test_axel_summarize_command_reports_no_matches(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = tmp_path / "captures"
+    root.mkdir()
+
+    monkeypatch.setenv("AXEL_DISCORD_DIR", str(root))
+
+    intents = discord.Intents.none()
+    client = db.AxelClient(intents=intents)
+
+    axel_command = client.tree.get_command("axel")
+    assert axel_command is not None
+    summarize_command = next(
+        cmd for cmd in getattr(axel_command, "commands", []) if cmd.name == "summarize"
+    )
+
+    def _fake_search(query: str, *, limit: int = 5) -> list[db.SearchResult]:
+        assert query == "missing"
+        assert limit == 1
+        return []
+
+    monkeypatch.setattr(db, "search_captures", _fake_search)
+
+    interaction = DummyInteraction()
+    asyncio.run(summarize_command.callback(interaction, query="missing"))
+
+    assert interaction.response.ephemeral is True
+    assert interaction.response.content == "No captures found for 'missing'."
+
+
+def test_axel_summarize_command_reports_missing_summary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = tmp_path / "captures"
+    root.mkdir()
+    empty_capture = tmp_path / "outside" / "empty.md"
+    empty_capture.parent.mkdir()
+    empty_capture.write_text("", encoding="utf-8")
+
+    monkeypatch.setenv("AXEL_DISCORD_DIR", str(root))
+
+    intents = discord.Intents.none()
+    client = db.AxelClient(intents=intents)
+
+    axel_command = client.tree.get_command("axel")
+    assert axel_command is not None
+    summarize_command = next(
+        cmd for cmd in getattr(axel_command, "commands", []) if cmd.name == "summarize"
+    )
+
+    def _fake_search(query: str, *, limit: int = 5) -> list[db.SearchResult]:
+        assert query == "missing"
+        assert limit == 1
+        return [db.SearchResult(path=empty_capture, snippet="")]
+
+    monkeypatch.setattr(db, "search_captures", _fake_search)
+
+    interaction = DummyInteraction()
+    asyncio.run(summarize_command.callback(interaction, query="missing"))
+
+    assert interaction.response.ephemeral is True
+    assert interaction.response.content is not None
+    assert interaction.response.content.startswith("Capture ")
+    assert interaction.response.content.endswith(
+        "outside/empty.md has no readable content to summarize."
+    )
 
 
 def test_collect_context_handles_history_type_error() -> None:

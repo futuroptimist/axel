@@ -98,6 +98,11 @@ security layer described in `issues/0003-gabriel-security-layer.md`; see
     `tests/test_task_manager.py::test_main_add_accepts_path_after_subcommand`).
 13. Empty, invalid, or non-list `tasks.json` files are treated as containing no tasks.
 14. Set `AXEL_DISCORD_ENCRYPTION_KEY` to a Fernet key to encrypt Discord captures on disk.
+15. Audit repositories for flywheel workflow coverage with `python -m axel.flywheel --path repos.txt`.
+    The command reports missing workflows (lint/tests) so you can align each project with the
+    flywheel template. Automated coverage lives in
+    `tests/test_flywheel.py::test_evaluate_flywheel_alignment_reports_missing_workflows` and
+    `tests/test_flywheel.py::test_main_prints_alignment_summary`.
 
 ## quests
 

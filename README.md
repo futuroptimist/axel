@@ -178,7 +178,10 @@ strip_ansi(123)  # raises TypeError for invalid types
 ## discord bot
 
 See [docs/discord-bot.md](docs/discord-bot.md) for running a local Discord bot
-that saves mentioned messages to `local/discord/`.
+that saves mentioned messages to `local/discord/`. The bot exposes a `/axel search`
+slash command backed by `axel.discord_bot.search_captures` so you can locate saved
+notes without leaving Discord (see
+`tests/test_discord_bot.py::test_axel_search_command_replies_with_matches`).
 
 ## publishing
 

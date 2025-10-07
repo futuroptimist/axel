@@ -4,4 +4,5 @@
 
 - [x] mention flywheel in README and AGENTS guidelines
 - [x] ensure repos.txt includes the flywheel repo
-- [ ] evaluate existing repos for alignment with flywheel's lint and test setup
+- [x] evaluate existing repos for alignment with flywheel's lint and test setup (use
+  `python -m axel.flywheel` with coverage in `tests/test_flywheel.py`)

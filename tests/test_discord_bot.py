@@ -48,6 +48,44 @@ def read_markdown(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def test_read_capture_returns_none_when_plaintext_unavailable(tmp_path: Path) -> None:
+    missing_path = tmp_path / "missing.md"
+
+    assert db._read_capture(missing_path, None) is None
+
+
+def test_read_capture_returns_none_when_encrypted_file_missing(tmp_path: Path) -> None:
+    class DummyEncrypter:
+        def decrypt(self, data: bytes) -> bytes:  # pragma: no cover - defensive
+            raise AssertionError("decrypt should not be called")
+
+    missing_path = tmp_path / "missing.md"
+
+    assert db._read_capture(missing_path, DummyEncrypter()) is None
+
+
+def test_read_capture_returns_none_when_decryption_fails(tmp_path: Path) -> None:
+    encrypted_path = tmp_path / "encrypted.md"
+    encrypted_path.write_bytes(b"payload")
+
+    class DummyEncrypter:
+        def decrypt(self, data: bytes) -> bytes:
+            raise ValueError("cannot decrypt")
+
+    assert db._read_capture(encrypted_path, DummyEncrypter()) is None
+
+
+def test_read_capture_decodes_with_ignore_when_utf8_invalid(tmp_path: Path) -> None:
+    encrypted_path = tmp_path / "encrypted.md"
+    encrypted_path.write_bytes(b"payload")
+
+    class DummyEncrypter:
+        def decrypt(self, data: bytes) -> bytes:
+            return b"\xff\xfe"
+
+    assert db._read_capture(encrypted_path, DummyEncrypter()) == ""
+
+
 def test_save_message_includes_context(tmp_path: Path) -> None:
     """Thread or reply context is recorded alongside the saved message."""
 
@@ -337,6 +375,40 @@ def test_save_message_without_channel(tmp_path: Path) -> None:
     assert "direct-message" in content
 
 
+def test_search_captures_returns_empty_when_limit_non_positive(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AXEL_DISCORD_DIR", str(tmp_path))
+
+    assert db.search_captures("anything", limit=0) == []
+    assert db.search_captures("anything", limit=-1) == []
+
+
+def test_search_captures_returns_empty_when_directory_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    missing = tmp_path / "missing"
+    monkeypatch.setenv("AXEL_DISCORD_DIR", str(missing))
+
+    assert db.search_captures("anything") == []
+
+
+def test_search_captures_truncates_long_snippets(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AXEL_DISCORD_DIR", str(tmp_path))
+    capture_dir = tmp_path / "channel"
+    capture_dir.mkdir()
+    capture_path = capture_dir / "note.md"
+    capture_path.write_text("A" * 130)
+
+    results = db.search_captures("A")
+
+    assert results
+    assert len(results[0].snippet) == 120
+    assert results[0].snippet.endswith("...")
+
+
 def test_search_captures_returns_matches(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -399,6 +471,58 @@ def test_search_captures_respects_limit(
     results = db.search_captures("match", limit=2)
 
     assert len(results) == 2
+
+
+def test_search_command_sends_no_results_message(monkeypatch: pytest.MonkeyPatch) -> None:
+    intents = discord.Intents.none()
+    client = db.AxelClient(intents=intents)
+    command = client.tree.get_command("axel").get_command("search")
+
+    class DummyResponse:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, bool]] = []
+
+        async def send_message(self, content: str, *, ephemeral: bool) -> None:
+            self.calls.append((content, ephemeral))
+
+    interaction = SimpleNamespace(response=DummyResponse())
+    monkeypatch.setattr(db, "search_captures", lambda query: [])
+
+    asyncio.run(command.callback(interaction, "query"))
+
+    assert interaction.response.calls == [("No captures found for 'query'.", True)]
+
+
+def test_search_command_handles_non_relative_paths(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    intents = discord.Intents.none()
+    client = db.AxelClient(intents=intents)
+    command = client.tree.get_command("axel").get_command("search")
+
+    result_path = tmp_path / "outside" / "note.md"
+    result_path.parent.mkdir(parents=True)
+    result_path.write_text("match line")
+
+    monkeypatch.setattr(db, "search_captures", lambda query: [db.SearchResult(result_path, "match line")])
+    monkeypatch.setattr(db, "_get_save_dir", lambda: tmp_path / "root")
+
+    class DummyResponse:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, bool]] = []
+
+        async def send_message(self, content: str, *, ephemeral: bool) -> None:
+            self.calls.append((content, ephemeral))
+
+    interaction = SimpleNamespace(response=DummyResponse())
+
+    asyncio.run(command.callback(interaction, "query"))
+
+    assert interaction.response.calls
+    message, ephemeral = interaction.response.calls[0]
+    assert ephemeral is True
+    assert "outside/note.md" in message
+    assert "match line" in message
 
 
 def test_capture_message_downloads_attachments(tmp_path: Path) -> None:

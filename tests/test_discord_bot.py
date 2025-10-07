@@ -368,6 +368,21 @@ def test_search_captures_decrypts_encrypted_files(
     assert results[0].path == tmp_path / "secure" / "11.md"
 
 
+def test_search_captures_skips_encrypted_when_key_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AXEL_DISCORD_DIR", str(tmp_path))
+
+    secure_dir = tmp_path / "secure"
+    secure_dir.mkdir()
+    encrypted_path = secure_dir / "20.md"
+    encrypted_path.write_bytes(b"\xff\xfe\xfd\x00")
+
+    results = db.search_captures("secret")
+
+    assert results == []
+
+
 def test_search_captures_respects_limit(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

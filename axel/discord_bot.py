@@ -92,9 +92,13 @@ def _matching_repo_urls(channel_name: str | None) -> list[str]:
 def _read_capture(path: Path, encrypter: Fernet | None) -> str | None:
     """Return the markdown contents for ``path`` handling encryption."""
 
-    try:
-        if encrypter is None:
+    if encrypter is None:
+        try:
             return path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            return None
+
+    try:
         data = path.read_bytes()
     except OSError:
         return None

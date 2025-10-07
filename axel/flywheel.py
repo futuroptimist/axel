@@ -21,15 +21,23 @@ _API_TIMEOUT = 10
 def _slug_from_url(url: str) -> str:
     """Return ``owner/repo`` slug for ``url`` or raise ``ValueError``."""
 
+    def _clean_repo(segment: str) -> str:
+        """Return the repository portion of ``segment`` without a ``.git`` suffix."""
+
+        repo = segment.split("/", 1)[0]
+        return repo[:-4] if repo.endswith(".git") else repo
+
     parsed = urlparse(url)
     if parsed.netloc:
         parts = [part for part in parsed.path.split("/") if part]
         if len(parts) >= 2:
-            return f"{parts[0]}/{parts[1]}"
+            owner = parts[0]
+            repo = _clean_repo(parts[1])
+            return f"{owner}/{repo}"
     cleaned = url.strip().strip("/")
     if cleaned.count("/") >= 1:
         owner, repo = cleaned.split("/", 1)
-        return f"{owner}/{repo.split('/', 1)[0]}"
+        return f"{owner}/{_clean_repo(repo)}"
     raise ValueError(f"Cannot determine repository slug from: {url}")
 
 

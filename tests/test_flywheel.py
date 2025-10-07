@@ -195,6 +195,14 @@ def test_slug_from_url_invalid() -> None:
         flywheel._slug_from_url("not-a-repo")
 
 
+def test_slug_from_url_strips_git_suffix() -> None:
+    assert (
+        flywheel._slug_from_url("https://github.com/example/project.git")
+        == "example/project"
+    )
+    assert flywheel._slug_from_url("example/project.git") == "example/project"
+
+
 def test_main_passes_token_to_evaluate(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

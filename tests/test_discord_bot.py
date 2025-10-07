@@ -54,6 +54,13 @@ def test_read_capture_returns_none_when_plaintext_unavailable(tmp_path: Path) ->
     assert db._read_capture(missing_path, None) is None
 
 
+def test_read_capture_returns_none_when_plaintext_decode_fails(tmp_path: Path) -> None:
+    broken_path = tmp_path / "broken.md"
+    broken_path.write_bytes(b"\xff\xfe")
+
+    assert db._read_capture(broken_path, None) is None
+
+
 def test_read_capture_returns_none_when_encrypted_file_missing(tmp_path: Path) -> None:
     class DummyEncrypter:
         def decrypt(self, data: bytes) -> bytes:  # pragma: no cover - defensive
@@ -473,7 +480,9 @@ def test_search_captures_respects_limit(
     assert len(results) == 2
 
 
-def test_search_command_sends_no_results_message(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_search_command_sends_no_results_message(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     intents = discord.Intents.none()
     client = db.AxelClient(intents=intents)
     command = client.tree.get_command("axel").get_command("search")
@@ -504,7 +513,11 @@ def test_search_command_handles_non_relative_paths(
     result_path.parent.mkdir(parents=True)
     result_path.write_text("match line")
 
-    monkeypatch.setattr(db, "search_captures", lambda query: [db.SearchResult(result_path, "match line")])
+    monkeypatch.setattr(
+        db,
+        "search_captures",
+        lambda query: [db.SearchResult(result_path, "match line")],
+    )
     monkeypatch.setattr(db, "_get_save_dir", lambda: tmp_path / "root")
 
     class DummyResponse:

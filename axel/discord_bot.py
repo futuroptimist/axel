@@ -5,16 +5,26 @@ from __future__ import annotations
 import inspect
 import os
 import re
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Sequence
 
 import discord
 from cryptography.fernet import Fernet
+from discord import app_commands
 
 SAVE_DIR = Path("local/discord")
 CONTEXT_LIMIT = 5
 _MIN_CONTEXT_TIMESTAMP = datetime.min.replace(tzinfo=timezone.utc)
+
+
+@dataclass(frozen=True)
+class SearchResult:
+    """Lightweight record describing a capture search hit."""
+
+    path: Path
+    snippet: str
 
 
 def _context_sort_key(message: discord.Message) -> datetime:
@@ -76,6 +86,64 @@ def _matching_repo_urls(channel_name: str | None) -> list[str]:
         if _normalize_repo_key(slug) == key and repo not in seen:
             matches.append(repo)
             seen.add(repo)
+    return matches
+
+
+def _read_capture(path: Path, encrypter: Fernet | None) -> str | None:
+    """Return the markdown contents for ``path`` handling encryption."""
+
+    try:
+        if encrypter is None:
+            return path.read_text(encoding="utf-8")
+        data = path.read_bytes()
+    except OSError:
+        return None
+
+    try:
+        decrypted = encrypter.decrypt(data)
+    except Exception:
+        return None
+    try:
+        return decrypted.decode("utf-8")
+    except UnicodeDecodeError:
+        return decrypted.decode("utf-8", "ignore")
+
+
+def search_captures(query: str, *, limit: int = 5) -> list[SearchResult]:
+    """Return saved capture snippets containing ``query``.
+
+    Searches the configured Discord capture directory (including encrypted
+    markdown files) for lines that include ``query`` in a case-insensitive
+    comparison. Results are returned in path-sorted order and truncated to
+    ``limit`` entries. Non-positive limits or missing directories yield an empty
+    list.
+    """
+
+    if limit <= 0:
+        return []
+
+    root = _get_save_dir()
+    if not root.exists():
+        return []
+
+    encrypter = _get_encrypter()
+    query_lower = query.lower()
+    matches: list[SearchResult] = []
+
+    for path in sorted(root.rglob("*.md")):
+        text = _read_capture(path, encrypter)
+        if not text:
+            continue
+        for line in text.splitlines():
+            if query_lower in line.lower():
+                snippet = line.strip()
+                if len(snippet) > 120:
+                    snippet = snippet[:117] + "..."
+                matches.append(SearchResult(path=path, snippet=snippet))
+                break
+        if len(matches) >= limit:
+            break
+
     return matches
 
 
@@ -351,6 +419,52 @@ async def _collect_context(
 
 
 class AxelClient(discord.Client):
+    def __init__(self, *, intents: discord.Intents):
+        super().__init__(intents=intents)
+        self.tree = app_commands.CommandTree(self)
+        self._register_commands()
+
+    def _register_commands(self) -> None:
+        axel_group = app_commands.Group(
+            name="axel",
+            description="Axel local assistant commands",
+        )
+
+        @axel_group.command(
+            name="search",
+            description="Search saved Discord captures for text.",
+        )
+        @app_commands.describe(
+            query="Text to search for within saved Discord captures.",
+        )
+        async def _search_command(interaction: discord.Interaction, query: str) -> None:
+            results = search_captures(query)
+            if not results:
+                await interaction.response.send_message(
+                    f"No captures found for '{query}'.",
+                    ephemeral=True,
+                )
+                return
+
+            root = _get_save_dir()
+            lines = [f"Matches for '{query}':"]
+            for result in results:
+                try:
+                    relative = result.path.relative_to(root)
+                except ValueError:
+                    relative = result.path
+                lines.append(f"- {relative.as_posix()}: {result.snippet}")
+
+            await interaction.response.send_message(
+                "\n".join(lines),
+                ephemeral=True,
+            )
+
+        self.tree.add_command(axel_group)
+
+    async def setup_hook(self) -> None:  # pragma: no cover - network call
+        await self.tree.sync()
+
     async def on_ready(self) -> None:  # pragma: no cover - network call
         print(f"Logged in as {self.user}")
 

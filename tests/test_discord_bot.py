@@ -337,6 +337,55 @@ def test_save_message_without_channel(tmp_path: Path) -> None:
     assert "direct-message" in content
 
 
+def test_search_captures_returns_matches(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AXEL_DISCORD_DIR", str(tmp_path))
+    msg = DummyMessage("search target content", mid=10, channel=DummyChannel("general"))
+    db.save_message(msg)
+
+    results = db.search_captures("target")
+
+    assert results
+    first = results[0]
+    assert first.path == tmp_path / "general" / "10.md"
+    assert "target" in first.snippet
+
+
+def test_search_captures_decrypts_encrypted_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    key = Fernet.generate_key()
+    monkeypatch.setenv("AXEL_DISCORD_DIR", str(tmp_path))
+    monkeypatch.setenv("AXEL_DISCORD_ENCRYPTION_KEY", key.decode())
+
+    msg = DummyMessage("encrypted search note", mid=11, channel=DummyChannel("secure"))
+    db.save_message(msg)
+
+    results = db.search_captures("search")
+
+    assert results
+    assert results[0].path == tmp_path / "secure" / "11.md"
+
+
+def test_search_captures_respects_limit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AXEL_DISCORD_DIR", str(tmp_path))
+    for mid in range(12, 16):
+        db.save_message(
+            DummyMessage(
+                f"repeated match {mid}",
+                mid=mid,
+                channel=DummyChannel("general"),
+            )
+        )
+
+    results = db.search_captures("match", limit=2)
+
+    assert len(results) == 2
+
+
 def test_capture_message_downloads_attachments(tmp_path: Path) -> None:
     db.SAVE_DIR = tmp_path
 
@@ -640,6 +689,45 @@ def test_axel_client_excludes_trigger_from_context(
     context_ids = [msg.id for msg in captured["context"]]
     assert context_ids == [7]
     assert captured["reply"] == f"Saved to {tmp_path / 'general' / '5.md'}"
+
+
+class DummyInteractionResponse:
+    def __init__(self) -> None:
+        self.content: str | None = None
+        self.ephemeral: bool | None = None
+
+    async def send_message(self, content: str, *, ephemeral: bool = False) -> None:
+        self.content = content
+        self.ephemeral = ephemeral
+
+
+class DummyInteraction:
+    def __init__(self) -> None:
+        self.response = DummyInteractionResponse()
+
+
+def test_axel_search_command_replies_with_matches(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AXEL_DISCORD_DIR", str(tmp_path))
+    msg = DummyMessage("searchable content", mid=20, channel=DummyChannel("updates"))
+    db.save_message(msg)
+
+    intents = discord.Intents.none()
+    client = db.AxelClient(intents=intents)
+
+    axel_command = client.tree.get_command("axel")
+    assert axel_command is not None
+    search_command = next(
+        cmd for cmd in getattr(axel_command, "commands", []) if cmd.name == "search"
+    )
+
+    interaction = DummyInteraction()
+    asyncio.run(search_command.callback(interaction, query="searchable"))
+
+    assert interaction.response.ephemeral is True
+    assert interaction.response.content is not None
+    assert "updates/20.md" in interaction.response.content
 
 
 def test_collect_context_handles_history_type_error() -> None:

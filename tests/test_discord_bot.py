@@ -93,6 +93,36 @@ def test_read_capture_decodes_with_ignore_when_utf8_invalid(tmp_path: Path) -> N
     assert db._read_capture(encrypted_path, DummyEncrypter()) == ""
 
 
+def test_read_capture_plaintext_fallback_returns_none_for_blank_content(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    key = Fernet.generate_key().decode()
+    monkeypatch.setenv("AXEL_DISCORD_ENCRYPTION_KEY", key)
+
+    capture = tmp_path / "blank.md"
+    capture.parent.mkdir(parents=True, exist_ok=True)
+    capture.write_text("   ", encoding="utf-8")
+
+    encrypter = db._get_encrypter()
+    assert encrypter is not None
+    assert db._read_capture(capture, encrypter) is None
+
+
+def test_read_capture_plaintext_fallback_requires_markdown_context(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    key = Fernet.generate_key().decode()
+    monkeypatch.setenv("AXEL_DISCORD_ENCRYPTION_KEY", key)
+
+    capture = tmp_path / "general" / "note.md"
+    capture.parent.mkdir(parents=True, exist_ok=True)
+    capture.write_text("plain text without metadata", encoding="utf-8")
+
+    encrypter = db._get_encrypter()
+    assert encrypter is not None
+    assert db._read_capture(capture, encrypter) is None
+
+
 def test_summarize_capture_extracts_message_body(tmp_path: Path) -> None:
     capture = tmp_path / "general" / "1.md"
     capture.parent.mkdir(parents=True)

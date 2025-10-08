@@ -5,4 +5,4 @@
 - [x] add examples of using gabriel alongside `token.place` and `dspace`
 - [x] mention gabriel in future quests that involve sensitive data (see
   `tests/test_quests.py::test_suggest_cross_repo_quests_mentions_gabriel_for_sensitive_pairs`)
-- [ ] keep README entries updated as integration progresses
+- [x] keep README entries updated as integration progresses

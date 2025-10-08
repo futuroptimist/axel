@@ -21,10 +21,7 @@ def test_llms_sample_repo_link_exists() -> None:
     raw_lines = sample_path.read_text(encoding="utf-8").splitlines()
     lines = [line.strip() for line in raw_lines]
     repo_lines = [line for line in lines if line and not line.startswith("#")]
-    assert repo_lines, (
-        "Sample repo list should include at least one repository entry"
-    )
+    assert repo_lines, "Sample repo list should include at least one repository entry"
     assert all(
-        line.startswith("https://")
-        for line in repo_lines
+        line.startswith("https://") for line in repo_lines
     ), "Sample repo entries should be GitHub-style URLs"

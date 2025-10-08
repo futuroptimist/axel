@@ -90,7 +90,8 @@ Use `/axel summarize` to generate a quick synopsis of the first capture that mat
 provided query. The helper prioritizes the saved message body, skipping metadata and
 thread context so the summary stays focused on the actionable text. Summaries surface the
 relative file path alongside the condensed content in an ephemeral response. Coverage
-spans `tests/test_discord_bot.py::test_summarize_capture_extracts_message_body` and
+spans `tests/test_discord_bot.py::test_summarize_capture_extracts_message_body`,
+`tests/test_discord_bot.py::test_summarize_capture_includes_bullet_message_body`, and
 `tests/test_discord_bot.py::test_axel_summarize_command_replies_with_summary`.
 
 ## Analyzing Captured Messages

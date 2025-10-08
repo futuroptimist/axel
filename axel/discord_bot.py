@@ -19,6 +19,13 @@ CONTEXT_LIMIT = 5
 _MIN_CONTEXT_TIMESTAMP = datetime.min.replace(tzinfo=timezone.utc)
 SUMMARY_LINE_LIMIT = 2
 SUMMARY_MAX_CHARS = 280
+_METADATA_PREFIXES: tuple[str, ...] = (
+    "- Channel:",
+    "- Thread:",
+    "- Repository:",
+    "- Timestamp:",
+    "- Link:",
+)
 
 
 @dataclass(frozen=True)
@@ -167,19 +174,50 @@ def summarize_capture(
         return None
 
     summary_lines: list[str] = []
+    in_context = False
+    in_attachments = False
+
     for raw_line in text.splitlines():
         stripped = raw_line.strip()
         if not stripped:
+            if in_context:
+                in_context = False
+            if in_attachments:
+                in_attachments = False
+            continue
+
+        lowered = stripped.lower()
+        if lowered.startswith("## context"):
+            in_context = True
+            in_attachments = False
+            continue
+        if lowered.startswith("## attachments"):
+            in_attachments = True
+            in_context = False
             continue
         if stripped.startswith("##"):
             continue
-        if stripped.startswith("#"):
+        if stripped.startswith("#") and not summary_lines:
             continue
-        if stripped.startswith("- "):
+
+        if in_context:
+            continue
+        if in_attachments:
+            continue
+        if any(stripped.startswith(prefix) for prefix in _METADATA_PREFIXES):
             continue
         if raw_line.startswith("  "):
             continue
-        summary_lines.append(stripped)
+
+        if stripped.startswith("- "):
+            cleaned = stripped[2:].strip()
+        else:
+            cleaned = stripped
+
+        if not cleaned:
+            continue
+
+        summary_lines.append(cleaned)
         if len(summary_lines) >= line_limit:
             break
 

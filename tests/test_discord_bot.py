@@ -126,6 +126,32 @@ def test_summarize_capture_extracts_message_body(tmp_path: Path) -> None:
     assert "Channel" not in summary  # metadata lines are skipped
 
 
+def test_summarize_capture_includes_bullet_message_body(tmp_path: Path) -> None:
+    capture = tmp_path / "general" / "bullet.md"
+    capture.parent.mkdir(parents=True, exist_ok=True)
+    capture.write_text(
+        "\n".join(
+            [
+                "# user",
+                "",
+                "- Channel: general",
+                "- Timestamp: 2024-01-01T00:00:00+00:00",
+                "",
+                "- First actionable bullet",
+                "- Second actionable bullet",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    summary = db.summarize_capture(capture)
+
+    assert summary is not None
+    assert "First actionable bullet" in summary
+    assert "Second actionable bullet" in summary
+    assert "Channel" not in summary
+
+
 def test_summarize_capture_uses_first_line_when_body_missing(tmp_path: Path) -> None:
     capture = tmp_path / "random" / "2.md"
     capture.parent.mkdir(parents=True)

@@ -19,6 +19,14 @@ CONTEXT_LIMIT = 5
 _MIN_CONTEXT_TIMESTAMP = datetime.min.replace(tzinfo=timezone.utc)
 SUMMARY_LINE_LIMIT = 2
 SUMMARY_MAX_CHARS = 280
+_METADATA_PREFIXES: tuple[str, ...] = (
+    "- Channel:",
+    "- Thread:",
+    "- Repository:",
+    "- Timestamp:",
+    "- Link:",
+)
+_ATTACHMENT_LINE = re.compile(r"\s*-\s*\[[^\]]+\]\(((?:\./|\.\./).+?)\)")
 
 
 @dataclass(frozen=True)
@@ -182,21 +190,119 @@ def summarize_capture(
         return None
 
     summary_lines: list[str] = []
-    for raw_line in text.splitlines():
+    metadata_preamble = True
+    lines = text.splitlines()
+    index = 0
+
+    def _consume_saved_context(start: int) -> int | None:
+        """Return the index after stored context or ``None`` for user content."""
+
+        idx = start + 1
+        saw_indented = False
+        while idx < len(lines):
+            candidate = lines[idx]
+            if not candidate.strip():
+                break
+            if candidate.startswith("  "):
+                saw_indented = True
+                idx += 1
+                continue
+            if candidate.lstrip().startswith("- "):
+                idx += 1
+                continue
+            return None
+        return idx if saw_indented else None
+
+    def _consume_saved_attachments(start: int) -> int | None:
+        """Return the index after saved attachments or ``None`` for user content."""
+
+        idx = start + 1
+        matched = False
+        while idx < len(lines):
+            candidate = lines[idx]
+            if not candidate.strip():
+                break
+            if _ATTACHMENT_LINE.match(candidate):
+                matched = True
+                idx += 1
+                continue
+            return None
+        return idx if matched else None
+
+    while index < len(lines):
+        raw_line = lines[index]
         stripped = raw_line.strip()
+
+        if metadata_preamble:
+            if not stripped:
+                index += 1
+                continue
+            lowered = stripped.lower()
+            if lowered.startswith("## context"):
+                consumed = _consume_saved_context(index)
+                if consumed is not None:
+                    index = consumed
+                    continue
+                metadata_preamble = False
+                continue
+            if lowered.startswith("## attachments"):
+                consumed = _consume_saved_attachments(index)
+                if consumed is not None:
+                    index = consumed
+                    continue
+                metadata_preamble = False
+                continue
+            if stripped.startswith("#"):
+                index += 1
+                continue
+            if any(stripped.startswith(prefix) for prefix in _METADATA_PREFIXES):
+                index += 1
+                continue
+            if raw_line.startswith("  "):
+                index += 1
+                continue
+            metadata_preamble = False
+            continue
+
         if not stripped:
+            index += 1
+            continue
+
+        lowered = stripped.lower()
+        if lowered.startswith("## attachments"):
+            index += 1
+            while index < len(lines) and lines[index].strip():
+                if _ATTACHMENT_LINE.match(lines[index]):
+                    index += 1
+                    continue
+                break
             continue
         if stripped.startswith("##"):
+            index += 1
             continue
-        if stripped.startswith("#"):
+        if stripped.startswith("#") and not summary_lines:
+            index += 1
             continue
-        if stripped.startswith("- "):
+        if any(stripped.startswith(prefix) for prefix in _METADATA_PREFIXES):
+            index += 1
             continue
         if raw_line.startswith("  "):
+            index += 1
             continue
-        summary_lines.append(stripped)
+
+        if stripped.startswith("- "):
+            cleaned = stripped[2:].strip()
+        else:
+            cleaned = stripped
+
+        if not cleaned or cleaned == "-":
+            index += 1
+            continue
+
+        summary_lines.append(cleaned)
         if len(summary_lines) >= line_limit:
             break
+        index += 1
 
     if summary_lines:
         summary = " ".join(summary_lines)

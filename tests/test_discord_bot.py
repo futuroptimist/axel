@@ -124,6 +124,203 @@ def test_summarize_capture_extracts_message_body(tmp_path: Path) -> None:
     assert "Key insight" in summary
     assert "helper" not in summary  # context lines are skipped
     assert "Channel" not in summary  # metadata lines are skipped
+    assert "report.pdf" not in summary  # attachment references are excluded
+
+
+def test_summarize_capture_includes_bullet_message_body(tmp_path: Path) -> None:
+    capture = tmp_path / "general" / "bullet.md"
+    capture.parent.mkdir(parents=True, exist_ok=True)
+    capture.write_text(
+        "\n".join(
+            [
+                "# user",
+                "",
+                "- Channel: general",
+                "- Timestamp: 2024-01-01T00:00:00+00:00",
+                "",
+                "- First actionable bullet",
+                "- Second actionable bullet",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    summary = db.summarize_capture(capture)
+
+    assert summary is not None
+    assert "First actionable bullet" in summary
+    assert "Second actionable bullet" in summary
+    assert "Channel" not in summary
+
+
+def test_summarize_capture_preserves_user_context_heading(tmp_path: Path) -> None:
+    capture = tmp_path / "general" / "context.md"
+    capture.parent.mkdir(parents=True, exist_ok=True)
+    capture.write_text(
+        "\n".join(
+            [
+                "# user",  # stored header stripped from summary
+                "",  # separator before metadata
+                "- Channel: general",  # metadata ignored
+                "- Timestamp: 2024-01-01T00:00:00+00:00",
+                "",  # end of metadata preamble
+                "Intro line before heading.",
+                "## Context",  # user-authored heading should not hide content
+                "Detail beneath the user heading should remain visible.",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    summary = db.summarize_capture(capture)
+
+    assert summary is not None
+    assert "Intro line" in summary
+    assert "Detail beneath" in summary
+
+
+def test_summarize_capture_keeps_user_context_bullets(tmp_path: Path) -> None:
+    capture = tmp_path / "general" / "user-context-bullets.md"
+    capture.parent.mkdir(parents=True, exist_ok=True)
+    capture.write_text(
+        "\n".join(
+            [
+                "# user",  # stored header stripped from summary
+                "",  # metadata separator
+                "- Channel: general",  # metadata ignored
+                "- Timestamp: 2024-01-01T00:00:00+00:00",
+                "",  # end of metadata preamble
+                "## Context",  # user heading immediately before bullets
+                "- keep the first bullet",  # should remain after summarization
+                "- keep the second bullet as well",  # additional bullet content
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    summary = db.summarize_capture(capture)
+
+    assert summary is not None
+    assert "keep the first bullet" in summary
+    assert "keep the second bullet" in summary
+
+
+def test_summarize_capture_ignores_metadata_noise_before_body(tmp_path: Path) -> None:
+    capture = tmp_path / "general" / "metadata-noise.md"
+    capture.parent.mkdir(parents=True, exist_ok=True)
+    capture.write_text(
+        "\n".join(
+            [
+                "# user",
+                "",
+                "- Channel: general",
+                "- Timestamp: 2024-01-01T00:00:00+00:00",
+                "  metadata note ignored",  # indented metadata continuation
+                "",  # blank separating the preamble
+                "## Context",  # user heading should not hide later content
+                "# Heading to skip",  # first content line ignored while summary empty
+                "- ",  # empty bullet discarded
+                "- Channel: disguised metadata",  # metadata-style prefix skipped
+                "  Indented body line",  # indented body content dropped from summary
+                "Actual summary content.",
+                "",  # blank line ignored while in body
+                "## Attachments",  # stored attachment block after content
+                "- [report.pdf](./1/report.pdf)",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    summary = db.summarize_capture(capture)
+
+    assert summary == "Actual summary content."
+    assert "report.pdf" not in summary
+
+
+def test_summarize_capture_treats_user_attachment_heading_as_content(
+    tmp_path: Path,
+) -> None:
+    capture = tmp_path / "general" / "user-attachments-first.md"
+    capture.parent.mkdir(parents=True, exist_ok=True)
+    capture.write_text(
+        "\n".join(
+            [
+                "# user",
+                "",
+                "- Channel: general",
+                "- Timestamp: 2024-01-01T00:00:00+00:00",
+                "",
+                "## Attachments",  # user-authored heading with external links
+                "- [Spec document](https://example.com/spec)",
+                "",
+                "Summary body after the heading.",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    summary = db.summarize_capture(capture, line_limit=3)
+
+    assert summary is not None
+    assert "Spec document" in summary
+    assert "Summary body" in summary
+
+
+def test_summarize_capture_keeps_user_attachments_section(tmp_path: Path) -> None:
+    capture = tmp_path / "general" / "attachments.md"
+    capture.parent.mkdir(parents=True, exist_ok=True)
+    capture.write_text(
+        "\n".join(
+            [
+                "# user",
+                "",
+                "- Channel: general",
+                "- Timestamp: 2024-01-01T00:00:00+00:00",
+                "",
+                "Project update preceding references.",
+                "## Attachments",
+                "- [Spec document](https://example.com/spec)",
+                "- Additional notes after the links.",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    summary = db.summarize_capture(capture, line_limit=3)
+
+    assert summary is not None
+    assert "Project update" in summary
+    assert "Spec document" in summary
+    assert "Additional notes" in summary
+
+
+def test_summarize_capture_skips_metadata_attachments_before_body(
+    tmp_path: Path,
+) -> None:
+    capture = tmp_path / "general" / "metadata-attachments.md"
+    capture.parent.mkdir(parents=True, exist_ok=True)
+    capture.write_text(
+        "\n".join(
+            [
+                "# user",
+                "",
+                "- Channel: general",
+                "- Timestamp: 2024-01-01T00:00:00+00:00",
+                "",
+                "## Attachments",  # stored attachment section before body
+                "- [report.pdf](./1/report.pdf)",
+                "",
+                "Body content that should be summarized.",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    summary = db.summarize_capture(capture)
+
+    assert summary is not None
+    assert "Body content" in summary
+    assert "report.pdf" not in summary
 
 
 def test_summarize_capture_uses_first_line_when_body_missing(tmp_path: Path) -> None:

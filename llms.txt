@@ -11,7 +11,8 @@ Axel keeps data local by default and works best inside a Python 3.11 environment
 - [Discord Bot](docs/discord-bot.md): Saving mentioned messages locally
 
 ## Examples
-- [Sample repos list](examples/repos.txt): Demonstrates custom repo files
+- [Sample repos list](examples/default/repos_example.txt): Demonstrates custom repo files
+  (see `tests/test_llms_txt.py::test_llms_sample_repo_link_exists`).
 
 ## Related Projects
 - [gabriel](https://github.com/futuroptimist/gabriel): OSINT agent for security

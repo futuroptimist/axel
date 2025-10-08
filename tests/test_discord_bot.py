@@ -349,6 +349,28 @@ def test_save_message_includes_repository_metadata(tmp_path: Path, monkeypatch) 
     assert "- Repository: https://github.com/example/project.one" in content
 
 
+def test_save_message_includes_repository_metadata_from_thread(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Thread names matching repos also add repository metadata."""
+
+    repo_file = tmp_path / "repos.txt"
+    repo_file.write_text("https://github.com/example/feature-chat\n", encoding="utf-8")
+    monkeypatch.setenv("AXEL_REPO_FILE", str(repo_file))
+
+    db.SAVE_DIR = tmp_path
+    parent = DummyChannel("projects")
+    thread = DummyChannel("feature-chat", parent=parent)
+    msg = DummyMessage("thread insight", channel=thread)
+
+    path = db.save_message(msg)
+
+    assert path == tmp_path / "projects" / "1.md"
+    content = read_markdown(path)
+    assert "- Thread: feature-chat" in content
+    assert "- Repository: https://github.com/example/feature-chat" in content
+
+
 def test_save_message_with_blank_channel_skips_repository_lookup(
     tmp_path: Path, monkeypatch
 ) -> None:

@@ -67,8 +67,8 @@ once decrypted.
     the author, timestamp, source link, and an indented line with the original message text
     (or `(no content)` when empty).
    - the captured message content beneath the metadata and context
-4. If the channel name matches a repository listed in the project's repo list
-   (`repos.txt` or a file pointed to by `AXEL_REPO_FILE`), the saved metadata
+4. If the channel or thread name matches a repository listed in the project's repo
+   list (`repos.txt` or a file pointed to by `AXEL_REPO_FILE`), the saved metadata
    includes a `Repository:` entry pointing to the matching URL so you can treat the
    capture as project knowledge for that repo.
 
@@ -103,6 +103,7 @@ summarize discussions, extract tasks, or generate project insights.
 Automated coverage for the capture format lives in
 `tests/test_discord_bot.py::test_save_message_includes_metadata`,
 `tests/test_discord_bot.py::test_save_message_includes_repository_metadata`,
+`tests/test_discord_bot.py::test_save_message_includes_repository_metadata_from_thread`,
 `tests/test_discord_bot.py::test_save_message_records_thread_metadata`,
 `tests/test_discord_bot.py::test_save_message_includes_context`,
 `tests/test_discord_bot.py::test_save_message_orders_context_oldest_first`,

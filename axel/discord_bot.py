@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Sequence
 
 import discord
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
 from discord import app_commands
 
 SAVE_DIR = Path("local/discord")
@@ -114,28 +114,50 @@ def _matching_repo_urls(
     return matches
 
 
+def _decode_utf8(data: bytes) -> str:
+    """Return ``data`` decoded as UTF-8, falling back to ``errors='ignore'``."""
+
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError:
+        return data.decode("utf-8", "ignore")
+
+
+def _plaintext_fallback(data: bytes) -> str | None:
+    """Best-effort plaintext decoding for legacy captures."""
+
+    text = _decode_utf8(data)
+    if not text.strip():
+        return None
+    stripped = text.lstrip()
+    prefixes = ("#", "- ", "##")
+    if "\n" not in text and not any(stripped.startswith(prefix) for prefix in prefixes):
+        return None
+    return text
+
+
 def _read_capture(path: Path, encrypter: Fernet | None) -> str | None:
     """Return the markdown contents for ``path`` handling encryption."""
-
-    if encrypter is None:
-        try:
-            return path.read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError):
-            return None
 
     try:
         data = path.read_bytes()
     except OSError:
         return None
 
+    if encrypter is None:
+        try:
+            return data.decode("utf-8")
+        except UnicodeDecodeError:
+            return None
+
     try:
         decrypted = encrypter.decrypt(data)
+    except InvalidToken:
+        return _plaintext_fallback(data)
     except Exception:
         return None
-    try:
-        return decrypted.decode("utf-8")
-    except UnicodeDecodeError:
-        return decrypted.decode("utf-8", "ignore")
+
+    return _decode_utf8(decrypted)
 
 
 def search_captures(query: str, *, limit: int = 5) -> list[SearchResult]:

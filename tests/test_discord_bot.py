@@ -93,6 +93,36 @@ def test_read_capture_decodes_with_ignore_when_utf8_invalid(tmp_path: Path) -> N
     assert db._read_capture(encrypted_path, DummyEncrypter()) == ""
 
 
+def test_read_capture_plaintext_fallback_returns_none_for_blank_content(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    key = Fernet.generate_key().decode()
+    monkeypatch.setenv("AXEL_DISCORD_ENCRYPTION_KEY", key)
+
+    capture = tmp_path / "blank.md"
+    capture.parent.mkdir(parents=True, exist_ok=True)
+    capture.write_text("   ", encoding="utf-8")
+
+    encrypter = db._get_encrypter()
+    assert encrypter is not None
+    assert db._read_capture(capture, encrypter) is None
+
+
+def test_read_capture_plaintext_fallback_requires_markdown_context(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    key = Fernet.generate_key().decode()
+    monkeypatch.setenv("AXEL_DISCORD_ENCRYPTION_KEY", key)
+
+    capture = tmp_path / "general" / "note.md"
+    capture.parent.mkdir(parents=True, exist_ok=True)
+    capture.write_text("plain text without metadata", encoding="utf-8")
+
+    encrypter = db._get_encrypter()
+    assert encrypter is not None
+    assert db._read_capture(capture, encrypter) is None
+
+
 def test_summarize_capture_extracts_message_body(tmp_path: Path) -> None:
     capture = tmp_path / "general" / "1.md"
     capture.parent.mkdir(parents=True)
@@ -151,6 +181,34 @@ def test_summarize_capture_includes_bullet_message_body(tmp_path: Path) -> None:
     assert "First actionable bullet" in summary
     assert "Second actionable bullet" in summary
     assert "Channel" not in summary
+
+
+def test_summarize_capture_reads_plaintext_with_encryption_enabled(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Plaintext captures still summarize correctly when encryption is configured."""
+
+    key = Fernet.generate_key().decode()
+    monkeypatch.setenv("AXEL_DISCORD_ENCRYPTION_KEY", key)
+
+    capture = tmp_path / "general" / "plaintext.md"
+    capture.parent.mkdir(parents=True, exist_ok=True)
+    capture.write_text(
+        "\n".join(
+            [
+                "# user",
+                "",
+                "- Channel: general",
+                "",
+                "Actionable body content",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    summary = db.summarize_capture(capture)
+
+    assert summary == "Actionable body content"
 
 
 def test_summarize_capture_preserves_user_context_heading(tmp_path: Path) -> None:
@@ -747,6 +805,30 @@ def test_search_captures_decrypts_encrypted_files(
 
     assert results
     assert results[0].path == tmp_path / "secure" / "11.md"
+
+
+def test_search_captures_reads_plaintext_with_encryption_enabled(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Legacy plaintext captures remain searchable after enabling encryption."""
+
+    key = Fernet.generate_key().decode()
+    monkeypatch.setenv("AXEL_DISCORD_ENCRYPTION_KEY", key)
+    monkeypatch.setenv("AXEL_DISCORD_DIR", str(tmp_path))
+
+    channel_dir = tmp_path / "general"
+    channel_dir.mkdir()
+    capture = channel_dir / "1.md"
+    capture.write_text(
+        "# User\n\n- Channel: general\n\nBody plaintext note\n",
+        encoding="utf-8",
+    )
+
+    results = db.search_captures("plaintext")
+
+    assert results
+    assert results[0].path == capture
+    assert results[0].snippet == "Body plaintext note"
 
 
 def test_search_captures_skips_encrypted_when_key_missing(

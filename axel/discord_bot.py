@@ -179,6 +179,41 @@ def summarize_capture(
     lines = text.splitlines()
     index = 0
 
+    def _consume_saved_context(start: int) -> int | None:
+        """Return the index after stored context or ``None`` for user content."""
+
+        idx = start + 1
+        saw_indented = False
+        while idx < len(lines):
+            candidate = lines[idx]
+            if not candidate.strip():
+                break
+            if candidate.startswith("  "):
+                saw_indented = True
+                idx += 1
+                continue
+            if candidate.lstrip().startswith("- "):
+                idx += 1
+                continue
+            return None
+        return idx if saw_indented else None
+
+    def _consume_saved_attachments(start: int) -> int | None:
+        """Return the index after saved attachments or ``None`` for user content."""
+
+        idx = start + 1
+        matched = False
+        while idx < len(lines):
+            candidate = lines[idx]
+            if not candidate.strip():
+                break
+            if _ATTACHMENT_LINE.match(candidate):
+                matched = True
+                idx += 1
+                continue
+            return None
+        return idx if matched else None
+
     while index < len(lines):
         raw_line = lines[index]
         stripped = raw_line.strip()
@@ -189,21 +224,18 @@ def summarize_capture(
                 continue
             lowered = stripped.lower()
             if lowered.startswith("## context"):
-                index += 1
-                while index < len(lines) and lines[index].strip():
-                    next_line = lines[index]
-                    if next_line.startswith("  ") or next_line.lstrip().startswith("- "):
-                        index += 1
-                        continue
-                    break
+                consumed = _consume_saved_context(index)
+                if consumed is not None:
+                    index = consumed
+                    continue
+                metadata_preamble = False
                 continue
             if lowered.startswith("## attachments"):
-                index += 1
-                while index < len(lines) and lines[index].strip():
-                    if _ATTACHMENT_LINE.match(lines[index]):
-                        index += 1
-                        continue
-                    break
+                consumed = _consume_saved_attachments(index)
+                if consumed is not None:
+                    index = consumed
+                    continue
+                metadata_preamble = False
                 continue
             if stripped.startswith("#"):
                 index += 1
@@ -248,7 +280,7 @@ def summarize_capture(
         else:
             cleaned = stripped
 
-        if not cleaned:
+        if not cleaned or cleaned == "-":
             index += 1
             continue
 

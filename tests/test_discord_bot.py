@@ -124,6 +124,7 @@ def test_summarize_capture_extracts_message_body(tmp_path: Path) -> None:
     assert "Key insight" in summary
     assert "helper" not in summary  # context lines are skipped
     assert "Channel" not in summary  # metadata lines are skipped
+    assert "report.pdf" not in summary  # attachment references are excluded
 
 
 def test_summarize_capture_includes_bullet_message_body(tmp_path: Path) -> None:
@@ -150,6 +151,60 @@ def test_summarize_capture_includes_bullet_message_body(tmp_path: Path) -> None:
     assert "First actionable bullet" in summary
     assert "Second actionable bullet" in summary
     assert "Channel" not in summary
+
+
+def test_summarize_capture_preserves_user_context_heading(tmp_path: Path) -> None:
+    capture = tmp_path / "general" / "context.md"
+    capture.parent.mkdir(parents=True, exist_ok=True)
+    capture.write_text(
+        "\n".join(
+            [
+                "# user",  # stored header stripped from summary
+                "",  # separator before metadata
+                "- Channel: general",  # metadata ignored
+                "- Timestamp: 2024-01-01T00:00:00+00:00",
+                "",  # end of metadata preamble
+                "Intro line before heading.",
+                "## Context",  # user-authored heading should not hide content
+                "Detail beneath the user heading should remain visible.",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    summary = db.summarize_capture(capture)
+
+    assert summary is not None
+    assert "Intro line" in summary
+    assert "Detail beneath" in summary
+
+
+def test_summarize_capture_keeps_user_attachments_section(tmp_path: Path) -> None:
+    capture = tmp_path / "general" / "attachments.md"
+    capture.parent.mkdir(parents=True, exist_ok=True)
+    capture.write_text(
+        "\n".join(
+            [
+                "# user",
+                "",
+                "- Channel: general",
+                "- Timestamp: 2024-01-01T00:00:00+00:00",
+                "",
+                "Project update preceding references.",
+                "## Attachments",
+                "- [Spec document](https://example.com/spec)",
+                "- Additional notes after the links.",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    summary = db.summarize_capture(capture, line_limit=3)
+
+    assert summary is not None
+    assert "Project update" in summary
+    assert "Spec document" in summary
+    assert "Additional notes" in summary
 
 
 def test_summarize_capture_uses_first_line_when_body_missing(tmp_path: Path) -> None:

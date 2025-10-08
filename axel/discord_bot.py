@@ -26,6 +26,7 @@ _METADATA_PREFIXES: tuple[str, ...] = (
     "- Timestamp:",
     "- Link:",
 )
+_ATTACHMENT_LINE = re.compile(r"\s*-\s*\[[^\]]+\]\(((?:\./|\.\./).+?)\)")
 
 
 @dataclass(frozen=True)
@@ -174,39 +175,72 @@ def summarize_capture(
         return None
 
     summary_lines: list[str] = []
-    in_context = False
-    in_attachments = False
+    metadata_preamble = True
+    lines = text.splitlines()
+    index = 0
 
-    for raw_line in text.splitlines():
+    while index < len(lines):
+        raw_line = lines[index]
         stripped = raw_line.strip()
+
+        if metadata_preamble:
+            if not stripped:
+                index += 1
+                continue
+            lowered = stripped.lower()
+            if lowered.startswith("## context"):
+                index += 1
+                while index < len(lines) and lines[index].strip():
+                    next_line = lines[index]
+                    if next_line.startswith("  ") or next_line.lstrip().startswith("- "):
+                        index += 1
+                        continue
+                    break
+                continue
+            if lowered.startswith("## attachments"):
+                index += 1
+                while index < len(lines) and lines[index].strip():
+                    if _ATTACHMENT_LINE.match(lines[index]):
+                        index += 1
+                        continue
+                    break
+                continue
+            if stripped.startswith("#"):
+                index += 1
+                continue
+            if any(stripped.startswith(prefix) for prefix in _METADATA_PREFIXES):
+                index += 1
+                continue
+            if raw_line.startswith("  "):
+                index += 1
+                continue
+            metadata_preamble = False
+            continue
+
         if not stripped:
-            if in_context:
-                in_context = False
-            if in_attachments:
-                in_attachments = False
+            index += 1
             continue
 
         lowered = stripped.lower()
-        if lowered.startswith("## context"):
-            in_context = True
-            in_attachments = False
-            continue
         if lowered.startswith("## attachments"):
-            in_attachments = True
-            in_context = False
+            index += 1
+            while index < len(lines) and lines[index].strip():
+                if _ATTACHMENT_LINE.match(lines[index]):
+                    index += 1
+                    continue
+                break
             continue
         if stripped.startswith("##"):
+            index += 1
             continue
         if stripped.startswith("#") and not summary_lines:
-            continue
-
-        if in_context:
-            continue
-        if in_attachments:
+            index += 1
             continue
         if any(stripped.startswith(prefix) for prefix in _METADATA_PREFIXES):
+            index += 1
             continue
         if raw_line.startswith("  "):
+            index += 1
             continue
 
         if stripped.startswith("- "):
@@ -215,11 +249,13 @@ def summarize_capture(
             cleaned = stripped
 
         if not cleaned:
+            index += 1
             continue
 
         summary_lines.append(cleaned)
         if len(summary_lines) >= line_limit:
             break
+        index += 1
 
     if summary_lines:
         summary = " ".join(summary_lines)

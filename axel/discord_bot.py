@@ -8,7 +8,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Sequence
+from typing import Iterator, Sequence
 
 import discord
 from cryptography.fernet import Fernet
@@ -138,6 +138,111 @@ def _read_capture(path: Path, encrypter: Fernet | None) -> str | None:
         return decrypted.decode("utf-8", "ignore")
 
 
+def _consume_saved_context(lines: Sequence[str], start: int) -> int | None:
+    """Return the index after stored context or ``None`` for user-authored text."""
+
+    idx = start + 1
+    saw_indented = False
+    while idx < len(lines):
+        candidate = lines[idx]
+        if not candidate.strip():
+            break
+        if candidate.startswith("  "):
+            saw_indented = True
+            idx += 1
+            continue
+        if candidate.lstrip().startswith("- "):
+            idx += 1
+            continue
+        return None
+    return idx if saw_indented else None
+
+
+def _consume_saved_attachments(lines: Sequence[str], start: int) -> int | None:
+    """Return the index after stored attachments or ``None`` for user-authored text."""
+
+    idx = start + 1
+    matched = False
+    while idx < len(lines):
+        candidate = lines[idx]
+        if not candidate.strip():
+            break
+        if _ATTACHMENT_LINE.match(candidate):
+            matched = True
+            idx += 1
+            continue
+        return None
+    return idx if matched else None
+
+
+def _iter_message_lines(lines: Sequence[str]) -> Iterator[tuple[str, str]]:
+    """Yield ``(raw, stripped)`` tuples for user-authored message lines."""
+
+    index = 0
+    metadata_preamble = True
+
+    while index < len(lines):
+        raw_line = lines[index]
+        stripped = raw_line.strip()
+
+        if metadata_preamble:
+            if not stripped:
+                index += 1
+                continue
+            lowered = stripped.lower()
+            if lowered.startswith("## context"):
+                consumed = _consume_saved_context(lines, index)
+                if consumed is not None:
+                    index = consumed
+                    continue
+                metadata_preamble = False
+                continue
+            if lowered.startswith("## attachments"):
+                consumed = _consume_saved_attachments(lines, index)
+                if consumed is not None:
+                    index = consumed
+                    continue
+                metadata_preamble = False
+                continue
+            if stripped.startswith("#"):
+                index += 1
+                continue
+            if any(stripped.startswith(prefix) for prefix in _METADATA_PREFIXES):
+                index += 1
+                continue
+            if raw_line.startswith("  "):
+                index += 1
+                continue
+            metadata_preamble = False
+            continue
+
+        if not stripped:
+            index += 1
+            continue
+
+        lowered = stripped.lower()
+        if lowered.startswith("## attachments"):
+            index += 1
+            while index < len(lines) and lines[index].strip():
+                if _ATTACHMENT_LINE.match(lines[index]):
+                    index += 1
+                    continue
+                break
+            continue
+        if stripped.startswith("##"):
+            index += 1
+            continue
+        if any(stripped.startswith(prefix) for prefix in _METADATA_PREFIXES):
+            index += 1
+            continue
+        if raw_line.startswith("  "):
+            index += 1
+            continue
+
+        yield raw_line, stripped
+        index += 1
+
+
 def search_captures(query: str, *, limit: int = 5) -> list[SearchResult]:
     """Return saved capture snippets containing ``query``.
 
@@ -189,120 +294,25 @@ def summarize_capture(
     if not text:
         return None
 
-    summary_lines: list[str] = []
-    metadata_preamble = True
     lines = text.splitlines()
-    index = 0
+    summary_lines: list[str] = []
 
-    def _consume_saved_context(start: int) -> int | None:
-        """Return the index after stored context or ``None`` for user content."""
-
-        idx = start + 1
-        saw_indented = False
-        while idx < len(lines):
-            candidate = lines[idx]
-            if not candidate.strip():
-                break
-            if candidate.startswith("  "):
-                saw_indented = True
-                idx += 1
-                continue
-            if candidate.lstrip().startswith("- "):
-                idx += 1
-                continue
-            return None
-        return idx if saw_indented else None
-
-    def _consume_saved_attachments(start: int) -> int | None:
-        """Return the index after saved attachments or ``None`` for user content."""
-
-        idx = start + 1
-        matched = False
-        while idx < len(lines):
-            candidate = lines[idx]
-            if not candidate.strip():
-                break
-            if _ATTACHMENT_LINE.match(candidate):
-                matched = True
-                idx += 1
-                continue
-            return None
-        return idx if matched else None
-
-    while index < len(lines):
-        raw_line = lines[index]
-        stripped = raw_line.strip()
-
-        if metadata_preamble:
-            if not stripped:
-                index += 1
-                continue
-            lowered = stripped.lower()
-            if lowered.startswith("## context"):
-                consumed = _consume_saved_context(index)
-                if consumed is not None:
-                    index = consumed
-                    continue
-                metadata_preamble = False
-                continue
-            if lowered.startswith("## attachments"):
-                consumed = _consume_saved_attachments(index)
-                if consumed is not None:
-                    index = consumed
-                    continue
-                metadata_preamble = False
-                continue
-            if stripped.startswith("#"):
-                index += 1
-                continue
-            if any(stripped.startswith(prefix) for prefix in _METADATA_PREFIXES):
-                index += 1
-                continue
-            if raw_line.startswith("  "):
-                index += 1
-                continue
-            metadata_preamble = False
-            continue
-
-        if not stripped:
-            index += 1
-            continue
-
-        lowered = stripped.lower()
-        if lowered.startswith("## attachments"):
-            index += 1
-            while index < len(lines) and lines[index].strip():
-                if _ATTACHMENT_LINE.match(lines[index]):
-                    index += 1
-                    continue
-                break
-            continue
-        if stripped.startswith("##"):
-            index += 1
-            continue
+    for raw_line, stripped in _iter_message_lines(lines):
         if stripped.startswith("#") and not summary_lines:
-            index += 1
             continue
-        if any(stripped.startswith(prefix) for prefix in _METADATA_PREFIXES):
-            index += 1
-            continue
-        if raw_line.startswith("  "):
-            index += 1
-            continue
-
         if stripped.startswith("- "):
+            cleaned = stripped[2:].strip()
+        elif stripped.startswith("* "):
             cleaned = stripped[2:].strip()
         else:
             cleaned = stripped
 
         if not cleaned or cleaned == "-":
-            index += 1
             continue
 
         summary_lines.append(cleaned)
         if len(summary_lines) >= line_limit:
             break
-        index += 1
 
     if summary_lines:
         summary = " ".join(summary_lines)
@@ -316,6 +326,50 @@ def summarize_capture(
     if len(summary) > SUMMARY_MAX_CHARS:
         summary = summary[: SUMMARY_MAX_CHARS - 3].rstrip() + "..."
     return summary
+
+
+def extract_action_items(path: Path, *, limit: int = 3) -> list[str]:
+    """Return actionable bullet lines or TODOs from the capture at ``path``."""
+
+    if limit <= 0:
+        return []
+
+    text = _read_capture(path, _get_encrypter())
+    if not text:
+        return []
+
+    items: list[str] = []
+    for _raw_line, stripped in _iter_message_lines(text.splitlines()):
+        cleaned: str | None = None
+        lowered = stripped.lower()
+
+        if stripped.startswith("- ["):
+            closing = stripped.find("]")
+            if closing != -1:
+                cleaned = stripped[closing + 1 :].strip()
+            else:
+                cleaned = stripped[2:].strip()
+        elif stripped.startswith("- "):
+            cleaned = stripped[2:].strip()
+        elif stripped.startswith("* "):
+            cleaned = stripped[2:].strip()
+        elif lowered.startswith("todo:"):
+            cleaned = stripped[5:].strip() or "TODO"
+        elif lowered.startswith("action:"):
+            cleaned = stripped[7:].strip() or "Action item"
+        elif lowered.startswith("next steps:"):
+            cleaned = stripped.split(":", 1)[1].strip()
+        else:
+            continue
+
+        if not cleaned:
+            continue
+
+        items.append(cleaned)
+        if len(items) >= limit:
+            break
+
+    return items
 
 
 def _get_encrypter() -> Fernet | None:
@@ -630,6 +684,48 @@ class AxelClient(discord.Client):
                 "\n".join(lines),
                 ephemeral=True,
             )
+
+        @axel_group.command(
+            name="actions",
+            description="List actionable items from the first matching capture.",
+        )
+        @app_commands.describe(
+            query="Text to locate a capture before listing action items.",
+            count="Maximum number of action items to include (1-10).",
+        )
+        async def _actions_command(
+            interaction: discord.Interaction,
+            query: str,
+            count: app_commands.Range[int, 1, 10] = 3,
+        ) -> None:
+            results = search_captures(query, limit=1)
+            if not results:
+                await interaction.response.send_message(
+                    f"No captures found for '{query}'.",
+                    ephemeral=True,
+                )
+                return
+
+            result = results[0]
+            root = _get_save_dir()
+            try:
+                relative = result.path.relative_to(root)
+            except ValueError:
+                relative = result.path
+
+            items = extract_action_items(result.path, limit=int(count))
+            if not items:
+                message = (
+                    f"No action items found in {relative.as_posix()} for '{query}'."
+                )
+            else:
+                bullet_lines = "\n".join(f"- {item}" for item in items)
+                message = (
+                    f"Action items for '{query}' ({relative.as_posix()}):\n"
+                    f"{bullet_lines}"
+                )
+
+            await interaction.response.send_message(message, ephemeral=True)
 
         @axel_group.command(
             name="summarize",

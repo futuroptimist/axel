@@ -94,6 +94,11 @@ spans `tests/test_discord_bot.py::test_summarize_capture_extracts_message_body`,
 `tests/test_discord_bot.py::test_summarize_capture_includes_bullet_message_body`, and
 `tests/test_discord_bot.py::test_axel_summarize_command_replies_with_summary`.
 
+Invoke `/axel actions` to list the first few TODOs or checkbox items stored in a capture.
+Provide an optional `count` argument (default `3`) to control how many entries appear.
+Responses remain ephemeral so only the requester sees the generated plan. Coverage lives
+in `tests/test_discord_bot.py::test_axel_actions_command_replies_with_items`.
+
 ## Analyzing Captured Messages
 
 Saved files can be processed with local LLMs such as
@@ -114,12 +119,18 @@ Automated coverage for the capture format lives in
 `tests/test_discord_bot.py::test_save_message_encrypts_when_key_set`,
 `tests/test_discord_bot.py::test_axel_client_excludes_trigger_from_context`.
 
+Call `axel.discord_bot.extract_action_items` when you need the same task parsing outside
+Discord. The helper pulls checkbox bullets, classic hyphen bullets, and `TODO:` lines from
+saved captures. Coverage spans
+`tests/test_discord_bot.py::test_extract_action_items_returns_bullets` and
+`tests/test_discord_bot.py::test_extract_action_items_empty_when_no_matches`.
+
 ## Roadmap
 
 Future improvements will expand the bot's capabilities:
 
-- **Command interface** – extend the existing `/axel search` and `/axel summarize`
-  commands with additional local LLM workflows that operate on stored messages.
+- **Command interface** – continue extending `/axel search`, `/axel summarize`, and
+  `/axel actions` with additional local workflows that operate on stored messages.
 
 Contributions and ideas are welcome. Keep all bot logic local and respect user privacy.
 Automated coverage lives in `tests/test_discord_bot.py` (see the tests referenced above).

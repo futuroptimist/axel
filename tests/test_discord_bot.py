@@ -205,6 +205,54 @@ def test_summarize_capture_keeps_user_context_bullets(tmp_path: Path) -> None:
     assert "keep the second bullet" in summary
 
 
+def test_extract_action_items_returns_bullets(tmp_path: Path) -> None:
+    capture = tmp_path / "general" / "actions.md"
+    capture.parent.mkdir(parents=True, exist_ok=True)
+    capture.write_text(
+        "\n".join(
+            [
+                "# user",  # stored header ignored
+                "",
+                "- Channel: general",  # metadata ignored
+                "- Timestamp: 2024-01-01T00:00:00+00:00",
+                "",
+                "- [ ] draft release notes",  # checkbox bullet retained
+                "- Capture finished tasks",  # regular bullet retained
+                "TODO: confirm launch window",  # todo line retained
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    items = db.extract_action_items(capture, limit=5)
+
+    assert items == [
+        "draft release notes",
+        "Capture finished tasks",
+        "confirm launch window",
+    ]
+
+
+def test_extract_action_items_empty_when_no_matches(tmp_path: Path) -> None:
+    capture = tmp_path / "general" / "notes.md"
+    capture.parent.mkdir(parents=True, exist_ok=True)
+    capture.write_text(
+        "\n".join(
+            [
+                "# user",
+                "",
+                "- Channel: general",
+                "- Timestamp: 2024-01-01T00:00:00+00:00",
+                "",
+                "No explicit tasks here.",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    assert db.extract_action_items(capture) == []
+
+
 def test_summarize_capture_ignores_metadata_noise_before_body(tmp_path: Path) -> None:
     capture = tmp_path / "general" / "metadata-noise.md"
     capture.parent.mkdir(parents=True, exist_ok=True)
@@ -1212,6 +1260,36 @@ def test_axel_summarize_command_replies_with_summary(
     assert "updates/21.md" in interaction.response.content
     assert "Summary for 'summary'" in interaction.response.content
     assert "actionable outcomes" in interaction.response.content
+
+
+def test_axel_actions_command_replies_with_items(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AXEL_DISCORD_DIR", str(tmp_path))
+    msg = DummyMessage(
+        "- [ ] draft release notes\n- Prepare flight checklist\nGeneral reminder",
+        mid=22,
+        channel=DummyChannel("updates"),
+    )
+    db.save_message(msg)
+
+    intents = discord.Intents.none()
+    client = db.AxelClient(intents=intents)
+
+    axel_command = client.tree.get_command("axel")
+    assert axel_command is not None
+    actions_command = next(
+        cmd for cmd in getattr(axel_command, "commands", []) if cmd.name == "actions"
+    )
+
+    interaction = DummyInteraction()
+    asyncio.run(actions_command.callback(interaction, query="draft", count=2))
+
+    assert interaction.response.ephemeral is True
+    assert interaction.response.content is not None
+    assert "updates/22.md" in interaction.response.content
+    assert "draft release notes" in interaction.response.content
+    assert "Prepare flight checklist" in interaction.response.content
 
 
 def test_axel_summarize_command_reports_no_matches(

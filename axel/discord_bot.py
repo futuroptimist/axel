@@ -70,24 +70,39 @@ def _normalize_repo_key(value: str | None) -> str:
     return _NORMALIZE_REPO_NAME.sub("", value.lower())
 
 
-def _matching_repo_urls(channel_name: str | None) -> list[str]:
-    """Return repo URLs whose slug matches ``channel_name`` ignoring punctuation."""
+def _matching_repo_urls(
+    channel_name: str | None, thread_name: str | None = None
+) -> list[str]:
+    """Return repos whose slugs match the channel or thread names."""
 
-    key = _normalize_repo_key(channel_name)
-    if not key:
+    candidate_keys: list[str] = []
+    seen_keys: set[str] = set()
+    for value in (channel_name, thread_name):
+        key = _normalize_repo_key(value)
+        if key and key not in seen_keys:
+            candidate_keys.append(key)
+            seen_keys.add(key)
+
+    if not candidate_keys:
         return []
 
     from .repo_manager import load_repos
 
-    matches: list[str] = []
-    seen: set[str] = set()
+    candidate_to_urls: dict[str, list[str]] = {key: [] for key in candidate_keys}
+    seen_urls: set[str] = set()
+
     for repo in load_repos():
         slug = repo.rstrip("/").rsplit("/", 1)[-1]
         if not slug:
             continue
-        if _normalize_repo_key(slug) == key and repo not in seen:
-            matches.append(repo)
-            seen.add(repo)
+        slug_key = _normalize_repo_key(slug)
+        if slug_key in candidate_to_urls and repo not in seen_urls:
+            candidate_to_urls[slug_key].append(repo)
+            seen_urls.add(repo)
+
+    matches: list[str] = []
+    for key in candidate_keys:
+        matches.extend(candidate_to_urls.get(key, ()))
     return matches
 
 
@@ -263,7 +278,7 @@ def save_message(
     lines.append(f"- Channel: {channel_name or 'unknown'}")
     if thread_name:
         lines.append(f"- Thread: {thread_name}")
-    for repo_url in _matching_repo_urls(channel_name):
+    for repo_url in _matching_repo_urls(channel_name, thread_name):
         lines.append(f"- Repository: {repo_url}")
     lines.append(f"- Timestamp: {timestamp}")
     if jump_url:

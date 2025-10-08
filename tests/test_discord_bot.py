@@ -153,6 +153,34 @@ def test_summarize_capture_includes_bullet_message_body(tmp_path: Path) -> None:
     assert "Channel" not in summary
 
 
+def test_summarize_capture_reads_plaintext_with_encryption_enabled(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Plaintext captures still summarize correctly when encryption is configured."""
+
+    key = Fernet.generate_key().decode()
+    monkeypatch.setenv("AXEL_DISCORD_ENCRYPTION_KEY", key)
+
+    capture = tmp_path / "general" / "plaintext.md"
+    capture.parent.mkdir(parents=True, exist_ok=True)
+    capture.write_text(
+        "\n".join(
+            [
+                "# user",
+                "",
+                "- Channel: general",
+                "",
+                "Actionable body content",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    summary = db.summarize_capture(capture)
+
+    assert summary == "Actionable body content"
+
+
 def test_summarize_capture_preserves_user_context_heading(tmp_path: Path) -> None:
     capture = tmp_path / "general" / "context.md"
     capture.parent.mkdir(parents=True, exist_ok=True)
@@ -747,6 +775,30 @@ def test_search_captures_decrypts_encrypted_files(
 
     assert results
     assert results[0].path == tmp_path / "secure" / "11.md"
+
+
+def test_search_captures_reads_plaintext_with_encryption_enabled(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Legacy plaintext captures remain searchable after enabling encryption."""
+
+    key = Fernet.generate_key().decode()
+    monkeypatch.setenv("AXEL_DISCORD_ENCRYPTION_KEY", key)
+    monkeypatch.setenv("AXEL_DISCORD_DIR", str(tmp_path))
+
+    channel_dir = tmp_path / "general"
+    channel_dir.mkdir()
+    capture = channel_dir / "1.md"
+    capture.write_text(
+        "# User\n\n- Channel: general\n\nBody plaintext note\n",
+        encoding="utf-8",
+    )
+
+    results = db.search_captures("plaintext")
+
+    assert results
+    assert results[0].path == capture
+    assert results[0].snippet == "Body plaintext note"
 
 
 def test_search_captures_skips_encrypted_when_key_missing(

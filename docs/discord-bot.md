@@ -31,8 +31,9 @@ Use `axel.discord_bot.search_captures` to scan saved markdown files for matching
 handles encrypted captures (when `AXEL_DISCORD_ENCRYPTION_KEY` is set) and limits the number of
 results returned; see
 `tests/test_discord_bot.py::test_search_captures_returns_matches`,
-`tests/test_discord_bot.py::test_search_captures_decrypts_encrypted_files`, and
-`tests/test_discord_bot.py::test_search_captures_respects_limit`.
+`tests/test_discord_bot.py::test_search_captures_decrypts_encrypted_files`,
+`tests/test_discord_bot.py::test_search_captures_reads_plaintext_with_encryption_enabled`,
+and `tests/test_discord_bot.py::test_search_captures_respects_limit`.
 
 ## Encrypting Captures
 
@@ -47,7 +48,10 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 
 Store the key securely (for example, in a password manager) and export it before running
 the bot. Attachments remain on disk in plaintext so they can be referenced by the markdown
-once decrypted.
+once decrypted. `search_captures` and `summarize_capture` continue to read legacy plaintext
+captures even when encryption is enabled so older notes remain discoverable; see
+`tests/test_discord_bot.py` (`test_search_captures_reads_plaintext_with_encryption_enabled`
+and `test_summarize_capture_reads_plaintext_with_encryption_enabled`).
 
 ## Workflow
 
@@ -91,8 +95,9 @@ provided query. The helper prioritizes the saved message body, skipping metadata
 thread context so the summary stays focused on the actionable text. Summaries surface the
 relative file path alongside the condensed content in an ephemeral response. Coverage
 spans `tests/test_discord_bot.py::test_summarize_capture_extracts_message_body`,
-`tests/test_discord_bot.py::test_summarize_capture_includes_bullet_message_body`, and
-`tests/test_discord_bot.py::test_axel_summarize_command_replies_with_summary`.
+`tests/test_discord_bot.py::test_summarize_capture_includes_bullet_message_body`,
+`tests/test_discord_bot.py::test_summarize_capture_reads_plaintext_with_encryption_enabled`,
+and `tests/test_discord_bot.py::test_axel_summarize_command_replies_with_summary`.
 
 ## Analyzing Captured Messages
 

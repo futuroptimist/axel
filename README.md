@@ -27,7 +27,7 @@ This launches the token.place server, relay and a mock LLM using one command.
 - [x] contributor guide (see `CONTRIBUTING.md`)
 - [x] remove repos from the list (`python -m axel.repo_manager remove`)
 - [x] fetch repos from the GitHub API (`python -m axel.repo_manager fetch`)
-- [ ] integrate LLM assistants to suggest quests across repos
+- [x] integrate LLM assistants to suggest quests across repos
 - [ ] integrate `token.place` clients across all repos
 - [ ] integrate [`gabriel`](https://github.com/futuroptimist/gabriel) as a security layer across repos
 - [x] self-hosted Discord bot for ingesting messages when mentioned (see docs/discord-bot.md)
@@ -92,6 +92,8 @@ module powers the "suggest quests" promise described in the roadmap and is cover
 Quests that involve token.place automatically reference `gabriel` to reinforce the
 security layer described in `issues/0003-gabriel-security-layer.md`; see
 `tests/test_quests.py::test_suggest_cross_repo_quests_mentions_gabriel_for_sensitive_pairs`.
+The roadmap entry for this integration stays checked via
+`tests/test_readme.py::test_readme_marks_llm_quests_complete`.
 11. Clear all tasks with `python -m axel.task_manager clear`.
 12. Pass `--path <file>` or set `AXEL_TASK_FILE` to use a custom task list. The task CLI also
     accepts `--path` before or after the subcommand (see
@@ -115,6 +117,8 @@ module powers the "suggest quests" promise described in the roadmap and is cover
 Quests that involve token.place automatically reference `gabriel` to reinforce the
 security layer described in `issues/0003-gabriel-security-layer.md`; see
 `tests/test_quests.py::test_suggest_cross_repo_quests_mentions_gabriel_for_sensitive_pairs`.
+The roadmap entry for this integration stays checked via
+`tests/test_readme.py::test_readme_marks_llm_quests_complete`.
 
 ## local setup
 

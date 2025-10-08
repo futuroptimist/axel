@@ -427,6 +427,21 @@ def test_main_branches(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> No
     assert tm.list_tasks(path=file) == []
 
 
+def test_main_list_handles_missing_completed_field(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Legacy task entries without ``completed`` default to pending in output."""
+
+    file = tmp_path / "tasks.json"
+    file.write_text(json.dumps([{"id": 1, "description": "legacy task"}]))
+
+    from axel import task_manager as tm
+
+    tm.main(["--path", str(file), "list"])
+    output = capsys.readouterr().out
+    assert "1 [ ] legacy task" in output
+
+
 def test_clear_tasks(tmp_path: Path) -> None:
     file = tmp_path / "tasks.json"
     add_task("write docs", path=file)

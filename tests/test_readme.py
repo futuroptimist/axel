@@ -21,3 +21,14 @@ def test_readme_marks_gabriel_security_layer_complete() -> None:
         "as a security layer across repos"
     )
     assert expected in content
+
+
+def test_readme_includes_alpha_status_and_supporting_docs() -> None:
+    """README should surface alpha status and link to supporting docs."""
+
+    readme = Path(__file__).resolve().parents[1] / "README.md"
+    content = readme.read_text(encoding="utf-8")
+
+    assert "Status: Alpha" in content
+    assert "docs/FAQ.md" in content
+    assert "docs/KNOWN_ISSUES.md" in content

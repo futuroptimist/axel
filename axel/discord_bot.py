@@ -755,6 +755,38 @@ class AxelClient(discord.Client):
             await interaction.response.send_message(message, ephemeral=True)
 
         @axel_group.command(
+            name="digest",
+            description="Summarize multiple captures that match the query.",
+        )
+        @app_commands.describe(
+            query="Text to locate captures before generating a digest.",
+        )
+        async def _digest_command(interaction: discord.Interaction, query: str) -> None:
+            digest = digest_captures(query)
+            if not digest:
+                await interaction.response.send_message(
+                    f"No captures found for '{query}'.",
+                    ephemeral=True,
+                )
+                return
+
+            root = _get_save_dir()
+            lines = [f"Digest for '{query}':"]
+            for entry in digest:
+                try:
+                    relative = entry.path.relative_to(root)
+                except ValueError:
+                    relative = entry.path
+
+                summary = entry.summary or "(no summary)"
+                lines.append(f"- {relative.as_posix()}: {summary}")
+
+            await interaction.response.send_message(
+                "\n".join(lines),
+                ephemeral=True,
+            )
+
+        @axel_group.command(
             name="quest",
             description="Suggest a cross-repo quest from capture metadata.",
         )

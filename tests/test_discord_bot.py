@@ -124,7 +124,9 @@ def test_read_capture_plaintext_fallback_requires_markdown_context(
     assert db._read_capture(capture, encrypter) is None
 
 
-def test_matching_repo_urls_returns_ordered_matches(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_matching_repo_urls_returns_ordered_matches(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Channel and thread names are matched against known repository slugs."""
 
     repositories = [
@@ -133,7 +135,9 @@ def test_matching_repo_urls_returns_ordered_matches(monkeypatch: pytest.MonkeyPa
         "https://github.com/futuroptimist/quest-log",
     ]
 
-    monkeypatch.setattr("axel.repo_manager.load_repos", lambda: repositories, raising=False)
+    monkeypatch.setattr(
+        "axel.repo_manager.load_repos", lambda: repositories, raising=False
+    )
 
     matches = db._matching_repo_urls("Axel", "Axel Extra")
 
@@ -143,10 +147,14 @@ def test_matching_repo_urls_returns_ordered_matches(monkeypatch: pytest.MonkeyPa
     ]
 
 
-def test_matching_repo_urls_handles_missing_candidates(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_matching_repo_urls_handles_missing_candidates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """When no normalized names are present an empty list is returned."""
 
-    monkeypatch.setattr("axel.repo_manager.load_repos", lambda: ["https://example.com/repo"])
+    monkeypatch.setattr(
+        "axel.repo_manager.load_repos", lambda: ["https://example.com/repo"]
+    )
 
     assert db._matching_repo_urls(None, None) == []
 

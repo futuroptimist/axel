@@ -64,7 +64,11 @@ and `test_summarize_capture_reads_plaintext_with_encryption_enabled`).
    - author display name as the heading
    - bullet-point metadata for the channel, optional thread name, matching repository
      URLs when the channel corresponds to an entry in the repo list, ISO 8601 timestamp,
-     and original message link
+     and original message link. Captures linked to
+     [`token.place`](https://github.com/futuroptimist/token.place) append a
+     ``Security`` line pointing to the [gabriel](https://github.com/futuroptimist/gabriel)
+     repository so sensitive quests automatically include the security layer (see
+     `tests/test_discord_bot.py::test_save_message_includes_gabriel_security_note`).
   - a `## Context` section (when available) listing up to five prior messages in
     oldest-first order, even when Discord's API returns them newest-first. The
     triggering mention is excluded so only earlier context appears. Each entry records
@@ -130,8 +134,9 @@ Automated coverage for the capture format lives in
 
 Future improvements will expand the bot's capabilities:
 
-- **Command interface** – extend the existing `/axel search` and `/axel summarize`
-  commands with additional local LLM workflows that operate on stored messages.
+- **Command interface** – `/axel digest` extends the command set with a locally generated
+  multi-capture digest (see `tests/test_discord_bot.py::test_axel_digest_command_replies_with_digest`).
+  Future workflows can plug in heavier local models to build on this pattern.
 
 Contributions and ideas are welcome. Keep all bot logic local and respect user privacy.
 Automated coverage lives in `tests/test_discord_bot.py` (see the tests referenced above).

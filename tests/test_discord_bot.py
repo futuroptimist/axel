@@ -669,6 +669,28 @@ def test_save_message_includes_repository_metadata(tmp_path: Path, monkeypatch) 
     assert "- Repository: https://github.com/example/project.one" in content
 
 
+def test_save_message_includes_gabriel_security_note(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """token.place captures remind users about the gabriel security layer."""
+
+    repo_file = tmp_path / "repos.txt"
+    repo_file.write_text(
+        "https://github.com/futuroptimist/token.place\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("AXEL_REPO_FILE", str(repo_file))
+
+    db.SAVE_DIR = tmp_path
+    msg = DummyMessage("token insight", channel=DummyChannel("token-place"))
+
+    path = db.save_message(msg)
+
+    content = read_markdown(path)
+    assert "- Repository: https://github.com/futuroptimist/token.place" in content
+    assert "- Security: https://github.com/futuroptimist/gabriel" in content
+
+
 def test_save_message_includes_repository_metadata_from_thread(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1539,6 +1561,103 @@ def test_axel_summarize_command_reports_no_matches(
 
     assert interaction.response.ephemeral is True
     assert interaction.response.content == "No captures found for 'missing'."
+
+
+def test_axel_digest_command_replies_with_digest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AXEL_DISCORD_DIR", str(tmp_path))
+    first = DummyMessage(
+        "Digestible highlight number one.",
+        mid=35,
+        channel=DummyChannel("updates"),
+    )
+    second = DummyMessage(
+        "Digestible highlight number two with extras.",
+        mid=36,
+        channel=DummyChannel("updates"),
+    )
+    db.save_message(first)
+    db.save_message(second)
+
+    intents = discord.Intents.none()
+    client = db.AxelClient(intents=intents)
+
+    axel_command = client.tree.get_command("axel")
+    assert axel_command is not None
+    digest_command = next(
+        cmd for cmd in getattr(axel_command, "commands", []) if cmd.name == "digest"
+    )
+
+    interaction = DummyInteraction()
+    asyncio.run(digest_command.callback(interaction, query="digestible"))
+
+    assert interaction.response.ephemeral is True
+    assert interaction.response.content is not None
+    assert "Digest for 'digestible'" in interaction.response.content
+    assert "updates/35.md" in interaction.response.content
+    assert "updates/36.md" in interaction.response.content
+
+
+def test_axel_digest_command_reports_no_matches(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AXEL_DISCORD_DIR", str(tmp_path))
+
+    intents = discord.Intents.none()
+    client = db.AxelClient(intents=intents)
+
+    axel_command = client.tree.get_command("axel")
+    assert axel_command is not None
+    digest_command = next(
+        cmd for cmd in getattr(axel_command, "commands", []) if cmd.name == "digest"
+    )
+
+    def _fake_digest(query: str, *, limit: int = 3):
+        assert query == "missing"
+        assert limit == 3
+        return []
+
+    monkeypatch.setattr(db, "digest_captures", _fake_digest)
+
+    interaction = DummyInteraction()
+    asyncio.run(digest_command.callback(interaction, query="missing"))
+
+    assert interaction.response.ephemeral is True
+    assert interaction.response.content == "No captures found for 'missing'."
+
+
+def test_axel_digest_command_handles_paths_outside_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Digest command renders absolute paths when outside the configured root."""
+
+    monkeypatch.setenv("AXEL_DISCORD_DIR", str(tmp_path))
+
+    intents = discord.Intents.none()
+    client = db.AxelClient(intents=intents)
+
+    axel_command = client.tree.get_command("axel")
+    assert axel_command is not None
+    digest_command = next(
+        cmd for cmd in getattr(axel_command, "commands", []) if cmd.name == "digest"
+    )
+
+    external_path = tmp_path.parent / "external.md"
+
+    def _fake_digest(query: str, *, limit: int = 3) -> list[db.DigestEntry]:
+        assert query == "external"
+        return [db.DigestEntry(path=external_path, summary="External summary")]
+
+    monkeypatch.setattr(db, "digest_captures", _fake_digest)
+
+    interaction = DummyInteraction()
+    asyncio.run(digest_command.callback(interaction, query="external"))
+
+    assert interaction.response.ephemeral is True
+    assert interaction.response.content is not None
+    assert "external.md" in interaction.response.content
+    assert "External summary" in interaction.response.content
 
 
 def test_axel_summarize_command_reports_missing_summary(

@@ -40,6 +40,14 @@ class SearchResult:
     snippet: str
 
 
+@dataclass(frozen=True)
+class DigestEntry:
+    """Summarized view of a capture used in digests."""
+
+    path: Path
+    summary: str
+
+
 def _context_sort_key(message: discord.Message) -> datetime:
     """Return a datetime sort key for ``message`` timestamps."""
 
@@ -369,6 +377,30 @@ def summarize_capture(
     return summary
 
 
+def digest_captures(query: str, *, limit: int = 3) -> list[DigestEntry]:
+    """Return summarized captures that match ``query``.
+
+    Results reuse :func:`search_captures` to locate relevant files and
+    :func:`summarize_capture` to condense their contents. Entries lacking
+    readable content are skipped. ``limit`` controls the number of summarized
+    captures returned, with non-positive limits producing an empty list.
+    """
+
+    if limit <= 0:
+        return []
+
+    matches = search_captures(query, limit=max(limit * 2, limit))
+    digest: list[DigestEntry] = []
+    for match in matches:
+        summary = summarize_capture(match.path)
+        if not summary:
+            continue
+        digest.append(DigestEntry(path=match.path, summary=summary))
+        if len(digest) >= limit:
+            break
+    return digest
+
+
 def _get_encrypter() -> Fernet | None:
     """Return a Fernet instance when encryption is enabled."""
 
@@ -435,8 +467,12 @@ def save_message(
     lines.append(f"- Channel: {channel_name or 'unknown'}")
     if thread_name:
         lines.append(f"- Thread: {thread_name}")
-    for repo_url in _matching_repo_urls(channel_name, thread_name):
+    matched_repos = _matching_repo_urls(channel_name, thread_name)
+    needs_gabriel = any("token.place" in repo.lower() for repo in matched_repos)
+    for repo_url in matched_repos:
         lines.append(f"- Repository: {repo_url}")
+    if needs_gabriel:
+        lines.append("- Security: https://github.com/futuroptimist/gabriel")
     lines.append(f"- Timestamp: {timestamp}")
     if jump_url:
         lines.append(f"- Link: {jump_url}")

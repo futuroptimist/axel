@@ -406,8 +406,12 @@ def save_message(
     lines.append(f"- Channel: {channel_name or 'unknown'}")
     if thread_name:
         lines.append(f"- Thread: {thread_name}")
-    for repo_url in _matching_repo_urls(channel_name, thread_name):
+    matched_repos = _matching_repo_urls(channel_name, thread_name)
+    needs_gabriel = any("token.place" in repo.lower() for repo in matched_repos)
+    for repo_url in matched_repos:
         lines.append(f"- Repository: {repo_url}")
+    if needs_gabriel:
+        lines.append("- Security: https://github.com/futuroptimist/gabriel")
     lines.append(f"- Timestamp: {timestamp}")
     if jump_url:
         lines.append(f"- Link: {jump_url}")

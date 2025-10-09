@@ -37,6 +37,14 @@ class SearchResult:
     snippet: str
 
 
+@dataclass(frozen=True)
+class DigestEntry:
+    """Summarized view of a capture used in digests."""
+
+    path: Path
+    summary: str
+
+
 def _context_sort_key(message: discord.Message) -> datetime:
     """Return a datetime sort key for ``message`` timestamps."""
 
@@ -338,6 +346,30 @@ def summarize_capture(
     if len(summary) > SUMMARY_MAX_CHARS:
         summary = summary[: SUMMARY_MAX_CHARS - 3].rstrip() + "..."
     return summary
+
+
+def digest_captures(query: str, *, limit: int = 3) -> list[DigestEntry]:
+    """Return summarized captures that match ``query``.
+
+    Results reuse :func:`search_captures` to locate relevant files and
+    :func:`summarize_capture` to condense their contents. Entries lacking
+    readable content are skipped. ``limit`` controls the number of summarized
+    captures returned, with non-positive limits producing an empty list.
+    """
+
+    if limit <= 0:
+        return []
+
+    matches = search_captures(query, limit=max(limit * 2, limit))
+    digest: list[DigestEntry] = []
+    for match in matches:
+        summary = summarize_capture(match.path)
+        if not summary:
+            continue
+        digest.append(DigestEntry(path=match.path, summary=summary))
+        if len(digest) >= limit:
+            break
+    return digest
 
 
 def _get_encrypter() -> Fernet | None:
@@ -688,6 +720,36 @@ class AxelClient(discord.Client):
                 message = f"Summary for '{query}' ({relative.as_posix()}): {summary}"
 
             await interaction.response.send_message(message, ephemeral=True)
+
+        @axel_group.command(
+            name="digest",
+            description="Summarize multiple captures that match the query.",
+        )
+        @app_commands.describe(
+            query="Text to locate captures before generating a digest.",
+        )
+        async def _digest_command(interaction: discord.Interaction, query: str) -> None:
+            entries = digest_captures(query)
+            if not entries:
+                await interaction.response.send_message(
+                    f"No captures found for '{query}'.",
+                    ephemeral=True,
+                )
+                return
+
+            root = _get_save_dir()
+            lines = [f"Digest for '{query}':"]
+            for entry in entries:
+                try:
+                    relative = entry.path.relative_to(root)
+                except ValueError:
+                    relative = entry.path
+                lines.append(f"- {relative.as_posix()}: {entry.summary}")
+
+            await interaction.response.send_message(
+                "\n".join(lines),
+                ephemeral=True,
+            )
 
         self.tree.add_command(axel_group)
 

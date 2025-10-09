@@ -69,8 +69,11 @@ and `test_summarize_capture_reads_plaintext_with_encryption_enabled`).
      ``Security`` line pointing to the [gabriel](https://github.com/futuroptimist/gabriel)
      repository so sensitive quests automatically include the security layer (see
      `tests/test_discord_bot.py::test_save_message_includes_gabriel_security_note`).
-  - a `## Context` section (when available) listing up to five prior messages in
-    oldest-first order, even when Discord's API returns them newest-first. The
+     When Discord omits a display name, Axel falls back to other author fields so
+     headings stay meaningful (see
+     `tests/test_discord_bot.py::test_save_message_uses_display_name_fallback`).
+   - a `## Context` section (when available) listing up to five prior messages in
+     oldest-first order, even when Discord's API returns them newest-first. The
     triggering mention is excluded so only earlier context appears. Each entry records
     the author, timestamp, source link, and an indented line with the original message text
     (or `(no content)` when empty).

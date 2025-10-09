@@ -3,6 +3,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Sequence
 
 import pytest
 from cryptography.fernet import Fernet
@@ -121,6 +122,70 @@ def test_read_capture_plaintext_fallback_requires_markdown_context(
     encrypter = db._get_encrypter()
     assert encrypter is not None
     assert db._read_capture(capture, encrypter) is None
+
+
+def test_matching_repo_urls_returns_ordered_matches(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Channel and thread names are matched against known repository slugs."""
+
+    repositories = [
+        "https://github.com/futuroptimist/axel",
+        "https://github.com/futuroptimist/axel-extra",
+        "https://github.com/futuroptimist/quest-log",
+    ]
+
+    monkeypatch.setattr(
+        "axel.repo_manager.load_repos", lambda: repositories, raising=False
+    )
+
+    matches = db._matching_repo_urls("Axel", "Axel Extra")
+
+    assert matches == [
+        "https://github.com/futuroptimist/axel",
+        "https://github.com/futuroptimist/axel-extra",
+    ]
+
+
+def test_matching_repo_urls_handles_missing_candidates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When no normalized names are present an empty list is returned."""
+
+    monkeypatch.setattr(
+        "axel.repo_manager.load_repos", lambda: ["https://example.com/repo"]
+    )
+
+    assert db._matching_repo_urls(None, None) == []
+
+
+def test_capture_repository_urls_extracts_metadata(tmp_path: Path) -> None:
+    capture = tmp_path / "general" / "note.md"
+    capture.parent.mkdir(parents=True, exist_ok=True)
+    capture.write_text(
+        "\n".join(
+            [
+                "# user",
+                "",
+                "- Channel: general",
+                "- Repository: https://github.com/futuroptimist/axel",
+                "- repository: https://github.com/futuroptimist/flywheel  ",
+                "- Link: https://discord.com/channels/1/2/3",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    urls = db._capture_repository_urls(capture)
+
+    assert urls == [
+        "https://github.com/futuroptimist/axel",
+        "https://github.com/futuroptimist/flywheel",
+    ]
+
+
+def test_capture_repository_urls_returns_empty_when_missing(tmp_path: Path) -> None:
+    assert db._capture_repository_urls(tmp_path / "unknown.md") == []
 
 
 def test_summarize_capture_extracts_message_body(tmp_path: Path) -> None:
@@ -1318,98 +1383,153 @@ def test_axel_summarize_command_replies_with_summary(
     assert "actionable outcomes" in interaction.response.content
 
 
-def test_digest_captures_returns_summaries(
+def test_axel_quest_command_replies_with_suggestion(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """``digest_captures`` returns summaries for matching captures."""
-
     monkeypatch.setenv("AXEL_DISCORD_DIR", str(tmp_path))
-    first = DummyMessage(
-        "First actionable insight.", mid=31, channel=DummyChannel("updates")
+    capture = tmp_path / "channel" / "42.md"
+    capture.parent.mkdir()
+    capture.write_text(
+        "# user\n\n"
+        "- Repository: https://github.com/example/token.place\n"
+        "- Repository: https://github.com/example/gabriel\n\n"
+        "Coordinate token flows across projects.\n",
+        encoding="utf-8",
     )
-    second = DummyMessage(
-        "Second actionable insight with more detail.",
-        mid=32,
-        channel=DummyChannel("updates"),
+
+    intents = discord.Intents.none()
+    client = db.AxelClient(intents=intents)
+
+    axel_command = client.tree.get_command("axel")
+    assert axel_command is not None
+    quest_command = next(
+        cmd for cmd in getattr(axel_command, "commands", []) if cmd.name == "quest"
     )
-    db.save_message(first)
-    db.save_message(second)
-
-    results = db.digest_captures("insight", limit=2)
-
-    assert len(results) == 2
-    summaries = [entry.summary for entry in results]
-    assert any("First actionable insight" in summary for summary in summaries)
-    assert any("Second actionable insight" in summary for summary in summaries)
-
-
-def test_digest_captures_rejects_non_positive_limit(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Non-positive limits short-circuit without performing a search."""
-
-    def _unexpected_search(query: str, *, limit: int = 5) -> list[db.SearchResult]:
-        raise AssertionError(
-            "search_captures should not be called for non-positive limits"
-        )
-
-    monkeypatch.setattr(db, "search_captures", _unexpected_search)
-
-    assert db.digest_captures("anything", limit=0) == []
-    assert db.digest_captures("anything", limit=-5) == []
-
-
-def test_digest_captures_ignores_blank_summaries(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Entries without summaries are skipped from the digest output."""
-
-    monkeypatch.setenv("AXEL_DISCORD_DIR", str(tmp_path))
-    useful = DummyMessage(
-        "Useful capture for digestion.",
-        mid=33,
-        channel=DummyChannel("updates"),
-    )
-    empty = DummyMessage("", mid=34, channel=DummyChannel("updates"))
-    db.save_message(useful)
-    db.save_message(empty)
-
-    results = db.digest_captures("capture", limit=2)
-
-    assert len(results) == 1
-    assert results[0].path.name == "33.md"
-
-
-def test_digest_captures_skips_missing_summaries(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """Entries without summaries are skipped when condensation fails."""
-
-    first = tmp_path / "first.md"
-    second = tmp_path / "second.md"
 
     def _fake_search(query: str, *, limit: int = 5) -> list[db.SearchResult]:
-        assert limit == 6
+        assert query == "token"
+        assert limit == 1
+        return [db.SearchResult(path=capture, snippet="match")]
+
+    def _fake_suggest(
+        repos: Sequence[str], *, limit: int = 3
+    ) -> list[dict[str, object]]:
+        assert list(repos) == [
+            "https://github.com/example/token.place",
+            "https://github.com/example/gabriel",
+        ]
+        assert limit == 1
         return [
-            db.SearchResult(path=first, snippet="first"),
-            db.SearchResult(path=second, snippet="second"),
+            {
+                "repos": ["example/token.place", "example/gabriel"],
+                "summary": "Link example/token.place ↔ example/gabriel",
+                "details": "Coordinate rollouts safely.",
+            }
         ]
 
-    call_order: list[Path] = []
+    monkeypatch.setattr(db, "search_captures", _fake_search)
+    monkeypatch.setattr(db, "suggest_cross_repo_quests", _fake_suggest)
 
-    def _fake_summarize(path: Path) -> str | None:
-        call_order.append(path)
-        if path == first:
-            return None
-        return f"Summary for {path.name}"
+    interaction = DummyInteraction()
+    asyncio.run(quest_command.callback(interaction, query="token"))
+
+    assert interaction.response.ephemeral is True
+    assert interaction.response.content is not None
+    assert "Quest for 'token'" in interaction.response.content
+    assert "channel/42.md" in interaction.response.content
+    assert "Coordinate rollouts safely." in interaction.response.content
+
+
+def test_axel_quest_command_reports_missing_repositories(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AXEL_DISCORD_DIR", str(tmp_path))
+    capture = tmp_path / "projects" / "1.md"
+    capture.parent.mkdir()
+    capture.write_text(
+        "# user\n\n"
+        "- Repository: https://github.com/example/solo\n\n"
+        "Solo update without collaborators.\n",
+        encoding="utf-8",
+    )
+
+    intents = discord.Intents.none()
+    client = db.AxelClient(intents=intents)
+
+    axel_command = client.tree.get_command("axel")
+    assert axel_command is not None
+    quest_command = next(
+        cmd for cmd in getattr(axel_command, "commands", []) if cmd.name == "quest"
+    )
+
+    def _fake_search(query: str, *, limit: int = 5) -> list[db.SearchResult]:
+        assert query == "solo"
+        assert limit == 1
+        return [db.SearchResult(path=capture, snippet="match")]
 
     monkeypatch.setattr(db, "search_captures", _fake_search)
-    monkeypatch.setattr(db, "summarize_capture", _fake_summarize)
 
-    digest = db.digest_captures("digestible", limit=3)
+    interaction = DummyInteraction()
+    asyncio.run(quest_command.callback(interaction, query="solo"))
 
-    assert [entry.path for entry in digest] == [second]
-    assert call_order == [first, second]
+    assert interaction.response.ephemeral is True
+    assert interaction.response.content == (
+        "Capture projects/1.md does not reference " "multiple repositories."
+    )
+
+
+def test_axel_quest_command_reports_no_matches(monkeypatch: pytest.MonkeyPatch) -> None:
+    intents = discord.Intents.none()
+    client = db.AxelClient(intents=intents)
+
+    axel_command = client.tree.get_command("axel")
+    assert axel_command is not None
+    quest_command = next(
+        cmd for cmd in getattr(axel_command, "commands", []) if cmd.name == "quest"
+    )
+
+    monkeypatch.setattr(db, "search_captures", lambda *_, **__: [])
+
+    interaction = DummyInteraction()
+    asyncio.run(quest_command.callback(interaction, query="void"))
+
+    assert interaction.response.ephemeral is True
+    assert interaction.response.content == "No captures found for 'void'."
+
+
+def test_axel_quest_command_reports_missing_suggestions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    intents = discord.Intents.none()
+    client = db.AxelClient(intents=intents)
+
+    axel_command = client.tree.get_command("axel")
+    assert axel_command is not None
+    quest_command = next(
+        cmd for cmd in getattr(axel_command, "commands", []) if cmd.name == "quest"
+    )
+
+    monkeypatch.setattr(
+        db,
+        "search_captures",
+        lambda *_, **__: [db.SearchResult(path=Path("/capture.md"), snippet="hit")],
+    )
+    monkeypatch.setattr(db, "_get_save_dir", lambda: tmp_path / "root")
+    monkeypatch.setattr(
+        db,
+        "_capture_repository_urls",
+        lambda _path: ["https://repo.one", "https://repo.two"],
+    )
+    monkeypatch.setattr(db, "suggest_cross_repo_quests", lambda *_args, **_kwargs: [])
+
+    interaction = DummyInteraction()
+    asyncio.run(quest_command.callback(interaction, query="void"))
+
+    assert interaction.response.ephemeral is True
+    assert (
+        interaction.response.content
+        == "No quest suggestions available for /capture.md."
+    )
 
 
 def test_axel_summarize_command_reports_no_matches(

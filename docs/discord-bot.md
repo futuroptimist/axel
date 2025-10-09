@@ -103,11 +103,12 @@ spans `tests/test_discord_bot.py::test_summarize_capture_extracts_message_body`,
 `tests/test_discord_bot.py::test_summarize_capture_reads_plaintext_with_encryption_enabled`,
 and `tests/test_discord_bot.py::test_axel_summarize_command_replies_with_summary`.
 
-Use `/axel digest` to review multiple captures in one go. The command stitches together the
-first few summaries that match the provided query, giving you a quick scan of recent
-highlights without leaving Discord. It relies entirely on local data—no remote LLM calls
-required. Coverage spans `tests/test_discord_bot.py::test_digest_captures_returns_summaries`
-and `tests/test_discord_bot.py::test_axel_digest_command_replies_with_digest`.
+Use `/axel quest` to convert capture metadata into a cross-repo quest suggestion. The command
+parses `Repository:` lines from the first matching capture, runs them through
+`axel.quests.suggest_cross_repo_quests`, and replies with the resulting summary and quest
+details in an ephemeral message. Coverage spans
+`tests/test_discord_bot.py::test_axel_quest_command_replies_with_suggestion` and
+`tests/test_discord_bot.py::test_axel_quest_command_reports_missing_repositories`.
 
 ## Analyzing Captured Messages
 

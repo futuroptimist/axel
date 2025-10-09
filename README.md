@@ -196,7 +196,17 @@ See [docs/discord-bot.md](docs/discord-bot.md) for running a local Discord bot
 that saves mentioned messages to `local/discord/`. The bot exposes a `/axel search`
 slash command backed by `axel.discord_bot.search_captures` so you can locate saved
 notes without leaving Discord (see
-`tests/test_discord_bot.py::test_axel_search_command_replies_with_matches`).
+`tests/test_discord_bot.py::test_axel_search_command_replies_with_matches`). Use
+`/axel summarize` to condense the first matching capture into a short
+description. Coverage spans
+`tests/test_discord_bot.py::test_summarize_capture_extracts_message_body`,
+`tests/test_discord_bot.py::test_summarize_capture_includes_bullet_message_body`,
+`tests/test_discord_bot.py::test_summarize_capture_reads_plaintext_with_encryption_enabled`,
+and `tests/test_discord_bot.py::test_axel_summarize_command_replies_with_summary`.
+Run `/axel quest` to transform capture metadata into a cross-repo quest powered
+by `axel.quests.suggest_cross_repo_quests`. Coverage spans
+`tests/test_discord_bot.py::test_axel_quest_command_replies_with_suggestion` and
+`tests/test_discord_bot.py::test_axel_quest_command_reports_missing_repositories`.
 
 ## publishing
 

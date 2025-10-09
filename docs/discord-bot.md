@@ -103,6 +103,12 @@ spans `tests/test_discord_bot.py::test_summarize_capture_extracts_message_body`,
 `tests/test_discord_bot.py::test_summarize_capture_reads_plaintext_with_encryption_enabled`,
 and `tests/test_discord_bot.py::test_axel_summarize_command_replies_with_summary`.
 
+Use `/axel digest` to review multiple captures in one go. The command stitches together the
+first few summaries that match the provided query, giving you a quick scan of recent
+highlights without leaving Discord. It relies entirely on local data—no remote LLM calls
+required. Coverage spans `tests/test_discord_bot.py::test_digest_captures_returns_summaries`
+and `tests/test_discord_bot.py::test_axel_digest_command_replies_with_digest`.
+
 ## Analyzing Captured Messages
 
 Saved files can be processed with local LLMs such as
@@ -127,8 +133,9 @@ Automated coverage for the capture format lives in
 
 Future improvements will expand the bot's capabilities:
 
-- **Command interface** – extend the existing `/axel search` and `/axel summarize`
-  commands with additional local LLM workflows that operate on stored messages.
+- **Command interface** – `/axel digest` extends the command set with a locally generated
+  multi-capture digest (see `tests/test_discord_bot.py::test_axel_digest_command_replies_with_digest`).
+  Future workflows can plug in heavier local models to build on this pattern.
 
 Contributions and ideas are welcome. Keep all bot logic local and respect user privacy.
 Automated coverage lives in `tests/test_discord_bot.py` (see the tests referenced above).

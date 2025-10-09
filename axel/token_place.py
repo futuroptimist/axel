@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-"""Helpers for integrating with the token.place API."""
-
 import argparse
 import os
 import sys

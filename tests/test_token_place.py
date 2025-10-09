@@ -109,6 +109,23 @@ def test_main_reports_errors(
     assert "offline" in captured.err
 
 
+def test_main_reports_empty_model_list(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An empty response prints a helpful message and exits successfully."""
+
+    monkeypatch.setattr(
+        token_place,
+        "list_models",
+        lambda base_url=None, api_key=None, timeout=token_place.DEFAULT_TIMEOUT: [],
+    )
+
+    token_place.main([])
+
+    captured = capsys.readouterr()
+    assert captured.out.strip() == "No models available"
+
+
 def test_list_models_raises_token_place_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Iterable, Sequence
 from urllib.parse import urlparse
 
+from . import token_place as token_place_integration
 from .repo_manager import get_repo_file, load_repos
 
 
@@ -44,13 +45,6 @@ def _parse_repo(url: str) -> RepoInfo:
 KeywordTemplate = tuple[str, str]
 
 _KEYWORD_TEMPLATES: tuple[KeywordTemplate, ...] = (
-    (
-        "token",
-        (
-            "{primary} can broker token.place auth while gabriel audits secrets "
-            "so {secondary} ships safely."
-        ),
-    ),
     (
         "gabriel",
         (
@@ -102,14 +96,12 @@ def _select_detail(primary: RepoInfo, secondary: RepoInfo) -> tuple[str, int]:
     # also matches a different keyword (e.g. ``blog`` or ``discord``).
     for repo, other in ordered:
         if "token" in repo.slug.lower():
-            template = _KEYWORD_LOOKUP["token"]
-            return template.format(primary=repo.slug, secondary=other.slug), 1
+            detail = token_place_integration.quest_detail(repo.slug, other.slug)
+            return detail, 1
 
     for repo, other in ordered:
         lower = repo.slug.lower()
         for keyword, template in _KEYWORD_TEMPLATES:
-            if keyword == "token":
-                continue
             if keyword in lower:
                 return template.format(primary=repo.slug, secondary=other.slug), 1
     return _DEFAULT_DETAIL.format(a=primary.slug, b=secondary.slug), 0

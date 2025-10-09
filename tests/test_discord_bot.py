@@ -1327,7 +1327,9 @@ def test_digest_captures_rejects_non_positive_limit(
     """Non-positive limits short-circuit without performing a search."""
 
     def _unexpected_search(query: str, *, limit: int = 5) -> list[db.SearchResult]:
-        raise AssertionError("search_captures should not be called for non-positive limits")
+        raise AssertionError(
+            "search_captures should not be called for non-positive limits"
+        )
 
     monkeypatch.setattr(db, "search_captures", _unexpected_search)
 

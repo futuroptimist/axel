@@ -648,6 +648,21 @@ def test_save_message_includes_metadata(tmp_path: Path) -> None:
     )
 
 
+def test_save_message_uses_display_name_fallback(tmp_path: Path) -> None:
+    db.SAVE_DIR = tmp_path
+    msg = DummyMessage("hello", channel=DummyChannel("general"))
+    msg.author = type(
+        "Anon",
+        (),
+        {"display_name": "", "global_name": None, "name": "fallback-user"},
+    )()
+
+    path = db.save_message(msg)
+
+    content = read_markdown(path)
+    assert content.splitlines()[0] == "# fallback-user"
+
+
 def test_save_message_includes_repository_metadata(tmp_path: Path, monkeypatch) -> None:
     """Channel names map captures to repos listed in ``AXEL_REPO_FILE``."""
 

@@ -460,7 +460,7 @@ def save_message(
 
     path = channel_dir / f"{message.id}.md"
     timestamp = message.created_at.isoformat()
-    author = message.author.display_name
+    author = _display_name(getattr(message, "author", None))
     jump_url = getattr(message, "jump_url", "")
 
     lines = [f"# {author}", ""]

@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import argparse
 import os
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Iterable, Sequence
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import requests
+
+from .repo_manager import get_repo_file, load_repos
 
 DEFAULT_API_URL = "http://localhost:5000/api/v1"
 DEFAULT_TIMEOUT = 10
@@ -18,6 +23,15 @@ _PREVIEW_PREFERENCE: tuple[str, ...] = (
 
 class TokenPlaceError(RuntimeError):
     """Raised when the token.place API cannot satisfy a request."""
+
+
+@dataclass(frozen=True)
+class ClientIntegration:
+    """Mapping between ``token.place`` and a client repository."""
+
+    token_repo: str
+    client_repo: str
+    detail: str
 
 
 def _resolve_base_url(base_url: str | None) -> str:
@@ -80,7 +94,7 @@ def list_models(
     url = urljoin(resolved_url + "/", "models")
     try:
         response = requests.get(url, headers=headers, timeout=timeout)
-    except requests.RequestException as exc:  # pragma: no cover - exercised via tests
+    except requests.RequestException as exc:  # pragma: no cover - network errors mocked
         raise TokenPlaceError(f"Unable to reach token.place at {url}") from exc
 
     try:
@@ -102,6 +116,31 @@ def _select_featured_model(models: Sequence[str]) -> str | None:
         if candidate in models:
             return candidate
     return models[0] if models else None
+
+
+def _clean_repo_segment(segment: str) -> str:
+    repo = segment.split("/", 1)[0]
+    return repo[:-4] if repo.endswith(".git") else repo
+
+
+def _slug_from_repo_url(url: str) -> str | None:
+    parsed = urlparse(url)
+    parts = [part for part in parsed.path.split("/") if part]
+    if parsed.netloc and len(parts) >= 2:
+        owner, repo = parts[:2]
+        return f"{owner}/{_clean_repo_segment(repo)}"
+    if parsed.netloc and parts:
+        owner = parts[0]
+        repo = _clean_repo_segment(parts[-1])
+        return f"{owner}/{repo}"
+
+    cleaned = url.strip().strip("/")
+    if not cleaned:
+        return None
+    if cleaned.count("/") >= 1:
+        owner, repo = cleaned.split("/", 1)
+        return f"{owner}/{_clean_repo_segment(repo)}"
+    return cleaned
 
 
 def quest_detail(
@@ -130,10 +169,108 @@ def quest_detail(
     )
 
 
+def plan_client_integrations(
+    repos: Sequence[str],
+    *,
+    base_url: str | None = None,
+    api_key: str | None = None,
+) -> list[ClientIntegration]:
+    """Return integration plans pairing token.place with other repositories."""
+
+    unique: list[str] = []
+    seen: set[str] = set()
+    for entry in repos:
+        slug = _slug_from_repo_url(entry)
+        if not slug:
+            continue
+        key = slug.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(slug)
+
+    token_repos = [slug for slug in unique if "token" in slug.lower()]
+    if not token_repos:
+        return []
+
+    token_keys = {slug.lower() for slug in token_repos}
+    client_repos = [slug for slug in unique if slug.lower() not in token_keys]
+
+    integrations: list[ClientIntegration] = []
+    for token_slug in token_repos:
+        for client_slug in client_repos:
+            detail = quest_detail(
+                token_slug,
+                client_slug,
+                base_url=base_url,
+                api_key=api_key,
+            )
+            integrations.append(
+                ClientIntegration(
+                    token_repo=token_slug,
+                    client_repo=client_slug,
+                    detail=detail,
+                )
+            )
+    return integrations
+
+
+def main(argv: Sequence[str] | None = None) -> None:
+    """CLI entry point for token.place helpers."""
+
+    parser = argparse.ArgumentParser(description="token.place helpers")
+    sub = parser.add_subparsers(dest="cmd")
+
+    clients = sub.add_parser(
+        "clients",
+        help="Plan token.place client integrations across repositories",
+    )
+    clients.add_argument(
+        "--path",
+        type=Path,
+        default=None,
+        help="Repository list (defaults to AXEL_REPO_FILE or repos.txt)",
+    )
+    clients.add_argument(
+        "--base-url",
+        default=None,
+        help="token.place API base URL",
+    )
+    clients.add_argument(
+        "--api-key",
+        default=None,
+        help="token.place API key",
+    )
+
+    args = parser.parse_args(argv)
+
+    if args.cmd == "clients":
+        path = (
+            Path(args.path).expanduser() if args.path is not None else get_repo_file()
+        )
+        repos = load_repos(path=path)
+        integrations = plan_client_integrations(
+            repos, base_url=args.base_url, api_key=args.api_key
+        )
+        if not integrations:
+            print("No token.place repositories configured")
+            return
+        for integration in integrations:
+            print(f"- {integration.token_repo} ↔ {integration.client_repo}")
+            print(f"  quest: {integration.detail}")
+            print()
+        return
+
+    parser.print_help()  # pragma: no cover - CLI default output
+
+
 __all__ = [
     "TokenPlaceError",
     "DEFAULT_API_URL",
     "DEFAULT_TIMEOUT",
     "list_models",
     "quest_detail",
+    "ClientIntegration",
+    "plan_client_integrations",
+    "main",
 ]

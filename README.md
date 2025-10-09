@@ -37,7 +37,7 @@ Automated coverage for these references lives in
 - [x] remove repos from the list (`python -m axel.repo_manager remove`)
 - [x] fetch repos from the GitHub API (`python -m axel.repo_manager fetch`)
 - [x] integrate LLM assistants to suggest quests across repos
-- [ ] integrate `token.place` clients across all repos
+- [x] integrate `token.place` clients across all repos
 - [x] integrate [`gabriel`](https://github.com/futuroptimist/gabriel) as a security layer across repos
 - [x] self-hosted Discord bot for ingesting messages when mentioned (see docs/discord-bot.md)
 - [x] represent personal flywheel of projects and highlight cross-pollination (see repo list below)
@@ -125,6 +125,11 @@ gabriel security layer milestone remains marked complete.
     flywheel template. Automated coverage lives in
     `tests/test_flywheel.py::test_evaluate_flywheel_alignment_reports_missing_workflows` and
     `tests/test_flywheel.py::test_main_prints_alignment_summary`.
+17. Plan `token.place` client integrations with `python -m axel.token_place clients`. The helper
+    pairs each token.place repository with every other entry in your repo list, reusing live
+    model metadata when available. Coverage lives in
+    `tests/test_token_place.py::test_plan_client_integrations_generates_pairs` and
+    `tests/test_token_place.py::test_main_clients_prints_plan`.
 
 ## quests
 

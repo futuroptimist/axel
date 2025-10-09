@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -158,3 +159,162 @@ def test_list_models_supports_models_key(
         base_url="https://token.place/api/v1", api_key=None
     )
     assert models == ["alpha", "beta"]
+
+
+def test_plan_client_integrations_generates_pairs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Token repos pair with every other repository."""
+
+    captured: list[tuple[str, str, str | None, str | None]] = []
+
+    def fake_detail(
+        primary_slug: str,
+        secondary_slug: str,
+        *,
+        base_url: str | None = None,
+        api_key: str | None = None,
+    ) -> str:
+        captured.append((primary_slug, secondary_slug, base_url, api_key))
+        return f"{primary_slug}->{secondary_slug}"
+
+    monkeypatch.setattr(token_place, "quest_detail", fake_detail)
+
+    repos = [
+        "https://github.com/example/token.place",
+        "https://github.com/example/alpha",
+        "https://github.com/example/beta",
+    ]
+
+    integrations = token_place.plan_client_integrations(
+        repos, base_url="https://token.place/api/v1", api_key="secret"
+    )
+
+    assert [integration.token_repo for integration in integrations] == [
+        "example/token.place",
+        "example/token.place",
+    ]
+    assert [integration.client_repo for integration in integrations] == [
+        "example/alpha",
+        "example/beta",
+    ]
+    assert [integration.detail for integration in integrations] == [
+        "example/token.place->example/alpha",
+        "example/token.place->example/beta",
+    ]
+    assert captured == [
+        (
+            "example/token.place",
+            "example/alpha",
+            "https://token.place/api/v1",
+            "secret",
+        ),
+        (
+            "example/token.place",
+            "example/beta",
+            "https://token.place/api/v1",
+            "secret",
+        ),
+    ]
+
+
+def test_plan_client_integrations_handles_duplicates(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Duplicate or differently cased repos are only paired once."""
+
+    monkeypatch.setattr(
+        token_place,
+        "quest_detail",
+        lambda primary_slug, secondary_slug, **_: f"{primary_slug}->{secondary_slug}",
+    )
+
+    repos = [
+        "https://github.com/example/token.place",
+        "https://github.com/Example/Token.Place",
+        "https://github.com/example/alpha",
+        "https://github.com/example/ALPHA",
+    ]
+
+    integrations = token_place.plan_client_integrations(repos)
+
+    assert [integration.client_repo for integration in integrations] == [
+        "example/alpha",
+    ]
+    assert [integration.detail for integration in integrations] == [
+        "example/token.place->example/alpha",
+    ]
+
+
+def test_plan_client_integrations_requires_token_repo() -> None:
+    """Without a token.place repository no integrations are produced."""
+
+    repos = ["https://github.com/example/alpha", "https://github.com/example/beta"]
+
+    assert token_place.plan_client_integrations(repos) == []
+
+
+def test_plan_client_integrations_parses_varied_repos(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Repository URLs with different formats are normalised consistently."""
+
+    monkeypatch.setattr(
+        token_place,
+        "quest_detail",
+        lambda primary_slug, secondary_slug, **_: f"{primary_slug}->{secondary_slug}",
+    )
+
+    repos = [
+        "https://github.com/example/token.place",
+        "https://gitlab.com/example",
+        "owner/other-repo",
+        "solo",
+        "",  # ignored
+    ]
+
+    integrations = token_place.plan_client_integrations(repos)
+
+    assert [integration.client_repo for integration in integrations] == [
+        "example/example",
+        "owner/other-repo",
+        "solo",
+    ]
+
+
+def test_main_clients_prints_plan(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The CLI prints integration plans for token.place clients."""
+
+    repo_file = tmp_path / "repos.txt"
+    repo_file.write_text(
+        "https://github.com/example/token.place\n" "https://github.com/example/alpha\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        token_place,
+        "quest_detail",
+        lambda primary_slug, secondary_slug, **_: f"{primary_slug}->{secondary_slug}",
+    )
+
+    token_place.main(["clients", "--path", str(repo_file)])
+
+    output = capsys.readouterr().out
+    assert "example/token.place ↔ example/alpha" in output
+    assert "example/token.place->example/alpha" in output
+
+
+def test_main_clients_reports_missing_token_repo(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The CLI informs the user when no token.place repo exists."""
+
+    repo_file = tmp_path / "repos.txt"
+    repo_file.write_text("https://github.com/example/alpha\n", encoding="utf-8")
+
+    token_place.main(["clients", "--path", str(repo_file)])
+
+    output = capsys.readouterr().out
+    assert "No token.place repositories configured" in output

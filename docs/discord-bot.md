@@ -99,6 +99,13 @@ spans `tests/test_discord_bot.py::test_summarize_capture_extracts_message_body`,
 `tests/test_discord_bot.py::test_summarize_capture_reads_plaintext_with_encryption_enabled`,
 and `tests/test_discord_bot.py::test_axel_summarize_command_replies_with_summary`.
 
+Use `/axel quest` to convert capture metadata into a cross-repo quest suggestion. The command
+parses `Repository:` lines from the first matching capture, runs them through
+`axel.quests.suggest_cross_repo_quests`, and replies with the resulting summary and quest
+details in an ephemeral message. Coverage spans
+`tests/test_discord_bot.py::test_axel_quest_command_replies_with_suggestion` and
+`tests/test_discord_bot.py::test_axel_quest_command_reports_missing_repositories`.
+
 ## Analyzing Captured Messages
 
 Saved files can be processed with local LLMs such as

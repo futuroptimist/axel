@@ -14,6 +14,8 @@ import discord
 from cryptography.fernet import Fernet, InvalidToken
 from discord import app_commands
 
+from .quests import suggest_cross_repo_quests
+
 SAVE_DIR = Path("local/discord")
 CONTEXT_LIMIT = 5
 _MIN_CONTEXT_TIMESTAMP = datetime.min.replace(tzinfo=timezone.utc)
@@ -27,6 +29,7 @@ _METADATA_PREFIXES: tuple[str, ...] = (
     "- Link:",
 )
 _ATTACHMENT_LINE = re.compile(r"\s*-\s*\[[^\]]+\]\(((?:\./|\.\./).+?)\)")
+_REPOSITORY_PREFIX = "- repository:"
 
 
 @dataclass(frozen=True)
@@ -158,6 +161,32 @@ def _read_capture(path: Path, encrypter: Fernet | None) -> str | None:
         return None
 
     return _decode_utf8(decrypted)
+
+
+def _repository_urls_from_text(text: str) -> list[str]:
+    """Return repository URLs parsed from capture ``text``."""
+
+    urls: list[str] = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if not stripped.lower().startswith(_REPOSITORY_PREFIX):
+            continue
+        _, _, value = stripped.partition(":")
+        candidate = value.strip()
+        if candidate:
+            urls.append(candidate)
+    return urls
+
+
+def _capture_repository_urls(path: Path) -> list[str]:
+    """Return repository URLs recorded in the capture stored at ``path``."""
+
+    text = _read_capture(path, _get_encrypter())
+    if not text:
+        return []
+    return _repository_urls_from_text(text)
 
 
 def search_captures(query: str, *, limit: int = 5) -> list[SearchResult]:
@@ -686,6 +715,60 @@ class AxelClient(discord.Client):
                 )
             else:
                 message = f"Summary for '{query}' ({relative.as_posix()}): {summary}"
+
+            await interaction.response.send_message(message, ephemeral=True)
+
+        @axel_group.command(
+            name="quest",
+            description="Suggest a cross-repo quest from capture metadata.",
+        )
+        @app_commands.describe(
+            query="Text to locate a capture before suggesting quests.",
+        )
+        async def _quest_command(interaction: discord.Interaction, query: str) -> None:
+            results = search_captures(query, limit=1)
+            if not results:
+                await interaction.response.send_message(
+                    f"No captures found for '{query}'.",
+                    ephemeral=True,
+                )
+                return
+
+            result = results[0]
+            root = _get_save_dir()
+            try:
+                relative = result.path.relative_to(root)
+            except ValueError:
+                relative = result.path
+            relative_path = relative.as_posix()
+
+            repos = _capture_repository_urls(result.path)
+            if len(repos) < 2:
+                message = (
+                    f"Capture {relative_path} does not reference multiple "
+                    "repositories."
+                )
+                await interaction.response.send_message(
+                    message,
+                    ephemeral=True,
+                )
+                return
+
+            suggestions = suggest_cross_repo_quests(repos, limit=1)
+            if not suggestions:
+                message = f"No quest suggestions available for {relative_path}."
+                await interaction.response.send_message(
+                    message,
+                    ephemeral=True,
+                )
+                return
+
+            suggestion = suggestions[0]
+            summary = str(suggestion.get("summary", "")).strip()
+            details = str(suggestion.get("details", "")).strip()
+            message = f"Quest for '{query}' ({relative_path}): {summary}"
+            if details:
+                message += f" — {details}"
 
             await interaction.response.send_message(message, ephemeral=True)
 

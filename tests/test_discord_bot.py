@@ -3,6 +3,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Sequence
 
 import pytest
 from cryptography.fernet import Fernet
@@ -1294,6 +1295,101 @@ def test_axel_summarize_command_replies_with_summary(
     assert "updates/21.md" in interaction.response.content
     assert "Summary for 'summary'" in interaction.response.content
     assert "actionable outcomes" in interaction.response.content
+
+
+def test_axel_quest_command_replies_with_suggestion(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AXEL_DISCORD_DIR", str(tmp_path))
+    capture = tmp_path / "channel" / "42.md"
+    capture.parent.mkdir()
+    capture.write_text(
+        "# user\n\n"
+        "- Repository: https://github.com/example/token.place\n"
+        "- Repository: https://github.com/example/gabriel\n\n"
+        "Coordinate token flows across projects.\n",
+        encoding="utf-8",
+    )
+
+    intents = discord.Intents.none()
+    client = db.AxelClient(intents=intents)
+
+    axel_command = client.tree.get_command("axel")
+    assert axel_command is not None
+    quest_command = next(
+        cmd for cmd in getattr(axel_command, "commands", []) if cmd.name == "quest"
+    )
+
+    def _fake_search(query: str, *, limit: int = 5) -> list[db.SearchResult]:
+        assert query == "token"
+        assert limit == 1
+        return [db.SearchResult(path=capture, snippet="match")]
+
+    def _fake_suggest(
+        repos: Sequence[str], *, limit: int = 3
+    ) -> list[dict[str, object]]:
+        assert list(repos) == [
+            "https://github.com/example/token.place",
+            "https://github.com/example/gabriel",
+        ]
+        assert limit == 1
+        return [
+            {
+                "repos": ["example/token.place", "example/gabriel"],
+                "summary": "Link example/token.place ↔ example/gabriel",
+                "details": "Coordinate rollouts safely.",
+            }
+        ]
+
+    monkeypatch.setattr(db, "search_captures", _fake_search)
+    monkeypatch.setattr(db, "suggest_cross_repo_quests", _fake_suggest)
+
+    interaction = DummyInteraction()
+    asyncio.run(quest_command.callback(interaction, query="token"))
+
+    assert interaction.response.ephemeral is True
+    assert interaction.response.content is not None
+    assert "Quest for 'token'" in interaction.response.content
+    assert "channel/42.md" in interaction.response.content
+    assert "Coordinate rollouts safely." in interaction.response.content
+
+
+def test_axel_quest_command_reports_missing_repositories(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AXEL_DISCORD_DIR", str(tmp_path))
+    capture = tmp_path / "projects" / "1.md"
+    capture.parent.mkdir()
+    capture.write_text(
+        "# user\n\n"
+        "- Repository: https://github.com/example/solo\n\n"
+        "Solo update without collaborators.\n",
+        encoding="utf-8",
+    )
+
+    intents = discord.Intents.none()
+    client = db.AxelClient(intents=intents)
+
+    axel_command = client.tree.get_command("axel")
+    assert axel_command is not None
+    quest_command = next(
+        cmd for cmd in getattr(axel_command, "commands", []) if cmd.name == "quest"
+    )
+
+    def _fake_search(query: str, *, limit: int = 5) -> list[db.SearchResult]:
+        assert query == "solo"
+        assert limit == 1
+        return [db.SearchResult(path=capture, snippet="match")]
+
+    monkeypatch.setattr(db, "search_captures", _fake_search)
+
+    interaction = DummyInteraction()
+    asyncio.run(quest_command.callback(interaction, query="solo"))
+
+    assert interaction.response.ephemeral is True
+    assert interaction.response.content == (
+        "Capture projects/1.md does not reference " "multiple repositories."
+    )
 
 
 def test_axel_summarize_command_reports_no_matches(

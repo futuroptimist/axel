@@ -9,6 +9,7 @@ and generate actionable quests.
 [![Tests](https://img.shields.io/github/actions/workflow/status/futuroptimist/axel/.github/workflows/02-tests.yml?label=tests)](https://github.com/futuroptimist/axel/actions/workflows/02-tests.yml)
 [![Coverage](https://codecov.io/gh/futuroptimist/axel/branch/main/graph/badge.svg)](https://codecov.io/gh/futuroptimist/axel)
 [![Docs](https://img.shields.io/github/actions/workflow/status/futuroptimist/axel/.github/workflows/03-docs.yml?label=docs)](https://github.com/futuroptimist/axel/actions/workflows/03-docs.yml)
+[![Status: Alpha](https://img.shields.io/badge/status-alpha-orange)](docs/FAQ.md)
 [![License](https://img.shields.io/github/license/futuroptimist/axel)](LICENSE)
 
 ## Quickstart (≤60s)
@@ -20,6 +21,14 @@ docker compose -f docker-compose-mock.yml up
 ```
 
 This launches the token.place server, relay and a mock LLM using one command.
+
+## status
+
+Axel is currently in **alpha** while workflows and integrations continue to harden.
+Start with the [FAQ](docs/FAQ.md) for common setup questions and read through
+[Known Issues & Footguns](docs/KNOWN_ISSUES.md) before running the CLI across multiple repositories.
+Automated coverage for these references lives in
+`tests/test_readme.py::test_readme_includes_alpha_status_and_supporting_docs`.
 
 ## roadmap
 - [x] maintain a list of repos in `repos.txt`

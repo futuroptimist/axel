@@ -54,6 +54,56 @@ def test_suggest_cross_repo_quests_prioritizes_token_template() -> None:
     assert "token.place" in details
 
 
+def test_suggest_cross_repo_quests_enriches_token_place_with_models(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import axel.token_place as token_place
+    from axel.quests import suggest_cross_repo_quests
+
+    monkeypatch.setattr(
+        token_place,
+        "list_models",
+        lambda base_url=None, api_key=None, timeout=token_place.DEFAULT_TIMEOUT: [
+            "llama-3-8b-instruct",
+            "llama-3-8b-instruct:alignment",
+        ],
+    )
+
+    repos = [
+        "https://github.com/futuroptimist/token.place",
+        "https://github.com/futuroptimist/dspace",
+    ]
+
+    suggestions = suggest_cross_repo_quests(repos, limit=1)
+    details = suggestions[0]["details"].lower()
+
+    assert "llama-3-8b-instruct" in details
+    assert "token.place" in details
+
+
+def test_suggest_cross_repo_quests_handles_token_place_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import axel.token_place as token_place
+    from axel.quests import suggest_cross_repo_quests
+
+    def boom(**_: object) -> list[str]:  # pragma: no cover - helper
+        raise token_place.TokenPlaceError("offline")
+
+    monkeypatch.setattr(token_place, "list_models", boom)
+
+    repos = [
+        "https://github.com/futuroptimist/token.place",
+        "https://github.com/futuroptimist/axel",
+    ]
+
+    suggestions = suggest_cross_repo_quests(repos, limit=1)
+    details = suggestions[0]["details"].lower()
+
+    assert "token.place" in details
+    assert "llama-3-8b" not in details
+
+
 @pytest.mark.parametrize(
     "repos",
     [

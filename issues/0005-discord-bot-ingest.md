@@ -8,4 +8,4 @@ future LLM-powered quests.
 - [x] create `axel.discord_bot` module
 - [x] document workflow in `docs/discord-bot.md`
 - [x] update roadmap with this feature
-- [ ] explore integrations with `token.place` and `gabriel`
+- [x] explore integrations with `token.place` and `gabriel`

@@ -604,6 +604,28 @@ def test_save_message_includes_repository_metadata(tmp_path: Path, monkeypatch) 
     assert "- Repository: https://github.com/example/project.one" in content
 
 
+def test_save_message_includes_gabriel_security_note(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """token.place captures remind users about the gabriel security layer."""
+
+    repo_file = tmp_path / "repos.txt"
+    repo_file.write_text(
+        "https://github.com/futuroptimist/token.place\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("AXEL_REPO_FILE", str(repo_file))
+
+    db.SAVE_DIR = tmp_path
+    msg = DummyMessage("token insight", channel=DummyChannel("token-place"))
+
+    path = db.save_message(msg)
+
+    content = read_markdown(path)
+    assert "- Repository: https://github.com/futuroptimist/token.place" in content
+    assert "- Security: https://github.com/futuroptimist/gabriel" in content
+
+
 def test_save_message_includes_repository_metadata_from_thread(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

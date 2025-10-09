@@ -69,6 +69,46 @@ def test_list_models_parses_openai_like_payload(
     ]
 
 
+def test_main_prints_models(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """CLI entry point should display available models."""
+
+    monkeypatch.setattr(
+        token_place,
+        "list_models",
+        lambda base_url=None, api_key=None, timeout=token_place.DEFAULT_TIMEOUT: [
+            "alpha",
+            "beta",
+        ],
+    )
+
+    token_place.main(["--base-url", "https://token.place/api/v1"])
+
+    output = capsys.readouterr().out.strip().splitlines()
+    assert output[0].startswith("Available models:")
+    assert "- alpha" in output
+    assert "- beta" in output
+
+
+def test_main_reports_errors(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Errors surface via a non-zero exit code and stderr message."""
+
+    def boom(**_: object) -> list[str]:  # pragma: no cover - helper
+        raise token_place.TokenPlaceError("offline")
+
+    monkeypatch.setattr(token_place, "list_models", boom)
+
+    with pytest.raises(SystemExit) as excinfo:
+        token_place.main([])
+
+    assert excinfo.value.code == 1
+    captured = capsys.readouterr()
+    assert "offline" in captured.err
+
+
 def test_list_models_raises_token_place_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

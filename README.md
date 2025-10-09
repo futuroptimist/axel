@@ -116,6 +116,11 @@ gabriel security layer milestone remains marked complete.
     flywheel template. Automated coverage lives in
     `tests/test_flywheel.py::test_evaluate_flywheel_alignment_reports_missing_workflows` and
     `tests/test_flywheel.py::test_main_prints_alignment_summary`.
+17. Inspect available token.place models with `python -m axel.token_place --base-url http://localhost:5000/api/v1`.
+    This lists the advertised models (using `TOKEN_PLACE_API_KEY` when set) or reports a helpful error
+    if the API is unreachable. Coverage lives in
+    `tests/test_token_place.py::test_main_prints_models` and
+    `tests/test_token_place.py::test_main_reports_errors`.
 
 ## quests
 

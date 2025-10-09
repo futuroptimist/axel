@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+"""Helpers for integrating with the token.place API."""
+
+import argparse
 import os
+import sys
 from typing import Iterable, Sequence
 from urllib.parse import urljoin
 
@@ -130,10 +134,59 @@ def quest_detail(
     )
 
 
+def main(argv: Sequence[str] | None = None) -> None:
+    """Simple CLI for listing token.place models."""
+
+    parser = argparse.ArgumentParser(description="List token.place models")
+    parser.add_argument(
+        "--base-url",
+        default=None,
+        help=(
+            "token.place API base URL (defaults to AXEL_TOKEN_PLACE_URL or "
+            f"{DEFAULT_API_URL})"
+        ),
+    )
+    parser.add_argument(
+        "--api-key",
+        default=None,
+        help=(
+            "API key for token.place (defaults to TOKEN_PLACE_API_KEY when " "unset)"
+        ),
+    )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=DEFAULT_TIMEOUT,
+        help="Request timeout in seconds (defaults to %(default)s)",
+    )
+    args = parser.parse_args(argv)
+
+    try:
+        models = list_models(
+            base_url=args.base_url, api_key=args.api_key, timeout=args.timeout
+        )
+    except TokenPlaceError as exc:
+        print(f"Failed to list models: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+    if not models:
+        print("No models available")
+        return
+
+    print("Available models:")
+    for model in models:
+        print(f"- {model}")
+
+
 __all__ = [
     "TokenPlaceError",
     "DEFAULT_API_URL",
     "DEFAULT_TIMEOUT",
     "list_models",
     "quest_detail",
+    "main",
 ]
+
+
+if __name__ == "__main__":  # pragma: no cover - CLI entry point
+    main()

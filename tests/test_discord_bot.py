@@ -124,6 +124,62 @@ def test_read_capture_plaintext_fallback_requires_markdown_context(
     assert db._read_capture(capture, encrypter) is None
 
 
+def test_matching_repo_urls_returns_ordered_matches(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Channel and thread names are matched against known repository slugs."""
+
+    repositories = [
+        "https://github.com/futuroptimist/axel",
+        "https://github.com/futuroptimist/axel-extra",
+        "https://github.com/futuroptimist/quest-log",
+    ]
+
+    monkeypatch.setattr("axel.repo_manager.load_repos", lambda: repositories, raising=False)
+
+    matches = db._matching_repo_urls("Axel", "Axel Extra")
+
+    assert matches == [
+        "https://github.com/futuroptimist/axel",
+        "https://github.com/futuroptimist/axel-extra",
+    ]
+
+
+def test_matching_repo_urls_handles_missing_candidates(monkeypatch: pytest.MonkeyPatch) -> None:
+    """When no normalized names are present an empty list is returned."""
+
+    monkeypatch.setattr("axel.repo_manager.load_repos", lambda: ["https://example.com/repo"])
+
+    assert db._matching_repo_urls(None, None) == []
+
+
+def test_capture_repository_urls_extracts_metadata(tmp_path: Path) -> None:
+    capture = tmp_path / "general" / "note.md"
+    capture.parent.mkdir(parents=True, exist_ok=True)
+    capture.write_text(
+        "\n".join(
+            [
+                "# user",
+                "",
+                "- Channel: general",
+                "- Repository: https://github.com/futuroptimist/axel",
+                "- repository: https://github.com/futuroptimist/flywheel  ",
+                "- Link: https://discord.com/channels/1/2/3",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    urls = db._capture_repository_urls(capture)
+
+    assert urls == [
+        "https://github.com/futuroptimist/axel",
+        "https://github.com/futuroptimist/flywheel",
+    ]
+
+
+def test_capture_repository_urls_returns_empty_when_missing(tmp_path: Path) -> None:
+    assert db._capture_repository_urls(tmp_path / "unknown.md") == []
+
+
 def test_summarize_capture_extracts_message_body(tmp_path: Path) -> None:
     capture = tmp_path / "general" / "1.md"
     capture.parent.mkdir(parents=True)
@@ -1389,6 +1445,60 @@ def test_axel_quest_command_reports_missing_repositories(
     assert interaction.response.ephemeral is True
     assert interaction.response.content == (
         "Capture projects/1.md does not reference " "multiple repositories."
+    )
+
+
+def test_axel_quest_command_reports_no_matches(monkeypatch: pytest.MonkeyPatch) -> None:
+    intents = discord.Intents.none()
+    client = db.AxelClient(intents=intents)
+
+    axel_command = client.tree.get_command("axel")
+    assert axel_command is not None
+    quest_command = next(
+        cmd for cmd in getattr(axel_command, "commands", []) if cmd.name == "quest"
+    )
+
+    monkeypatch.setattr(db, "search_captures", lambda *_, **__: [])
+
+    interaction = DummyInteraction()
+    asyncio.run(quest_command.callback(interaction, query="void"))
+
+    assert interaction.response.ephemeral is True
+    assert interaction.response.content == "No captures found for 'void'."
+
+
+def test_axel_quest_command_reports_missing_suggestions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    intents = discord.Intents.none()
+    client = db.AxelClient(intents=intents)
+
+    axel_command = client.tree.get_command("axel")
+    assert axel_command is not None
+    quest_command = next(
+        cmd for cmd in getattr(axel_command, "commands", []) if cmd.name == "quest"
+    )
+
+    monkeypatch.setattr(
+        db,
+        "search_captures",
+        lambda *_, **__: [db.SearchResult(path=Path("/capture.md"), snippet="hit")],
+    )
+    monkeypatch.setattr(db, "_get_save_dir", lambda: tmp_path / "root")
+    monkeypatch.setattr(
+        db,
+        "_capture_repository_urls",
+        lambda _path: ["https://repo.one", "https://repo.two"],
+    )
+    monkeypatch.setattr(db, "suggest_cross_repo_quests", lambda *_args, **_kwargs: [])
+
+    interaction = DummyInteraction()
+    asyncio.run(quest_command.callback(interaction, query="void"))
+
+    assert interaction.response.ephemeral is True
+    assert (
+        interaction.response.content
+        == "No quest suggestions available for /capture.md."
     )
 
 

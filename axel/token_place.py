@@ -271,7 +271,15 @@ def main(argv: Sequence[str] | None = None) -> None:
         help="token.place API key",
     )
 
-    args = parser.parse_args(argv)
+    if argv is None:
+        parsed_args = sys.argv[1:]
+    else:
+        parsed_args = list(argv)
+
+    if not parsed_args or parsed_args[0].startswith("-"):
+        parsed_args = ["list", *parsed_args]
+
+    args = parser.parse_args(parsed_args)
 
     if args.cmd == "list":
         try:

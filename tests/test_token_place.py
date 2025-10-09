@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -125,6 +126,27 @@ def test_main_reports_empty_model_list(
 
     captured = capsys.readouterr()
     assert captured.out.strip() == "No models available"
+
+
+def test_main_defaults_to_list_command(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Invoking the CLI with no argv defaults to the list subcommand."""
+
+    monkeypatch.setattr(
+        token_place,
+        "list_models",
+        lambda base_url=None, api_key=None, timeout=token_place.DEFAULT_TIMEOUT: [
+            "gamma"
+        ],
+    )
+    monkeypatch.setattr(sys, "argv", ["token_place"])
+
+    token_place.main()
+
+    output = capsys.readouterr().out.strip().splitlines()
+    assert output[0] == "Available models:"
+    assert output[1] == "- gamma"
 
 
 def test_list_models_raises_token_place_error(

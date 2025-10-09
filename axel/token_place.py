@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
@@ -221,6 +222,32 @@ def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="token.place helpers")
     sub = parser.add_subparsers(dest="cmd")
 
+    # Subcommand: list models
+    list_cmd = sub.add_parser(
+        "list",
+        help="List available token.place models",
+    )
+    list_cmd.add_argument(
+        "--base-url",
+        default=None,
+        help=(
+            "token.place API base URL (defaults to AXEL_TOKEN_PLACE_URL or "
+            f"{DEFAULT_API_URL})"
+        ),
+    )
+    list_cmd.add_argument(
+        "--api-key",
+        default=None,
+        help=("API key for token.place (defaults to TOKEN_PLACE_API_KEY when unset)"),
+    )
+    list_cmd.add_argument(
+        "--timeout",
+        type=int,
+        default=DEFAULT_TIMEOUT,
+        help="Request timeout in seconds (defaults to %(default)s)",
+    )
+
+    # Subcommand: plan client integrations
     clients = sub.add_parser(
         "clients",
         help="Plan token.place client integrations across repositories",
@@ -242,7 +269,33 @@ def main(argv: Sequence[str] | None = None) -> None:
         help="token.place API key",
     )
 
-    args = parser.parse_args(argv)
+    if argv is None:
+        parsed_args = sys.argv[1:]
+    else:
+        parsed_args = list(argv)
+
+    if not parsed_args or parsed_args[0].startswith("-"):
+        parsed_args = ["list", *parsed_args]
+
+    args = parser.parse_args(parsed_args)
+
+    if args.cmd == "list":
+        try:
+            models = list_models(
+                base_url=args.base_url, api_key=args.api_key, timeout=args.timeout
+            )
+        except TokenPlaceError as exc:
+            print(f"Failed to list models: {exc}", file=sys.stderr)
+            raise SystemExit(1) from exc
+
+        if not models:
+            print("No models available")
+            return
+
+        print("Available models:")
+        for model in models:
+            print(f"- {model}")
+        return
 
     if args.cmd == "clients":
         path = (
@@ -274,3 +327,7 @@ __all__ = [
     "plan_client_integrations",
     "main",
 ]
+
+
+if __name__ == "__main__":  # pragma: no cover - CLI entry point
+    main()

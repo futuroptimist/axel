@@ -1321,6 +1321,20 @@ def test_digest_captures_returns_summaries(
     assert any("Second actionable insight" in summary for summary in summaries)
 
 
+def test_digest_captures_rejects_non_positive_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Non-positive limits short-circuit without performing a search."""
+
+    def _unexpected_search(query: str, *, limit: int = 5) -> list[db.SearchResult]:
+        raise AssertionError("search_captures should not be called for non-positive limits")
+
+    monkeypatch.setattr(db, "search_captures", _unexpected_search)
+
+    assert db.digest_captures("anything", limit=0) == []
+    assert db.digest_captures("anything", limit=-5) == []
+
+
 def test_digest_captures_ignores_blank_summaries(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1340,6 +1354,38 @@ def test_digest_captures_ignores_blank_summaries(
 
     assert len(results) == 1
     assert results[0].path.name == "33.md"
+
+
+def test_digest_captures_skips_missing_summaries(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Entries without summaries are skipped when condensation fails."""
+
+    first = tmp_path / "first.md"
+    second = tmp_path / "second.md"
+
+    def _fake_search(query: str, *, limit: int = 5) -> list[db.SearchResult]:
+        assert limit == 6
+        return [
+            db.SearchResult(path=first, snippet="first"),
+            db.SearchResult(path=second, snippet="second"),
+        ]
+
+    call_order: list[Path] = []
+
+    def _fake_summarize(path: Path) -> str | None:
+        call_order.append(path)
+        if path == first:
+            return None
+        return f"Summary for {path.name}"
+
+    monkeypatch.setattr(db, "search_captures", _fake_search)
+    monkeypatch.setattr(db, "summarize_capture", _fake_summarize)
+
+    digest = db.digest_captures("digestible", limit=3)
+
+    assert [entry.path for entry in digest] == [second]
+    assert call_order == [first, second]
 
 
 def test_axel_summarize_command_reports_no_matches(
@@ -1435,6 +1481,39 @@ def test_axel_digest_command_reports_no_matches(
 
     assert interaction.response.ephemeral is True
     assert interaction.response.content == "No captures found for 'missing'."
+
+
+def test_axel_digest_command_handles_paths_outside_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Digest command renders absolute paths when outside the configured root."""
+
+    monkeypatch.setenv("AXEL_DISCORD_DIR", str(tmp_path))
+
+    intents = discord.Intents.none()
+    client = db.AxelClient(intents=intents)
+
+    axel_command = client.tree.get_command("axel")
+    assert axel_command is not None
+    digest_command = next(
+        cmd for cmd in getattr(axel_command, "commands", []) if cmd.name == "digest"
+    )
+
+    external_path = tmp_path.parent / "external.md"
+
+    def _fake_digest(query: str, *, limit: int = 3) -> list[db.DigestEntry]:
+        assert query == "external"
+        return [db.DigestEntry(path=external_path, summary="External summary")]
+
+    monkeypatch.setattr(db, "digest_captures", _fake_digest)
+
+    interaction = DummyInteraction()
+    asyncio.run(digest_command.callback(interaction, query="external"))
+
+    assert interaction.response.ephemeral is True
+    assert interaction.response.content is not None
+    assert "external.md" in interaction.response.content
+    assert "External summary" in interaction.response.content
 
 
 def test_axel_summarize_command_reports_missing_summary(

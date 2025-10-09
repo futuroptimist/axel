@@ -238,9 +238,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     list_cmd.add_argument(
         "--api-key",
         default=None,
-        help=(
-            "API key for token.place (defaults to TOKEN_PLACE_API_KEY when unset)"
-        ),
+        help=("API key for token.place (defaults to TOKEN_PLACE_API_KEY when unset)"),
     )
     list_cmd.add_argument(
         "--timeout",

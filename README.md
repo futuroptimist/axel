@@ -252,7 +252,7 @@ The repos in `repos.txt` come from various projects like
 [`futuroptimist`](https://github.com/futuroptimist/futuroptimist). Axel aims to
 cross‑pollinate ideas between them by suggesting quests that touch multiple
 codebases.
-New additions such as [`gabriel`](https://github.com/futuroptimist/gabriel) help expand this flywheel by providing an open-source OSINT agent focused on personal safety.
+New additions such as [`gabriel`](https://github.com/futuroptimist/gabriel) help expand this flywheel by providing an open-source OSINT agent focused on personal safety and raising the tides along Maslow's hierarchy. Automated coverage keeps this description in place via `tests/test_readme.py::test_readme_describes_gabriel_as_osint_agent`.
 The [`flywheel`](https://github.com/futuroptimist/flywheel) template bundles
 linting, testing, and documentation checks so new repositories can start with
 healthy continuous integration from the beginning.

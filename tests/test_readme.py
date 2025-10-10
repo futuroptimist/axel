@@ -32,3 +32,13 @@ def test_readme_includes_alpha_status_and_supporting_docs() -> None:
     assert "Status: Alpha" in content
     assert "docs/FAQ.md" in content
     assert "docs/KNOWN_ISSUES.md" in content
+
+
+def test_readme_describes_gabriel_as_osint_agent() -> None:
+    """README should highlight gabriel's OSINT focus and mission."""
+
+    readme = Path(__file__).resolve().parents[1] / "README.md"
+    content = readme.read_text(encoding="utf-8")
+
+    assert "open-source OSINT agent" in content
+    assert "Maslow's hierarchy" in content

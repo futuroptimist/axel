@@ -25,6 +25,7 @@ _METADATA_PREFIXES: tuple[str, ...] = (
     "- Channel:",
     "- Thread:",
     "- Repository:",
+    "- Security:",
     "- Timestamp:",
     "- Link:",
 )

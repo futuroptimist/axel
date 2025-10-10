@@ -79,24 +79,46 @@ _DEFAULT_DETAIL = (
 Suggestion = dict[str, list[str] | str]
 
 
-def _build_suggestion(left: RepoInfo, right: RepoInfo) -> tuple[Suggestion, int]:
+def _build_suggestion(
+    left: RepoInfo,
+    right: RepoInfo,
+    *,
+    token_place_base_url: str | None = None,
+    token_place_api_key: str | None = None,
+) -> tuple[Suggestion, int]:
     ordered = tuple(sorted((left, right), key=lambda info: info.slug.lower()))
     primary, secondary = ordered
-    detail, score = _select_detail(primary, secondary)
+    detail, score = _select_detail(
+        primary,
+        secondary,
+        token_place_base_url=token_place_base_url,
+        token_place_api_key=token_place_api_key,
+    )
     repos = [primary.slug, secondary.slug]
     summary = f"Link {primary.slug} ↔ {secondary.slug}"
     suggestion: Suggestion = {"repos": repos, "summary": summary, "details": detail}
     return suggestion, score
 
 
-def _select_detail(primary: RepoInfo, secondary: RepoInfo) -> tuple[str, int]:
+def _select_detail(
+    primary: RepoInfo,
+    secondary: RepoInfo,
+    *,
+    token_place_base_url: str | None = None,
+    token_place_api_key: str | None = None,
+) -> tuple[str, int]:
     ordered = ((primary, secondary), (secondary, primary))
 
     # ``token`` quests must always reference gabriel even when the paired repo
     # also matches a different keyword (e.g. ``blog`` or ``discord``).
     for repo, other in ordered:
         if "token" in repo.slug.lower():
-            detail = token_place_integration.quest_detail(repo.slug, other.slug)
+            detail = token_place_integration.quest_detail(
+                repo.slug,
+                other.slug,
+                base_url=token_place_base_url,
+                api_key=token_place_api_key,
+            )
             return detail, 1
 
     for repo, other in ordered:
@@ -121,14 +143,21 @@ def _unique_repos(repos: Iterable[str]) -> list[RepoInfo]:
 
 
 def suggest_cross_repo_quests(
-    repos: Sequence[str], *, limit: int = 3
+    repos: Sequence[str],
+    *,
+    limit: int = 3,
+    token_place_base_url: str | None = None,
+    token_place_api_key: str | None = None,
 ) -> list[Suggestion]:
     """Return quests that connect repositories from ``repos``.
 
     Suggestions are deterministic, highlight at least two repositories, and
     prefer pairs that match known keywords such as ``token`` or ``gabriel``.
     When fewer than two repositories are provided or ``limit`` is not positive,
-    an empty list is returned.
+    an empty list is returned. ``token_place_base_url`` and
+    ``token_place_api_key`` forward optional configuration to
+    :func:`axel.token_place.quest_detail`, allowing callers to point at custom
+    token.place deployments when enriching quest details.
     """
 
     if limit <= 0:
@@ -140,7 +169,12 @@ def suggest_cross_repo_quests(
 
     ranked: list[tuple[int, Suggestion]] = []
     for left, right in combinations(unique, 2):
-        suggestion, score = _build_suggestion(left, right)
+        suggestion, score = _build_suggestion(
+            left,
+            right,
+            token_place_base_url=token_place_base_url,
+            token_place_api_key=token_place_api_key,
+        )
         ranked.append((score, suggestion))
 
     ranked.sort(key=lambda item: (-item[0], tuple(item[1]["repos"])))
@@ -165,10 +199,27 @@ def main(argv: Sequence[str] | None = None) -> None:
         default=3,
         help="Maximum number of quests to print",
     )
+    parser.add_argument(
+        "--token-place-url",
+        dest="token_place_url",
+        default=None,
+        help="token.place base URL (defaults to AXEL_TOKEN_PLACE_URL when unset)",
+    )
+    parser.add_argument(
+        "--token-place-key",
+        dest="token_place_key",
+        default=None,
+        help="token.place API key (defaults to TOKEN_PLACE_API_KEY when unset)",
+    )
     args = parser.parse_args(argv)
 
     repos = load_repos(path=args.path)
-    suggestions = suggest_cross_repo_quests(repos, limit=args.limit)
+    suggestions = suggest_cross_repo_quests(
+        repos,
+        limit=args.limit,
+        token_place_base_url=args.token_place_url,
+        token_place_api_key=args.token_place_key,
+    )
     if not suggestions:
         print("No quests available")
         return

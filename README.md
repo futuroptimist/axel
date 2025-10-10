@@ -132,7 +132,8 @@ gabriel security layer milestone remains marked complete.
     `tests/test_token_place.py::test_main_reports_errors`.
     The `clients` subcommand continues to support pairing token.place repositories with others in
     your repo list, reusing live model metadata when available. Coverage lives in
-    `tests/test_token_place.py::test_plan_client_integrations_generates_pairs` and
+    `tests/test_token_place.py::test_plan_client_integrations_generates_pairs`,
+    `tests/test_token_place.py::test_plan_client_integrations_reuses_model_metadata`, and
     `tests/test_token_place.py::test_main_clients_prints_plan`.
 
 ## quests

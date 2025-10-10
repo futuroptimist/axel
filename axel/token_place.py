@@ -6,6 +6,7 @@ import argparse
 import os
 import sys
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Iterable, Sequence
 from urllib.parse import urljoin, urlparse
@@ -154,7 +155,7 @@ def quest_detail(
     """Return a quest detail string enriched with token.place models."""
 
     try:
-        models = list_models(base_url=base_url, api_key=api_key)
+        models = _get_cached_models(base_url=base_url, api_key=api_key)
     except TokenPlaceError:
         models = []
 
@@ -214,6 +215,41 @@ def plan_client_integrations(
                 )
             )
     return integrations
+
+
+def _normalized_cache_key(
+    base_url: str | None, api_key: str | None
+) -> tuple[str, str | None]:
+    """Return canonical values for ``base_url`` and ``api_key``."""
+
+    resolved_url = _resolve_base_url(base_url)
+    resolved_key = _resolve_api_key(api_key)
+    return resolved_url, resolved_key
+
+
+@lru_cache(maxsize=16)
+def _cached_models(
+    normalized_base_url: str, normalized_api_key: str | None
+) -> tuple[str, ...]:
+    """Return cached model metadata for token.place."""
+
+    models = list_models(base_url=normalized_base_url, api_key=normalized_api_key)
+    return tuple(models)
+
+
+def _get_cached_models(
+    *, base_url: str | None = None, api_key: str | None = None
+) -> list[str]:
+    """Return token.place models using a simple in-memory cache."""
+
+    normalized_base_url, normalized_api_key = _normalized_cache_key(base_url, api_key)
+    return list(_cached_models(normalized_base_url, normalized_api_key))
+
+
+def _clear_model_cache() -> None:
+    """Clear cached token.place model metadata (primarily for tests)."""
+
+    _cached_models.cache_clear()
 
 
 def main(argv: Sequence[str] | None = None) -> None:

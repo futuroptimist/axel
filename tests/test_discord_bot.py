@@ -248,6 +248,31 @@ def test_summarize_capture_includes_bullet_message_body(tmp_path: Path) -> None:
     assert "Channel" not in summary
 
 
+def test_summarize_capture_skips_security_metadata(tmp_path: Path) -> None:
+    capture = tmp_path / "general" / "security.md"
+    capture.parent.mkdir(parents=True, exist_ok=True)
+    capture.write_text(
+        "\n".join(
+            [
+                "# user",
+                "",
+                "- Channel: general",
+                "- Repository: https://github.com/futuroptimist/token.place",
+                "- Security: https://github.com/futuroptimist/gabriel",
+                "",
+                "Token integration summary stays focused on the message body.",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    summary = db.summarize_capture(capture)
+
+    assert summary is not None
+    assert "Token integration" in summary
+    assert "Security" not in summary
+
+
 def test_summarize_capture_reads_plaintext_with_encryption_enabled(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

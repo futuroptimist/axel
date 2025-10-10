@@ -103,6 +103,7 @@ thread context so the summary stays focused on the actionable text. Summaries su
 relative file path alongside the condensed content in an ephemeral response. Coverage
 spans `tests/test_discord_bot.py::test_summarize_capture_extracts_message_body`,
 `tests/test_discord_bot.py::test_summarize_capture_includes_bullet_message_body`,
+`tests/test_discord_bot.py::test_summarize_capture_skips_security_metadata`,
 `tests/test_discord_bot.py::test_summarize_capture_reads_plaintext_with_encryption_enabled`,
 and `tests/test_discord_bot.py::test_axel_summarize_command_replies_with_summary`.
 

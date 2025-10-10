@@ -115,6 +115,46 @@ def test_suggest_cross_repo_quests_handles_token_place_errors(
     assert "llama-3-8b" not in details
 
 
+def test_suggest_cross_repo_quests_forwards_token_place_config(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import axel.quests as quests
+
+    captured: dict[str, tuple[str | None, str | None]] = {}
+
+    def fake_detail(
+        primary_slug: str,
+        secondary_slug: str,
+        *,
+        base_url: str | None = None,
+        api_key: str | None = None,
+    ) -> str:
+        captured["slugs"] = (primary_slug, secondary_slug)
+        captured["config"] = (base_url, api_key)
+        return "token quest"
+
+    monkeypatch.setattr(quests.token_place_integration, "quest_detail", fake_detail)
+
+    repos = [
+        "https://github.com/futuroptimist/token.place",
+        "https://github.com/futuroptimist/dspace",
+    ]
+
+    suggestions = quests.suggest_cross_repo_quests(
+        repos,
+        limit=1,
+        token_place_base_url="https://token.place/api/v1",
+        token_place_api_key="secret",
+    )
+
+    assert captured["slugs"] == (
+        "futuroptimist/token.place",
+        "futuroptimist/dspace",
+    )
+    assert captured["config"] == ("https://token.place/api/v1", "secret")
+    assert suggestions[0]["details"] == "token quest"
+
+
 @pytest.mark.parametrize(
     "repos",
     [
@@ -157,6 +197,48 @@ def test_cli_prints_suggestions(tmp_path: Path) -> None:
     assert "axel" in output
     assert "gabriel" in output
     assert "quest" in output
+
+
+def test_cli_forwards_token_place_configuration(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import axel.quests as quests
+
+    repo_file = tmp_path / "repos.txt"
+    repo_file.write_text(
+        "https://github.com/futuroptimist/token.place\n"
+        "https://github.com/futuroptimist/axel\n",
+        encoding="utf-8",
+    )
+
+    captured: list[tuple[str | None, str | None]] = []
+
+    def fake_detail(
+        primary_slug: str,
+        secondary_slug: str,
+        *,
+        base_url: str | None = None,
+        api_key: str | None = None,
+    ) -> str:
+        captured.append((base_url, api_key))
+        return "configured quest"
+
+    monkeypatch.setattr(quests.token_place_integration, "quest_detail", fake_detail)
+
+    quests.main(
+        [
+            "--path",
+            str(repo_file),
+            "--limit",
+            "1",
+            "--token-place-url",
+            "https://token.place/api/v1",
+            "--token-place-key",
+            "secret",
+        ]
+    )
+
+    assert captured == [("https://token.place/api/v1", "secret")]
 
 
 def test_suggest_cross_repo_quests_handles_incomplete_urls() -> None:

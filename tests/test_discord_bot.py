@@ -1051,6 +1051,20 @@ def test_search_command_handles_non_relative_paths(
     assert "match line" in message
 
 
+def test_format_relative_path_returns_basename_when_relpath_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = tmp_path / "root"
+    outside_path = root.parent / "outside" / "note.md"
+
+    def _raise_value_error(*args: object, **kwargs: object) -> str:
+        raise ValueError("different drives")
+
+    monkeypatch.setattr(os.path, "relpath", _raise_value_error)
+
+    assert db._format_relative_path(outside_path, root) == "note.md"
+
+
 def test_summarize_command_handles_non_relative_paths(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1081,6 +1095,43 @@ def test_summarize_command_handles_non_relative_paths(
     expected_rel = Path(os.path.relpath(capture_path, tmp_path / "root")).as_posix()
     assert expected_rel in interaction.response.content
     assert "Condensed summary" in interaction.response.content
+
+
+def test_digest_captures_returns_empty_when_limit_non_positive() -> None:
+    assert db.digest_captures("ignored", limit=0) == []
+
+
+def test_digest_captures_skips_empty_summaries_and_breaks_at_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    matches = [
+        db.SearchResult(Path("skip.md"), ""),
+        db.SearchResult(Path("keep.md"), ""),
+        db.SearchResult(Path("unused.md"), ""),
+    ]
+
+    def _fake_search(query: str, *, limit: int) -> list[db.SearchResult]:
+        assert query == "topic"
+        assert limit == max(1 * 2, 1)
+        return matches
+
+    seen: list[Path] = []
+
+    def _fake_summarize(path: Path) -> str:
+        seen.append(path)
+        if path.name == "skip.md":
+            return ""
+        if path.name == "keep.md":
+            return "Keep summary"
+        return "Should not be used"
+
+    monkeypatch.setattr(db, "search_captures", _fake_search)
+    monkeypatch.setattr(db, "summarize_capture", _fake_summarize)
+
+    digest = db.digest_captures("topic", limit=1)
+
+    assert digest == [db.DigestEntry(path=Path("keep.md"), summary="Keep summary")]
+    assert [path.name for path in seen] == ["skip.md", "keep.md"]
 
 
 def test_capture_message_downloads_attachments(tmp_path: Path) -> None:

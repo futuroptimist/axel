@@ -86,6 +86,52 @@ def test_rotate_api_keys_requires_api_key(monkeypatch: pytest.MonkeyPatch) -> No
         token_place.rotate_api_keys(base_url="https://token.place/api/v1")
 
 
+def test_extract_rotated_keys_handles_nested_payloads() -> None:
+    """Nested containers and alias fields should collapse into canonical keys."""
+
+    shared = {"relay": "  relay-primary  "}
+    payload = {
+        "server_token": "  server-root  ",
+        "data": [
+            shared,
+            shared,  # duplicate object to exercise cycle detection
+            {
+                "keys": [
+                    {"relayToken": " relay-secondary "},
+                    {"server_key": " server-new "},
+                ]
+            },
+            [
+                {"relay_key": " relay-tertiary "},
+            ],
+        ],
+    }
+
+    secrets = token_place._extract_rotated_keys(payload)
+
+    assert secrets == {"relay": "relay-primary", "server": "server-root"}
+
+
+def test_rotate_api_keys_errors_when_no_secrets(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Rotation failures surface when the response omits refreshed credentials."""
+
+    def fake_post(
+        url: str, headers: dict[str, str], timeout: int
+    ) -> DummyResponse:  # pragma: no cover - helper
+        return DummyResponse(data={"data": {"message": "ok"}})
+
+    monkeypatch.setattr(token_place.requests, "post", fake_post)
+
+    with pytest.raises(
+        token_place.TokenPlaceError, match="did not include rotated keys"
+    ):
+        token_place.rotate_api_keys(
+            base_url="https://token.place/api/v1", api_key="secret", timeout=10
+        )
+
+
 def test_list_models_parses_openai_like_payload(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

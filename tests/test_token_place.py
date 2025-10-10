@@ -46,6 +46,46 @@ class DummyResponse:
         return self._data
 
 
+def test_rotate_api_keys_requests_new_tokens(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Rotating keys posts to the auth endpoint and returns secrets."""
+
+    captured: dict[str, object] = {}
+
+    def fake_post(
+        url: str, headers: dict[str, str], timeout: int
+    ) -> DummyResponse:  # pragma: no cover - helper
+        captured["url"] = url
+        captured["headers"] = headers
+        captured["timeout"] = timeout
+        return DummyResponse(
+            data={"data": {"relay_key": "relay-new", "server_key": "server-new"}}
+        )
+
+    monkeypatch.setattr(token_place.requests, "post", fake_post)
+
+    result = token_place.rotate_api_keys(
+        base_url="https://token.place/api/v1", api_key="secret", timeout=15
+    )
+
+    assert captured["url"] == "https://token.place/api/v1/auth/rotate"
+    headers = captured["headers"]
+    assert headers["Authorization"] == "Bearer secret"
+    assert headers["Accept"] == "application/json"
+    assert captured["timeout"] == 15
+    assert result == {"relay": "relay-new", "server": "server-new"}
+
+
+def test_rotate_api_keys_requires_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An API key is mandatory when rotating credentials."""
+
+    monkeypatch.delenv("TOKEN_PLACE_API_KEY", raising=False)
+
+    with pytest.raises(token_place.TokenPlaceError):
+        token_place.rotate_api_keys(base_url="https://token.place/api/v1")
+
+
 def test_list_models_parses_openai_like_payload(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -118,6 +158,53 @@ def test_main_reports_errors(
     assert excinfo.value.code == 1
     captured = capsys.readouterr()
     assert "offline" in captured.err
+
+
+def test_main_rotate_prints_keys(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The rotate subcommand should display refreshed credentials."""
+
+    monkeypatch.setattr(
+        token_place,
+        "rotate_api_keys",
+        lambda base_url=None, api_key=None, timeout=token_place.DEFAULT_TIMEOUT: {
+            "relay": "relay-new",
+            "server": "server-new",
+        },
+    )
+
+    token_place.main(
+        [
+            "rotate",
+            "--base-url",
+            "https://token.place/api/v1",
+            "--api-key",
+            "secret",
+        ]
+    )
+
+    output = capsys.readouterr().out.strip().splitlines()
+    assert output[0].startswith("Rotated token.place keys:")
+    assert "- relay: relay-new" in output
+    assert "- server: server-new" in output
+
+
+def test_main_rotate_reports_errors(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Rotation failures exit with a helpful message."""
+
+    def boom(**_: object) -> dict[str, str]:  # pragma: no cover - helper
+        raise token_place.TokenPlaceError("denied")
+
+    monkeypatch.setattr(token_place, "rotate_api_keys", boom)
+
+    with pytest.raises(SystemExit) as excinfo:
+        token_place.main(["rotate"])
+
+    assert excinfo.value.code == 1
+    assert "denied" in capsys.readouterr().err
 
 
 def test_main_reports_empty_model_list(

@@ -21,6 +21,10 @@ _PREVIEW_PREFERENCE: tuple[str, ...] = (
     "llama-3-8b-instruct:alignment",
     "llama-3-8b-instruct",
 )
+_ROTATED_KEY_FIELDS: dict[str, tuple[str, ...]] = {
+    "relay": ("relay", "relay_key", "relayToken", "relay_token"),
+    "server": ("server", "server_key", "serverToken", "server_token"),
+}
 
 
 class TokenPlaceError(RuntimeError):
@@ -79,6 +83,47 @@ def _extract_model_ids(payload: object) -> list[str]:
     return models
 
 
+def _extract_rotated_keys(payload: object) -> dict[str, str]:
+    """Return rotated token.place keys from ``payload``."""
+
+    containers: list[dict[str, object]] = []
+    seen: set[int] = set()
+
+    def _queue(obj: object) -> None:
+        if isinstance(obj, dict):
+            identifier = id(obj)
+            if identifier in seen:
+                return
+            seen.add(identifier)
+            containers.append(obj)
+            for key in ("data", "keys"):
+                value = obj.get(key)
+                if isinstance(value, dict):
+                    _queue(value)
+                elif isinstance(value, list):
+                    for entry in value:
+                        _queue(entry)
+        elif isinstance(obj, list):
+            for entry in obj:
+                _queue(entry)
+
+    _queue(payload)
+
+    secrets: dict[str, str] = {}
+    for container in containers:
+        for canonical, aliases in _ROTATED_KEY_FIELDS.items():
+            if canonical in secrets:
+                continue
+            for alias in aliases:
+                value = container.get(alias)
+                if isinstance(value, str):
+                    cleaned = value.strip()
+                    if cleaned:
+                        secrets[canonical] = cleaned
+                        break
+    return secrets
+
+
 def list_models(
     *,
     base_url: str | None = None,
@@ -111,6 +156,44 @@ def list_models(
         raise TokenPlaceError("token.place returned invalid JSON") from exc
 
     return _extract_model_ids(payload)
+
+
+def rotate_api_keys(
+    *,
+    base_url: str | None = None,
+    api_key: str | None = None,
+    timeout: int = DEFAULT_TIMEOUT,
+) -> dict[str, str]:
+    """Rotate token.place API keys and return the new credentials."""
+
+    resolved_url = _resolve_base_url(base_url)
+    key = _resolve_api_key(api_key)
+    if not key:
+        raise TokenPlaceError("TOKEN_PLACE_API_KEY is required to rotate keys")
+
+    headers = {"Accept": "application/json", "Authorization": f"Bearer {key}"}
+    url = urljoin(resolved_url + "/", "auth/rotate")
+
+    try:
+        response = requests.post(url, headers=headers, timeout=timeout)
+    except requests.RequestException as exc:  # pragma: no cover - network errors mocked
+        raise TokenPlaceError(f"Unable to rotate token.place keys at {url}") from exc
+
+    try:
+        response.raise_for_status()
+    except requests.HTTPError as exc:  # pragma: no cover - exercised via tests
+        status = getattr(response, "status_code", "unknown")
+        raise TokenPlaceError(f"token.place returned HTTP {status} for {url}") from exc
+
+    try:
+        payload = response.json()
+    except ValueError as exc:  # pragma: no cover - defensive
+        raise TokenPlaceError("token.place returned invalid JSON") from exc
+
+    secrets = _extract_rotated_keys(payload)
+    if not secrets:
+        raise TokenPlaceError("token.place response did not include rotated keys")
+    return secrets
 
 
 def _select_featured_model(models: Sequence[str]) -> str | None:
@@ -283,6 +366,30 @@ def main(argv: Sequence[str] | None = None) -> None:
         help="Request timeout in seconds (defaults to %(default)s)",
     )
 
+    rotate_cmd = sub.add_parser(
+        "rotate",
+        help="Rotate token.place API keys",
+    )
+    rotate_cmd.add_argument(
+        "--base-url",
+        default=None,
+        help=(
+            "token.place API base URL (defaults to AXEL_TOKEN_PLACE_URL or "
+            f"{DEFAULT_API_URL})"
+        ),
+    )
+    rotate_cmd.add_argument(
+        "--api-key",
+        default=None,
+        help="token.place API key (defaults to TOKEN_PLACE_API_KEY)",
+    )
+    rotate_cmd.add_argument(
+        "--timeout",
+        type=int,
+        default=DEFAULT_TIMEOUT,
+        help="Request timeout in seconds (defaults to %(default)s)",
+    )
+
     # Subcommand: plan client integrations
     clients = sub.add_parser(
         "clients",
@@ -333,6 +440,20 @@ def main(argv: Sequence[str] | None = None) -> None:
             print(f"- {model}")
         return
 
+    if args.cmd == "rotate":
+        try:
+            keys = rotate_api_keys(
+                base_url=args.base_url, api_key=args.api_key, timeout=args.timeout
+            )
+        except TokenPlaceError as exc:
+            print(f"Failed to rotate keys: {exc}", file=sys.stderr)
+            raise SystemExit(1) from exc
+
+        print("Rotated token.place keys:")
+        for name, value in keys.items():
+            print(f"- {name}: {value}")
+        return
+
     if args.cmd == "clients":
         path = (
             Path(args.path).expanduser() if args.path is not None else get_repo_file()
@@ -358,6 +479,7 @@ __all__ = [
     "DEFAULT_API_URL",
     "DEFAULT_TIMEOUT",
     "list_models",
+    "rotate_api_keys",
     "quest_detail",
     "ClientIntegration",
     "plan_client_integrations",

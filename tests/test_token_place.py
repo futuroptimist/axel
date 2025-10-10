@@ -11,6 +11,15 @@ import pytest
 import axel.token_place as token_place
 
 
+@pytest.fixture(autouse=True)
+def _reset_model_cache() -> None:
+    """Ensure cached model metadata does not leak between tests."""
+
+    token_place._clear_model_cache()
+    yield
+    token_place._clear_model_cache()
+
+
 class DummyResponse:
     """Simple stand-in for :mod:`requests` responses."""
 
@@ -359,6 +368,40 @@ def test_plan_client_integrations_parses_varied_repos(
         "owner/other-repo",
         "solo",
     ]
+
+
+def test_plan_client_integrations_reuses_model_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Model metadata is fetched once per token.place configuration."""
+
+    calls: list[tuple[str | None, str | None]] = []
+
+    def fake_list_models(
+        *,
+        base_url: str | None = None,
+        api_key: str | None = None,
+        timeout: int = token_place.DEFAULT_TIMEOUT,
+    ) -> list[str]:  # pragma: no cover - helper
+        calls.append((base_url, api_key))
+        return ["model-a"]
+
+    token_place._clear_model_cache()
+    monkeypatch.setattr(token_place, "list_models", fake_list_models)
+
+    repos = [
+        "https://github.com/example/token.place",
+        "https://github.com/example/alpha",
+        "https://github.com/example/beta",
+    ]
+
+    token_place.plan_client_integrations(
+        repos, base_url="https://token.place/api/v1", api_key="secret"
+    )
+
+    assert len(calls) == 1
+    assert calls[0] == ("https://token.place/api/v1", "secret")
+    token_place._clear_model_cache()
 
 
 def test_main_clients_prints_plan(

@@ -7,6 +7,17 @@ from pathlib import Path
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _reset_token_place_cache() -> None:
+    """Ensure token.place model cache stays isolated per test."""
+
+    import axel.token_place as token_place
+
+    token_place._clear_model_cache()
+    yield
+    token_place._clear_model_cache()
+
+
 def test_suggest_cross_repo_quests_links_repos() -> None:
     from axel.quests import suggest_cross_repo_quests
 

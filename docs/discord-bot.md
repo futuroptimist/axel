@@ -95,7 +95,9 @@ and `test_summarize_capture_reads_plaintext_with_encryption_enabled`).
 The bot registers `/axel search` as a slash command for quickly locating saved captures by
 keyword. Results list relative file paths and the first matching line, returned as an
 ephemeral response so only the requester sees the output. Coverage lives in
-`tests/test_discord_bot.py::test_axel_search_command_replies_with_matches`.
+`tests/test_discord_bot.py::test_axel_search_command_replies_with_matches`, with
+`tests/test_discord_bot.py::test_search_command_handles_non_relative_paths` ensuring the
+output stays relative even when captures live outside the configured directory.
 
 Use `/axel summarize` to generate a quick synopsis of the first capture that matches the
 provided query. The helper prioritizes the saved message body, skipping metadata and
@@ -105,14 +107,17 @@ spans `tests/test_discord_bot.py::test_summarize_capture_extracts_message_body`,
 `tests/test_discord_bot.py::test_summarize_capture_includes_bullet_message_body`,
 `tests/test_discord_bot.py::test_summarize_capture_skips_security_metadata`,
 `tests/test_discord_bot.py::test_summarize_capture_reads_plaintext_with_encryption_enabled`,
-and `tests/test_discord_bot.py::test_axel_summarize_command_replies_with_summary`.
+`tests/test_discord_bot.py::test_axel_summarize_command_replies_with_summary`, and
+`tests/test_discord_bot.py::test_summarize_command_handles_non_relative_paths`.
 
 Use `/axel quest` to convert capture metadata into a cross-repo quest suggestion. The command
 parses `Repository:` lines from the first matching capture, runs them through
 `axel.quests.suggest_cross_repo_quests`, and replies with the resulting summary and quest
 details in an ephemeral message. Coverage spans
 `tests/test_discord_bot.py::test_axel_quest_command_replies_with_suggestion` and
-`tests/test_discord_bot.py::test_axel_quest_command_reports_missing_repositories`.
+`tests/test_discord_bot.py::test_axel_quest_command_reports_missing_repositories`, with
+`tests/test_discord_bot.py::test_axel_quest_command_handles_non_relative_paths` guarding
+the relative path rendering for captures stored outside the configured directory.
 
 ## Analyzing Captured Messages
 
@@ -139,7 +144,8 @@ Automated coverage for the capture format lives in
 Future improvements will expand the bot's capabilities:
 
 - **Command interface** – `/axel digest` extends the command set with a locally generated
-  multi-capture digest (see `tests/test_discord_bot.py::test_axel_digest_command_replies_with_digest`).
+  multi-capture digest (see `tests/test_discord_bot.py::test_axel_digest_command_replies_with_digest`
+  and `tests/test_discord_bot.py::test_axel_digest_command_handles_paths_outside_root`).
   Future workflows can plug in heavier local models to build on this pattern.
 
 Contributions and ideas are welcome. Keep all bot logic local and respect user privacy.

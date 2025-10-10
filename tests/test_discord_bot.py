@@ -1,4 +1,5 @@
 import asyncio
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -1045,8 +1046,41 @@ def test_search_command_handles_non_relative_paths(
     assert interaction.response.calls
     message, ephemeral = interaction.response.calls[0]
     assert ephemeral is True
-    assert "outside/note.md" in message
+    expected_rel = Path(os.path.relpath(result_path, tmp_path / "root")).as_posix()
+    assert expected_rel in message
     assert "match line" in message
+
+
+def test_summarize_command_handles_non_relative_paths(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    intents = discord.Intents.none()
+    client = db.AxelClient(intents=intents)
+    command = client.tree.get_command("axel").get_command("summarize")
+
+    capture_path = tmp_path / "outside" / "summary.md"
+    capture_path.parent.mkdir(parents=True)
+    capture_path.write_text(
+        "# user\n\nCaptured content worth summarizing.\n",
+        encoding="utf-8",
+    )
+
+    def _fake_search(query: str, *, limit: int = 1) -> list[db.SearchResult]:
+        assert query == "outside"
+        return [db.SearchResult(capture_path, "Captured content worth summarizing.")]
+
+    monkeypatch.setattr(db, "search_captures", _fake_search)
+    monkeypatch.setattr(db, "summarize_capture", lambda path: "Condensed summary")
+    monkeypatch.setattr(db, "_get_save_dir", lambda: tmp_path / "root")
+
+    interaction = DummyInteraction()
+    asyncio.run(command.callback(interaction, query="outside"))
+
+    assert interaction.response.ephemeral is True
+    assert interaction.response.content is not None
+    expected_rel = Path(os.path.relpath(capture_path, tmp_path / "root")).as_posix()
+    assert expected_rel in interaction.response.content
+    assert "Condensed summary" in interaction.response.content
 
 
 def test_capture_message_downloads_attachments(tmp_path: Path) -> None:
@@ -1566,10 +1600,66 @@ def test_axel_quest_command_reports_missing_suggestions(
     asyncio.run(quest_command.callback(interaction, query="void"))
 
     assert interaction.response.ephemeral is True
+    expected_rel = Path(
+        os.path.relpath(Path("/capture.md"), tmp_path / "root")
+    ).as_posix()
     assert (
         interaction.response.content
-        == "No quest suggestions available for /capture.md."
+        == f"No quest suggestions available for {expected_rel}."
     )
+
+
+def test_axel_quest_command_handles_non_relative_paths(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Quest command emits relative paths even when captures live elsewhere."""
+
+    root = tmp_path / "root"
+    monkeypatch.setenv("AXEL_DISCORD_DIR", str(root))
+
+    intents = discord.Intents.none()
+    client = db.AxelClient(intents=intents)
+
+    axel_command = client.tree.get_command("axel")
+    assert axel_command is not None
+    quest_command = next(
+        cmd for cmd in getattr(axel_command, "commands", []) if cmd.name == "quest"
+    )
+
+    external_path = tmp_path.parent / "quest.md"
+    external_path.parent.mkdir(exist_ok=True)
+    external_path.write_text("Quest content", encoding="utf-8")
+
+    monkeypatch.setattr(
+        db,
+        "search_captures",
+        lambda query, *, limit=1: [db.SearchResult(external_path, "Quest content")],
+    )
+    monkeypatch.setattr(
+        db,
+        "_capture_repository_urls",
+        lambda _path: [
+            "https://github.com/example/project-a",
+            "https://github.com/example/project-b",
+        ],
+    )
+    monkeypatch.setattr(
+        db,
+        "suggest_cross_repo_quests",
+        lambda _repos, *, limit=1: [
+            {"summary": "Coordinate work", "details": "Secure integration"}
+        ],
+    )
+    monkeypatch.setattr(db, "_get_save_dir", lambda: root)
+
+    interaction = DummyInteraction()
+    asyncio.run(quest_command.callback(interaction, query="quest"))
+
+    assert interaction.response.ephemeral is True
+    assert interaction.response.content is not None
+    expected_rel = Path(os.path.relpath(external_path, root)).as_posix()
+    assert expected_rel in interaction.response.content
+    assert "Coordinate work" in interaction.response.content
 
 
 def test_axel_summarize_command_reports_no_matches(
@@ -1670,7 +1760,7 @@ def test_axel_digest_command_reports_no_matches(
 def test_axel_digest_command_handles_paths_outside_root(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Digest command renders absolute paths when outside the configured root."""
+    """Digest command renders relative paths even outside the configured root."""
 
     monkeypatch.setenv("AXEL_DISCORD_DIR", str(tmp_path))
 
@@ -1696,7 +1786,8 @@ def test_axel_digest_command_handles_paths_outside_root(
 
     assert interaction.response.ephemeral is True
     assert interaction.response.content is not None
-    assert "external.md" in interaction.response.content
+    expected_rel = Path(os.path.relpath(external_path, tmp_path)).as_posix()
+    assert expected_rel in interaction.response.content
     assert "External summary" in interaction.response.content
 
 

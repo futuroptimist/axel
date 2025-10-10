@@ -70,6 +70,20 @@ def _get_save_dir() -> Path:
     return Path(env).expanduser() if env else SAVE_DIR
 
 
+def _format_relative_path(path: Path, root: Path) -> str:
+    """Return a POSIX-style path relative to ``root`` without leaking absolutes."""
+
+    try:
+        relative = path.relative_to(root)
+    except ValueError:
+        try:
+            rel = os.path.relpath(path, root)
+        except ValueError:
+            return Path(path).name
+        return Path(rel).as_posix()
+    return relative.as_posix()
+
+
 _SAFE_COMPONENT = re.compile(r"[^A-Za-z0-9._-]+")
 _NORMALIZE_REPO_NAME = re.compile(r"[^a-z0-9]+")
 
@@ -708,11 +722,8 @@ class AxelClient(discord.Client):
             root = _get_save_dir()
             lines = [f"Matches for '{query}':"]
             for result in results:
-                try:
-                    relative = result.path.relative_to(root)
-                except ValueError:
-                    relative = result.path
-                lines.append(f"- {relative.as_posix()}: {result.snippet}")
+                display_path = _format_relative_path(result.path, root)
+                lines.append(f"- {display_path}: {result.snippet}")
 
             await interaction.response.send_message(
                 "\n".join(lines),
@@ -739,19 +750,15 @@ class AxelClient(discord.Client):
 
             result = results[0]
             root = _get_save_dir()
-            try:
-                relative = result.path.relative_to(root)
-            except ValueError:
-                relative = result.path
+            display_path = _format_relative_path(result.path, root)
 
             summary = summarize_capture(result.path)
             if not summary:
                 message = (
-                    "Capture "
-                    f"{relative.as_posix()} has no readable content to summarize."
+                    "Capture " f"{display_path} has no readable content to summarize."
                 )
             else:
-                message = f"Summary for '{query}' ({relative.as_posix()}): {summary}"
+                message = f"Summary for '{query}' ({display_path}): {summary}"
 
             await interaction.response.send_message(message, ephemeral=True)
 
@@ -774,13 +781,10 @@ class AxelClient(discord.Client):
             root = _get_save_dir()
             lines = [f"Digest for '{query}':"]
             for entry in digest:
-                try:
-                    relative = entry.path.relative_to(root)
-                except ValueError:
-                    relative = entry.path
+                display_path = _format_relative_path(entry.path, root)
 
                 summary = entry.summary or "(no summary)"
-                lines.append(f"- {relative.as_posix()}: {summary}")
+                lines.append(f"- {display_path}: {summary}")
 
             await interaction.response.send_message(
                 "\n".join(lines),
@@ -805,11 +809,7 @@ class AxelClient(discord.Client):
 
             result = results[0]
             root = _get_save_dir()
-            try:
-                relative = result.path.relative_to(root)
-            except ValueError:
-                relative = result.path
-            relative_path = relative.as_posix()
+            relative_path = _format_relative_path(result.path, root)
 
             repos = _capture_repository_urls(result.path)
             if len(repos) < 2:

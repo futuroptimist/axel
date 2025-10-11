@@ -648,6 +648,77 @@ def test_fetch_repo_urls_accepts_visibility(monkeypatch) -> None:
     assert captured["visibility"] == "private"
 
 
+def test_fetch_repo_urls_deduplicates_case_insensitive(monkeypatch) -> None:
+    """Duplicate repositories from the API are removed case-insensitively."""
+
+    pages: dict[int, list[dict[str, str]]] = {
+        1: [
+            {"html_url": "https://github.com/example/Axel"},
+            {"html_url": "https://github.com/example/axel"},
+        ],
+        2: [],
+    }
+
+    def fake_get(url, headers=None, params=None, timeout=0):
+        page = params.get("page", 1)
+
+        class Resp:
+            def __init__(self, data: list[dict[str, str]]):
+                self._data = data
+
+            def json(self):
+                return self._data
+
+            def raise_for_status(self):
+                return None
+
+        return Resp(pages.get(page, []))
+
+    monkeypatch.setenv("GH_TOKEN", "token")
+    monkeypatch.setattr(requests, "get", fake_get)
+    from axel import repo_manager as rm
+
+    repos = rm.fetch_repo_urls()
+
+    assert repos == ["https://github.com/example/Axel"]
+
+
+def test_fetch_repo_urls_skips_invalid_entries(monkeypatch) -> None:
+    """Entries without usable URLs are ignored."""
+
+    responses: dict[int, list[dict[str, object]]] = {
+        1: [
+            {"html_url": "https://github.com/example/valid"},
+            {"html_url": None},
+            {"html_url": "   /"},
+        ],
+        2: [],
+    }
+
+    def fake_get(url, headers=None, params=None, timeout=0):
+        page = params.get("page", 1)
+
+        class Resp:
+            def __init__(self, data: list[dict[str, object]]):
+                self._data = data
+
+            def json(self):
+                return self._data
+
+            def raise_for_status(self):
+                return None
+
+        return Resp(responses.get(page, []))
+
+    monkeypatch.setenv("GH_TOKEN", "token")
+    monkeypatch.setattr(requests, "get", fake_get)
+    from axel import repo_manager as rm
+
+    repos = rm.fetch_repo_urls()
+
+    assert repos == ["https://github.com/example/valid"]
+
+
 def test_fetch_repos_defaults(monkeypatch, tmp_path: Path) -> None:
     """``fetch_repos`` honors ``AXEL_REPO_FILE`` when no path is given."""
     repo_file = tmp_path / "repos.txt"

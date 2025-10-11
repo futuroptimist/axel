@@ -120,6 +120,7 @@ def fetch_repo_urls(
     headers = {"Authorization": f"token {token}"}
     page = 1
     repos: List[str] = []
+    seen: set[str] = set()
     while True:
         params = {"per_page": 100, "page": page}
         if visibility:
@@ -134,7 +135,18 @@ def fetch_repo_urls(
         data = resp.json()
         if not data:
             break
-        repos.extend(repo["html_url"] for repo in data)
+        for repo in data:
+            url = repo.get("html_url") if isinstance(repo, dict) else None
+            if not isinstance(url, str):
+                continue
+            cleaned = url.strip().rstrip("/")
+            if not cleaned:
+                continue
+            key = cleaned.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            repos.append(cleaned)
         page += 1
     repos.sort(key=str.lower)
     return repos

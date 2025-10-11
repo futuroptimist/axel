@@ -77,6 +77,9 @@ pre-commit install
    `python -m axel.repo_manager fetch`. Pass `--token` or set ``GH_TOKEN`` or
    ``GITHUB_TOKEN``. Use `--visibility public|private|all` to filter the
    repositories returned by the GitHub API.
+   The fetch command also deduplicates URLs case-insensitively before writing
+   the file so repeated entries from the API are collapsed (see
+   `tests/test_repo_manager.py::test_fetch_repo_urls_deduplicates_case_insensitive`).
 5. Run `pre-commit run --all-files` before committing to check formatting and tests.
 6. Pass `--path <file>` or set `AXEL_REPO_FILE` to use a custom repo list. The CLI accepts
    `--path` before or after the subcommand (see

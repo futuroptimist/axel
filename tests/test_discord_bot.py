@@ -1918,9 +1918,7 @@ def test_axel_quest_command_handles_non_relative_paths(
             {"summary": "Coordinate work", "details": "Secure integration"}
         ],
     )
-    monkeypatch.setattr(
-        db, "_get_save_dir", lambda *, require_writable=True: root
-    )
+    monkeypatch.setattr(db, "_get_save_dir", lambda *, require_writable=True: root)
 
     interaction = DummyInteraction()
     asyncio.run(quest_command.callback(interaction, query="quest"))

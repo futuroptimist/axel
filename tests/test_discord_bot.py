@@ -825,6 +825,154 @@ def test_save_message_env_expands_user(tmp_path: Path, monkeypatch) -> None:
     assert "home" in read_markdown(path)
 
 
+def test_get_save_dir_falls_back_when_default_unwritable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("AXEL_DISCORD_DIR", raising=False)
+    fallback_home = tmp_path / "home"
+    fallback_home.mkdir()
+    fallback_dir = fallback_home / ".axel" / "discord"
+
+    calls: list[Path] = []
+
+    def fake_validate(path: Path) -> Path:
+        calls.append(path)
+        if path == Path("local/discord"):
+            raise RuntimeError("read-only")
+        return path
+
+    monkeypatch.setattr(Path, "home", lambda: fallback_home)
+    monkeypatch.setattr(db, "_CHECKED_CAPTURE_DIRS", set())
+    monkeypatch.setattr(db, "_validate_capture_dir", fake_validate)
+    monkeypatch.setattr(db, "SAVE_DIR", Path("local/discord"))
+
+    save_dir = db._get_save_dir()
+
+    assert save_dir == fallback_dir
+    assert calls == [Path("local/discord"), fallback_dir]
+
+
+def test_get_save_dir_errors_when_env_dir_unwritable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env_dir = tmp_path / "locked"
+    monkeypatch.setenv("AXEL_DISCORD_DIR", str(env_dir))
+    monkeypatch.setattr(db, "_CHECKED_CAPTURE_DIRS", set())
+
+    def fake_validate(path: Path) -> Path:
+        raise RuntimeError("denied")
+
+    monkeypatch.setattr(db, "_validate_capture_dir", fake_validate)
+
+    with pytest.raises(RuntimeError) as excinfo:
+        db._get_save_dir()
+
+    message = str(excinfo.value)
+    assert "AXEL_DISCORD_DIR" in message
+    assert str(env_dir) in message
+
+
+def test_validate_capture_dir_handles_resolve_and_unlink_errors(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target = tmp_path / "captures"
+    expected = target.expanduser().absolute()
+
+    original_resolve = Path.resolve
+
+    def fake_resolve(self: Path, strict: bool = False):  # type: ignore[override]
+        if self == target:
+            raise RuntimeError("boom")
+        return original_resolve(self, strict=strict)
+
+    probe_path = expected / ".axel-write-test"
+    original_unlink = Path.unlink
+
+    def fake_unlink(self: Path, *args, **kwargs):  # type: ignore[override]
+        if self == probe_path:
+            raise OSError("unlink failure")
+        return original_unlink(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "resolve", fake_resolve)
+    monkeypatch.setattr(Path, "unlink", fake_unlink)
+    monkeypatch.setattr(db, "_CHECKED_CAPTURE_DIRS", set())
+
+    resolved = db._validate_capture_dir(target)
+
+    assert resolved == expected
+    assert resolved.exists()
+
+
+def test_validate_capture_dir_raises_when_mkdir_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target = tmp_path / "captures"
+    expected = target.expanduser().resolve(strict=False)
+    original_mkdir = Path.mkdir
+
+    def fake_mkdir(
+        self: Path, parents: bool = False, exist_ok: bool = False
+    ):  # type: ignore[override]
+        if self == expected:
+            raise PermissionError("denied")
+        return original_mkdir(self, parents=parents, exist_ok=exist_ok)
+
+    monkeypatch.setattr(Path, "mkdir", fake_mkdir)
+    monkeypatch.setattr(db, "_CHECKED_CAPTURE_DIRS", set())
+
+    with pytest.raises(
+        RuntimeError, match="Unable to create Discord capture directory"
+    ):
+        db._validate_capture_dir(target)
+
+
+def test_validate_capture_dir_raises_when_write_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target = tmp_path / "captures"
+    expected = target.expanduser().resolve(strict=False)
+    probe_path = expected / ".axel-write-test"
+    original_open = Path.open
+
+    def fake_open(
+        self: Path, mode: str = "r", *args, **kwargs
+    ):  # type: ignore[override]
+        if self == probe_path and "w" in mode:
+            raise OSError("write blocked")
+        return original_open(self, mode, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", fake_open)
+    monkeypatch.setattr(db, "_CHECKED_CAPTURE_DIRS", set())
+
+    with pytest.raises(RuntimeError, match="is not writable"):
+        db._validate_capture_dir(target)
+
+
+def test_get_save_dir_errors_when_all_locations_unwritable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("AXEL_DISCORD_DIR", raising=False)
+    monkeypatch.setattr(db, "_CHECKED_CAPTURE_DIRS", set())
+
+    def fake_validate(path: Path) -> Path:
+        raise RuntimeError("denied")
+
+    monkeypatch.setattr(db, "_validate_capture_dir", fake_validate)
+
+    with pytest.raises(
+        RuntimeError, match="Unable to locate a writable Discord capture directory"
+    ):
+        db._get_save_dir()
+
+
+def test_search_captures_returns_empty_when_root_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = Path("missing-root")
+    monkeypatch.setattr(db, "_get_save_dir", lambda: root)
+    assert db.search_captures("query") == []
+
+
 def test_save_message_encrypts_when_key_set(tmp_path: Path, monkeypatch) -> None:
     """When an encryption key is configured the saved file is encrypted."""
 

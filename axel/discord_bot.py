@@ -32,6 +32,8 @@ _METADATA_PREFIXES: tuple[str, ...] = (
 _ATTACHMENT_LINE = re.compile(r"\s*-\s*\[[^\]]+\]\(((?:\./|\.\./).+?)\)")
 _REPOSITORY_PREFIX = "- repository:"
 
+_CHECKED_CAPTURE_DIRS: set[Path] = set()
+
 
 @dataclass(frozen=True)
 class SearchResult:
@@ -63,11 +65,67 @@ def _context_sort_key(message: discord.Message) -> datetime:
     return _MIN_CONTEXT_TIMESTAMP
 
 
+def _validate_capture_dir(path: Path) -> Path:
+    """Return ``path`` after ensuring it exists and is writable."""
+
+    resolved = path.expanduser()
+    try:
+        resolved = resolved.resolve(strict=False)
+    except Exception:
+        resolved = resolved.absolute()
+
+    if resolved in _CHECKED_CAPTURE_DIRS:
+        return resolved
+
+    try:
+        resolved.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise RuntimeError(
+            f"Unable to create Discord capture directory at {resolved}"
+        ) from exc
+
+    probe = resolved / ".axel-write-test"
+    try:
+        with probe.open("wb") as handle:
+            handle.write(b"")
+    except OSError as exc:
+        raise RuntimeError(
+            f"Discord capture directory {resolved} is not writable"
+        ) from exc
+    finally:
+        try:
+            probe.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+    _CHECKED_CAPTURE_DIRS.add(resolved)
+    return resolved
+
+
 def _get_save_dir() -> Path:
     """Return directory for saving Discord messages."""
 
     env = os.getenv("AXEL_DISCORD_DIR")
-    return Path(env).expanduser() if env else SAVE_DIR
+    if env:
+        candidate = Path(env)
+        try:
+            return _validate_capture_dir(candidate)
+        except RuntimeError as exc:
+            raise RuntimeError(
+                f"AXEL_DISCORD_DIR points to an unwritable directory: {candidate}"
+            ) from exc
+
+    try:
+        return _validate_capture_dir(SAVE_DIR)
+    except RuntimeError:
+        fallback = Path.home() / ".axel" / "discord"
+        try:
+            return _validate_capture_dir(fallback)
+        except RuntimeError as exc:
+            raise RuntimeError(
+                "Unable to locate a writable Discord capture directory. "
+                "Set AXEL_DISCORD_DIR to a writable path."
+            ) from exc
 
 
 def _format_relative_path(path: Path, root: Path) -> str:

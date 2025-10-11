@@ -4,11 +4,13 @@ Track common pitfalls while Axel matures. The README links here alongside the FA
 by `tests/test_readme.py::test_readme_includes_alpha_status_and_supporting_docs` to keep the docs
 discoverable.
 
-## Discord capture directory permissions
+## Discord capture directory fallback
 
-Running the Discord bot inside a read-only checkout prevents captures from being saved under
-`local/discord/`. Ensure the working tree is writable or point `AXEL_DISCORD_DIR` to a location with
-write access.
+Axel now falls back to `~/.axel/discord/` when the default `local/discord/` path is read-only so
+captures are still persisted. Set `AXEL_DISCORD_DIR` to point at another location if you prefer a
+different directory; the bot validates that the path is writable and raises a clear error when it
+is not (see `tests/test_discord_bot.py::test_get_save_dir_falls_back_when_default_unwritable` and
+`tests/test_discord_bot.py::test_get_save_dir_errors_when_env_dir_unwritable`).
 
 ## GitHub token scope requirements
 

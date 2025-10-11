@@ -23,9 +23,11 @@ The bot reads its token from the `DISCORD_BOT_TOKEN` environment variable and re
 **Message Content Intent** in the Discord Developer Portal.
 
 Messages are stored under `local/discord/` (configurable via `AXEL_DISCORD_DIR`) which is
-already listed in `.gitignore`. The helper `axel.discord_bot.capture_message` downloads
-attachments before writing the markdown file, making it easy to exercise the behavior in
-tests.
+already listed in `.gitignore`. When that directory is read-only, Axel automatically falls
+back to `~/.axel/discord/` so captures still land on disk (see
+`tests/test_discord_bot.py::test_get_save_dir_falls_back_when_default_unwritable`). The helper
+`axel.discord_bot.capture_message` downloads attachments before writing the markdown file,
+making it easy to exercise the behavior in tests.
 
 Use `axel.discord_bot.search_captures` to scan saved markdown files for matching text. The helper
 handles encrypted captures (when `AXEL_DISCORD_ENCRYPTION_KEY` is set) and limits the number of
@@ -108,7 +110,10 @@ spans `tests/test_discord_bot.py::test_summarize_capture_extracts_message_body`,
 `tests/test_discord_bot.py::test_summarize_capture_skips_security_metadata`,
 `tests/test_discord_bot.py::test_summarize_capture_reads_plaintext_with_encryption_enabled`,
 `tests/test_discord_bot.py::test_axel_summarize_command_replies_with_summary`, and
-`tests/test_discord_bot.py::test_summarize_command_handles_non_relative_paths`.
+`tests/test_discord_bot.py::test_summarize_command_handles_non_relative_paths`. When a custom
+directory is supplied via `AXEL_DISCORD_DIR`, Axel now validates that it is writable and surfaces
+a descriptive error if not (see
+`tests/test_discord_bot.py::test_get_save_dir_errors_when_env_dir_unwritable`).
 
 Use `/axel quest` to convert capture metadata into a cross-repo quest suggestion. The command
 parses `Repository:` lines from the first matching capture, runs them through

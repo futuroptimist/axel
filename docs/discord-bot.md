@@ -113,7 +113,8 @@ spans `tests/test_discord_bot.py::test_summarize_capture_extracts_message_body`,
 Use `/axel quest` to convert capture metadata into a cross-repo quest suggestion. The command
 parses `Repository:` lines from the first matching capture, runs them through
 `axel.quests.suggest_cross_repo_quests`, and replies with the resulting summary and quest
-details in an ephemeral message. Coverage spans
+details in an ephemeral message. Quest replies now highlight the featured token.place model when
+available so cross-repo prompts surface the recommended runtime upfront. Coverage spans
 `tests/test_discord_bot.py::test_axel_quest_command_replies_with_suggestion` and
 `tests/test_discord_bot.py::test_axel_quest_command_reports_missing_repositories`, with
 `tests/test_discord_bot.py::test_axel_quest_command_handles_non_relative_paths` guarding

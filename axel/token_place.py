@@ -254,6 +254,18 @@ def quest_detail(
     )
 
 
+def get_featured_model(
+    *, base_url: str | None = None, api_key: str | None = None
+) -> str | None:
+    """Return the preferred token.place model, if advertised."""
+
+    try:
+        models = _get_cached_models(base_url=base_url, api_key=api_key)
+    except TokenPlaceError:
+        return None
+    return _select_featured_model(models)
+
+
 def plan_client_integrations(
     repos: Sequence[str],
     *,
@@ -481,6 +493,7 @@ __all__ = [
     "list_models",
     "rotate_api_keys",
     "quest_detail",
+    "get_featured_model",
     "ClientIntegration",
     "plan_client_integrations",
     "main",

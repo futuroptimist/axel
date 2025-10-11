@@ -1547,7 +1547,7 @@ def test_axel_quest_command_replies_with_suggestion(
         return [
             {
                 "repos": ["example/token.place", "example/gabriel"],
-                "summary": "Link example/token.place ↔ example/gabriel",
+                "summary": "Link example/token.place ↔ example/gabriel via llama-3-8b",
                 "details": "Coordinate rollouts safely.",
             }
         ]
@@ -1563,6 +1563,7 @@ def test_axel_quest_command_replies_with_suggestion(
     assert "Quest for 'token'" in interaction.response.content
     assert "channel/42.md" in interaction.response.content
     assert "Coordinate rollouts safely." in interaction.response.content
+    assert "via llama-3-8b" in interaction.response.content
 
 
 def test_axel_quest_command_reports_missing_repositories(

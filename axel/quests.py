@@ -88,7 +88,7 @@ def _build_suggestion(
 ) -> tuple[Suggestion, int]:
     ordered = tuple(sorted((left, right), key=lambda info: info.slug.lower()))
     primary, secondary = ordered
-    detail, score = _select_detail(
+    detail, score, featured_model = _select_detail(
         primary,
         secondary,
         token_place_base_url=token_place_base_url,
@@ -96,6 +96,8 @@ def _build_suggestion(
     )
     repos = [primary.slug, secondary.slug]
     summary = f"Link {primary.slug} ↔ {secondary.slug}"
+    if featured_model:
+        summary += f" via {featured_model}"
     suggestion: Suggestion = {"repos": repos, "summary": summary, "details": detail}
     return suggestion, score
 
@@ -106,7 +108,7 @@ def _select_detail(
     *,
     token_place_base_url: str | None = None,
     token_place_api_key: str | None = None,
-) -> tuple[str, int]:
+) -> tuple[str, int, str | None]:
     ordered = ((primary, secondary), (secondary, primary))
 
     # ``token`` quests must always reference gabriel even when the paired repo
@@ -119,14 +121,22 @@ def _select_detail(
                 base_url=token_place_base_url,
                 api_key=token_place_api_key,
             )
-            return detail, 1
+            featured_model = token_place_integration.get_featured_model(
+                base_url=token_place_base_url,
+                api_key=token_place_api_key,
+            )
+            return detail, 1, featured_model
 
     for repo, other in ordered:
         lower = repo.slug.lower()
         for keyword, template in _KEYWORD_TEMPLATES:
             if keyword in lower:
-                return template.format(primary=repo.slug, secondary=other.slug), 1
-    return _DEFAULT_DETAIL.format(a=primary.slug, b=secondary.slug), 0
+                return (
+                    template.format(primary=repo.slug, secondary=other.slug),
+                    1,
+                    None,
+                )
+    return _DEFAULT_DETAIL.format(a=primary.slug, b=secondary.slug), 0, None
 
 
 def _unique_repos(repos: Iterable[str]) -> list[RepoInfo]:

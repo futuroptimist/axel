@@ -65,14 +65,17 @@ def _context_sort_key(message: discord.Message) -> datetime:
     return _MIN_CONTEXT_TIMESTAMP
 
 
-def _validate_capture_dir(path: Path) -> Path:
-    """Return ``path`` after ensuring it exists and is writable."""
+def _validate_capture_dir(path: Path, *, require_writable: bool = True) -> Path:
+    """Return ``path`` after resolving it and optionally verifying writability."""
 
     resolved = path.expanduser()
     try:
         resolved = resolved.resolve(strict=False)
     except Exception:
         resolved = resolved.absolute()
+
+    if not require_writable:
+        return resolved
 
     if resolved in _CHECKED_CAPTURE_DIRS:
         return resolved
@@ -102,30 +105,35 @@ def _validate_capture_dir(path: Path) -> Path:
     return resolved
 
 
-def _get_save_dir() -> Path:
-    """Return directory for saving Discord messages."""
+def _get_save_dir(*, require_writable: bool = True) -> Path:
+    """Return directory for saving or reading Discord messages."""
 
     env = os.getenv("AXEL_DISCORD_DIR")
     if env:
         candidate = Path(env)
-        try:
-            return _validate_capture_dir(candidate)
-        except RuntimeError as exc:
-            raise RuntimeError(
-                f"AXEL_DISCORD_DIR points to an unwritable directory: {candidate}"
-            ) from exc
+        if require_writable:
+            try:
+                return _validate_capture_dir(candidate, require_writable=True)
+            except RuntimeError as exc:
+                raise RuntimeError(
+                    f"AXEL_DISCORD_DIR points to an unwritable directory: {candidate}"
+                ) from exc
+        return _validate_capture_dir(candidate, require_writable=False)
 
-    try:
-        return _validate_capture_dir(SAVE_DIR)
-    except RuntimeError:
-        fallback = Path.home() / ".axel" / "discord"
+    if require_writable:
         try:
-            return _validate_capture_dir(fallback)
-        except RuntimeError as exc:
-            raise RuntimeError(
-                "Unable to locate a writable Discord capture directory. "
-                "Set AXEL_DISCORD_DIR to a writable path."
-            ) from exc
+            return _validate_capture_dir(SAVE_DIR, require_writable=True)
+        except RuntimeError:
+            fallback = Path.home() / ".axel" / "discord"
+            try:
+                return _validate_capture_dir(fallback, require_writable=True)
+            except RuntimeError as exc:
+                raise RuntimeError(
+                    "Unable to locate a writable Discord capture directory. "
+                    "Set AXEL_DISCORD_DIR to a writable path."
+                ) from exc
+
+    return _validate_capture_dir(SAVE_DIR, require_writable=False)
 
 
 def _format_relative_path(path: Path, root: Path) -> str:
@@ -283,7 +291,7 @@ def search_captures(query: str, *, limit: int = 5) -> list[SearchResult]:
     if limit <= 0:
         return []
 
-    root = _get_save_dir()
+    root = _get_save_dir(require_writable=False)
     if not root.exists():
         return []
 
@@ -777,7 +785,7 @@ class AxelClient(discord.Client):
                 )
                 return
 
-            root = _get_save_dir()
+            root = _get_save_dir(require_writable=False)
             lines = [f"Matches for '{query}':"]
             for result in results:
                 display_path = _format_relative_path(result.path, root)
@@ -807,7 +815,7 @@ class AxelClient(discord.Client):
                 return
 
             result = results[0]
-            root = _get_save_dir()
+            root = _get_save_dir(require_writable=False)
             display_path = _format_relative_path(result.path, root)
 
             summary = summarize_capture(result.path)
@@ -836,7 +844,7 @@ class AxelClient(discord.Client):
                 )
                 return
 
-            root = _get_save_dir()
+            root = _get_save_dir(require_writable=False)
             lines = [f"Digest for '{query}':"]
             for entry in digest:
                 display_path = _format_relative_path(entry.path, root)
@@ -866,7 +874,7 @@ class AxelClient(discord.Client):
                 return
 
             result = results[0]
-            root = _get_save_dir()
+            root = _get_save_dir(require_writable=False)
             relative_path = _format_relative_path(result.path, root)
 
             repos = _capture_repository_urls(result.path)

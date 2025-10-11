@@ -833,11 +833,11 @@ def test_get_save_dir_falls_back_when_default_unwritable(
     fallback_home.mkdir()
     fallback_dir = fallback_home / ".axel" / "discord"
 
-    calls: list[Path] = []
+    calls: list[tuple[Path, bool]] = []
 
-    def fake_validate(path: Path) -> Path:
-        calls.append(path)
-        if path == Path("local/discord"):
+    def fake_validate(path: Path, *, require_writable: bool = True) -> Path:
+        calls.append((path, require_writable))
+        if path == Path("local/discord") and require_writable:
             raise RuntimeError("read-only")
         return path
 
@@ -849,7 +849,10 @@ def test_get_save_dir_falls_back_when_default_unwritable(
     save_dir = db._get_save_dir()
 
     assert save_dir == fallback_dir
-    assert calls == [Path("local/discord"), fallback_dir]
+    assert calls == [
+        (Path("local/discord"), True),
+        (fallback_dir, True),
+    ]
 
 
 def test_get_save_dir_errors_when_env_dir_unwritable(
@@ -859,7 +862,7 @@ def test_get_save_dir_errors_when_env_dir_unwritable(
     monkeypatch.setenv("AXEL_DISCORD_DIR", str(env_dir))
     monkeypatch.setattr(db, "_CHECKED_CAPTURE_DIRS", set())
 
-    def fake_validate(path: Path) -> Path:
+    def fake_validate(path: Path, *, require_writable: bool = True) -> Path:
         raise RuntimeError("denied")
 
     monkeypatch.setattr(db, "_validate_capture_dir", fake_validate)
@@ -954,7 +957,7 @@ def test_get_save_dir_errors_when_all_locations_unwritable(
     monkeypatch.delenv("AXEL_DISCORD_DIR", raising=False)
     monkeypatch.setattr(db, "_CHECKED_CAPTURE_DIRS", set())
 
-    def fake_validate(path: Path) -> Path:
+    def fake_validate(path: Path, *, require_writable: bool = True) -> Path:
         raise RuntimeError("denied")
 
     monkeypatch.setattr(db, "_validate_capture_dir", fake_validate)
@@ -965,12 +968,66 @@ def test_get_save_dir_errors_when_all_locations_unwritable(
         db._get_save_dir()
 
 
+def test_get_save_dir_read_only_does_not_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("AXEL_DISCORD_DIR", raising=False)
+    monkeypatch.setattr(db, "_CHECKED_CAPTURE_DIRS", set())
+
+    calls: list[tuple[Path, bool]] = []
+
+    def fake_validate(path: Path, *, require_writable: bool = True) -> Path:
+        calls.append((path, require_writable))
+        if require_writable:
+            raise RuntimeError("locked")
+        return path
+
+    monkeypatch.setattr(db, "_validate_capture_dir", fake_validate)
+    monkeypatch.setattr(db, "SAVE_DIR", Path("local/discord"))
+
+    save_dir = db._get_save_dir(require_writable=False)
+
+    assert save_dir == Path("local/discord")
+    assert calls == [(Path("local/discord"), False)]
+
+
 def test_search_captures_returns_empty_when_root_missing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     root = Path("missing-root")
-    monkeypatch.setattr(db, "_get_save_dir", lambda: root)
+
+    def fake_get_save_dir(*, require_writable: bool = True) -> Path:
+        return root
+
+    monkeypatch.setattr(db, "_get_save_dir", fake_get_save_dir)
     assert db.search_captures("query") == []
+
+
+def test_search_captures_allows_read_only_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = tmp_path / "local" / "discord"
+    capture = root / "channel" / "1.md"
+    capture.parent.mkdir(parents=True)
+    capture.write_text("hello there")
+
+    calls: list[tuple[Path, bool]] = []
+
+    def fake_validate(path: Path, *, require_writable: bool = True) -> Path:
+        calls.append((path, require_writable))
+        if require_writable:
+            raise RuntimeError("denied")
+        return path
+
+    monkeypatch.setattr(db, "_validate_capture_dir", fake_validate)
+    monkeypatch.setattr(db, "SAVE_DIR", root)
+    monkeypatch.setattr(db, "_CHECKED_CAPTURE_DIRS", set())
+
+    results = db.search_captures("hello")
+
+    assert results
+    assert results[0].path == capture
+    assert calls == [(root, False)]
 
 
 def test_save_message_encrypts_when_key_set(tmp_path: Path, monkeypatch) -> None:
@@ -1178,7 +1235,11 @@ def test_search_command_handles_non_relative_paths(
         "search_captures",
         lambda query: [db.SearchResult(result_path, "match line")],
     )
-    monkeypatch.setattr(db, "_get_save_dir", lambda: tmp_path / "root")
+    monkeypatch.setattr(
+        db,
+        "_get_save_dir",
+        lambda *, require_writable=True: tmp_path / "root",
+    )
 
     class DummyResponse:
         def __init__(self) -> None:
@@ -1233,7 +1294,11 @@ def test_summarize_command_handles_non_relative_paths(
 
     monkeypatch.setattr(db, "search_captures", _fake_search)
     monkeypatch.setattr(db, "summarize_capture", lambda path: "Condensed summary")
-    monkeypatch.setattr(db, "_get_save_dir", lambda: tmp_path / "root")
+    monkeypatch.setattr(
+        db,
+        "_get_save_dir",
+        lambda *, require_writable=True: tmp_path / "root",
+    )
 
     interaction = DummyInteraction()
     asyncio.run(command.callback(interaction, query="outside"))
@@ -1787,7 +1852,11 @@ def test_axel_quest_command_reports_missing_suggestions(
         "search_captures",
         lambda *_, **__: [db.SearchResult(path=Path("/capture.md"), snippet="hit")],
     )
-    monkeypatch.setattr(db, "_get_save_dir", lambda: tmp_path / "root")
+    monkeypatch.setattr(
+        db,
+        "_get_save_dir",
+        lambda *, require_writable=True: tmp_path / "root",
+    )
     monkeypatch.setattr(
         db,
         "_capture_repository_urls",
@@ -1849,7 +1918,9 @@ def test_axel_quest_command_handles_non_relative_paths(
             {"summary": "Coordinate work", "details": "Secure integration"}
         ],
     )
-    monkeypatch.setattr(db, "_get_save_dir", lambda: root)
+    monkeypatch.setattr(
+        db, "_get_save_dir", lambda *, require_writable=True: root
+    )
 
     interaction = DummyInteraction()
     asyncio.run(quest_command.callback(interaction, query="quest"))

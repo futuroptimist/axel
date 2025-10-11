@@ -185,6 +185,35 @@ python -m axel.task_manager add "write docs" --path local/tasks.json
 export AXEL_TASK_FILE=local/tasks.json
 ```
 
+## architecture
+
+- **CLI & repo management** – `axel.repo_manager`, `axel.task_manager`, and helper scripts
+  keep `repos.txt` and `tasks.json` organized on disk so quests start with clean data.
+- **Discord ingestion** – `axel.discord_bot` captures conversations into `local/discord/`
+  and surfaces slash commands for search, summaries, digests, and quest generation.
+- **Quest engine & integrations** – `axel.quests` pairs repositories, enriches the model
+  relay (to<wbr>ken.place) metadata, and references `gabriel` to keep sensitive work guarded.
+
+```mermaid
+graph TD
+    CLI[CLI & Repo Manager]
+    Tasks[tasks.json]
+    Repos[repos.txt]
+    DiscordBot[Discord Bot]
+    Captures[(local/discord/)]
+    QuestEngine[Quest Engine]
+    ModelRelay[Model Relay API]
+    Gabriel[gabriel security]
+
+    CLI --> Repos
+    CLI --> Tasks
+    DiscordBot --> Captures
+    DiscordBot --> QuestEngine
+    QuestEngine --> Repos
+    QuestEngine --> ModelRelay
+    QuestEngine --> Gabriel
+```
+
 ## privacy & transparency
 
 Axel treats your goals with respect. Repository lists and any Discord notes

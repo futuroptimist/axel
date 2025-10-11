@@ -166,6 +166,36 @@ def test_list_models_parses_openai_like_payload(
     ]
 
 
+def test_get_featured_model_prefers_alignment_variant(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Featured model selection highlights preferred alignment variants."""
+
+    monkeypatch.setattr(
+        token_place,
+        "list_models",
+        lambda base_url=None, api_key=None, timeout=token_place.DEFAULT_TIMEOUT: [
+            "llama-3-8b-instruct",
+            "llama-3-8b-instruct:alignment",
+        ],
+    )
+
+    model = token_place.get_featured_model()
+
+    assert model == "llama-3-8b-instruct:alignment"
+
+
+def test_get_featured_model_handles_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Failures when fetching models yield ``None`` for the featured model."""
+
+    def boom(**_: object) -> list[str]:  # pragma: no cover - helper
+        raise token_place.TokenPlaceError("offline")
+
+    monkeypatch.setattr(token_place, "list_models", boom)
+
+    assert token_place.get_featured_model() is None
+
+
 def test_main_prints_models(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

@@ -114,6 +114,8 @@ featured model in the quest details. Coverage lives in
 `tests/test_quests.py::test_suggest_cross_repo_quests_enriches_token_place_with_models`,
 with graceful fallback behaviour asserted in
 `tests/test_quests.py::test_suggest_cross_repo_quests_handles_token_place_errors`.
+Quest summaries now surface the highlighted token.place model, covered by
+`tests/test_quests.py::test_suggest_cross_repo_quests_includes_featured_model_in_summary`.
 The roadmap entry for this integration stays checked via
 `tests/test_readme.py::test_readme_marks_llm_quests_complete`, and
 `tests/test_readme.py::test_readme_marks_gabriel_security_layer_complete` ensures the

@@ -66,17 +66,17 @@ merge_policy:
 
 Axel’s future merge logic will evolve through three cognitive layers:
 
-1. **Syntactic Awareness**  
-   - Detect and reconcile identical or trivial conflict hunks (e.g., comment changes, whitespace).  
+1. **Syntactic Awareness**
+   - Detect and reconcile identical or trivial conflict hunks (e.g., comment changes, whitespace).
    - Automatically stage non-functional merges.
 
-2. **Semantic Awareness**  
-   - Identify renamed arguments, function refactors, or docstring drift.  
+2. **Semantic Awareness**
+   - Identify renamed arguments, function refactors, or docstring drift.
    - Evaluate merge safety using static analysis + regression heuristics.
 
-3. **Behavioral Awareness** *(Axel v2)*  
-   - Infer intent behind conflicting code (e.g., both branches improving CLI UX).  
-   - Choose merges that move the repo closer to the “prompt doc North Star.”  
+3. **Behavioral Awareness** *(Axel v2)*
+   - Infer intent behind conflicting code (e.g., both branches improving CLI UX).
+   - Choose merges that move the repo closer to the “prompt doc North Star.”
 
 ---
 
@@ -84,10 +84,10 @@ Axel’s future merge logic will evolve through three cognitive layers:
 
 To mitigate conflicts before full autonomy:
 
-- Keep **task branches short-lived** — 24h max.  
-- Use **“checkpoint tasks”** that intentionally rebase from `main` every few runs.  
-- Merge smaller PRs first to minimize drift.  
-- Apply **feature toggles** where applicable to merge earlier with behavioral gating.  
+- Keep **task branches short-lived** — 24h max.
+- Use **“checkpoint tasks”** that intentionally rebase from `main` every few runs.
+- Merge smaller PRs first to minimize drift.
+- Apply **feature toggles** where applicable to merge earlier with behavioral gating.
 - Standardize merge commit messages:
 
   ```
@@ -109,13 +109,13 @@ To mitigate conflicts before full autonomy:
 
 ## Future Work
 
-- [x] Convert this doc into `axel/docs/merge_policy.md`.  
-- [x] Define `axel/policies/merge_policy.yaml` for programmatic enforcement.  
-- [ ] Extend Flywheel’s merge prompt doc with critic self-evaluation and conflict classification.  
-- [ ] Implement “speculative merge” checks for open Codex branches.  
-- [ ] Develop Axel agent hooks for merge detection and policy enforcement.  
+- [x] Convert this doc into `axel/docs/merge_policy.md`.
+- [x] Define `axel/policies/merge_policy.yaml` for programmatic enforcement.
+- [ ] Extend Flywheel’s merge prompt doc with critic self-evaluation and conflict classification.
+- [ ] Implement “speculative merge” checks for open Codex branches.
+- [ ] Develop Axel agent hooks for merge detection and policy enforcement.
 
 ---
 
-**Provenance:** Derived from Futuroptimist’s summer 2025 merge-workflow reflections, Flywheel’s evolving prompt docs, and Codex task orchestration patterns.  
+**Provenance:** Derived from Futuroptimist’s summer 2025 merge-workflow reflections, Flywheel’s evolving prompt docs, and Codex task orchestration patterns.
 **Purpose:** Foundation for Axel’s future autonomous merge-resolution layer.

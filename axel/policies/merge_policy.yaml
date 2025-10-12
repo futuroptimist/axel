@@ -1,0 +1,33 @@
+merge_policy:
+  rebase_strategy:
+    allow_rebase: true
+    prefer_rebase_on_main: true
+    auto_abort_on_failed_tests: true
+
+  conflict_resolution:
+    priority_rules:
+      - pattern: "infra/**"
+        resolution: main_wins
+      - pattern: "cli/**"
+        resolution: feature_wins
+      - pattern: "docs/**"
+        resolution: merge_both
+    heuristics:
+      detect_structural_conflicts: true
+      detect_functional_conflicts: true
+      detect_comment_only_conflicts: true
+      comment_only_conflicts_auto_resolve: true
+    fallback: manual_review
+
+  safety_checks:
+    - type: lint
+      command: "flywheel lint"
+    - type: test
+      command: "pytest --maxfail=1"
+    - type: ci
+      must_pass: true
+
+  metadata:
+    author: Futuroptimist
+    system: Axel
+    lineage: "flywheel → codex → axel"

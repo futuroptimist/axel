@@ -1,5 +1,5 @@
-from pathlib import Path
 import sys
+from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))  # noqa: E402
 
@@ -43,13 +43,15 @@ def test_cli_tasks_round_trip(
 
     tasks_file = tmp_path / "tasks.json"
 
-    add_code = cli.main([
-        "tasks",
-        "add",
-        "write docs",
-        "--path",
-        str(tasks_file),
-    ])
+    add_code = cli.main(
+        [
+            "tasks",
+            "add",
+            "write docs",
+            "--path",
+            str(tasks_file),
+        ]
+    )
     add_output = capsys.readouterr().out
 
     list_code = cli.main(["tasks", "list", "--path", str(tasks_file)])
@@ -68,13 +70,15 @@ def test_cli_tasks_forwards_flags(
 
     tasks_file = tmp_path / "tasks.json"
 
-    exit_code = cli.main([
-        "tasks",
-        "--path",
-        str(tasks_file),
-        "add",
-        "finish docs",
-    ])
+    exit_code = cli.main(
+        [
+            "tasks",
+            "--path",
+            str(tasks_file),
+            "add",
+            "finish docs",
+        ]
+    )
 
     add_output = capsys.readouterr().out
 

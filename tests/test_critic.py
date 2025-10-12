@@ -169,6 +169,11 @@ def test_load_history_handles_missing_and_invalid_lines(critic_module, tmp_path)
     history = critic_module._load_history(history_path)
     assert len(history) == 2
 
+    invalid_only_path = tmp_path / "invalid_only.jsonl"
+    invalid_only_path.write_text("not-json\n", encoding="utf-8")
+    invalid_history = critic_module._load_history(invalid_only_path)
+    assert invalid_history.empty
+
 
 def test_fetch_pull_request_handles_api_errors(monkeypatch, critic_module):
     class DummyResponse:
@@ -236,6 +241,12 @@ def test_load_latest_metrics_prefers_cache_and_env(monkeypatch, critic_module):
     assert parsed["fitness_delta"] == 0.5
 
 
+def test_load_latest_metrics_handles_missing_env(monkeypatch, critic_module):
+    monkeypatch.setattr(critic_module, "_LATEST_RUN_METRICS", None)
+    monkeypatch.delenv("AXEL_PROMPT_RUN_METRICS", raising=False)
+    assert critic_module._load_latest_metrics() == {}
+
+
 def test_collect_recent_scores_flattens_values(critic_module):
     series = critic_module.pd.Series(
         [[0.1, "0.2"], "0.3", object(), None], dtype=object
@@ -272,6 +283,12 @@ def test_orthogonality_entropy_handles_empty_bins(monkeypatch, critic_module):
 
     monkeypatch.setattr(critic_module.pd, "cut", fake_cut_single)
     assert critic_module._orthogonality_entropy([0.2, 0.8]) == 0.0
+
+
+def test_orthogonality_entropy_handles_zero_max_entropy(monkeypatch, critic_module):
+    monkeypatch.setattr(critic_module.math, "log", lambda _value: 0.0)
+    result = critic_module._orthogonality_entropy([0.1, 0.9, 0.5])
+    assert result == 0.0
 
 
 def test_track_prompt_saturation_coerces_non_list_scores(critic_module, tmp_path):

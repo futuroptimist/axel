@@ -9,13 +9,13 @@ import os
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from difflib import SequenceMatcher
 from itertools import combinations
 from pathlib import Path
 from typing import Any, Iterable
 
 import pandas as pd
 import requests
-from difflib import SequenceMatcher
 
 ANALYTICS_ROOT = Path("analytics")
 _DEFAULT_RECENT_WINDOW = 10

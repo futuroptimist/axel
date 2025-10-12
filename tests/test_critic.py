@@ -151,3 +151,17 @@ def test_cli_commands(critic_module, monkeypatch, tmp_path, capsys):
     assert exit_code == 0
     output = capsys.readouterr().out
     assert "Saturation" in output
+
+
+def test_orthogonality_entropy_identical_scores_returns_zero(critic_module):
+    result = critic_module._orthogonality_entropy([0.5, 0.5, 0.5, 0.5])
+    assert result == 0.0
+
+
+def test_orthogonality_entropy_handles_pd_cut_error(critic_module, monkeypatch):
+    def fake_cut(*_args, **_kwargs):
+        raise ValueError("duplicate edges")
+
+    monkeypatch.setattr(critic_module.pd, "cut", fake_cut)
+    result = critic_module._orthogonality_entropy([0.1, 0.9])
+    assert result == 0.0

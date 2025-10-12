@@ -187,7 +187,17 @@ def _orthogonality_entropy(scores: list[float]) -> float:
     if not scores:
         return 0.0
     series = pd.Series(scores, dtype="float")
-    bins = pd.cut(series, bins=_ORTHOGONALITY_BINS, include_lowest=True)
+    if series.nunique(dropna=False) <= 1:
+        return 0.0
+    try:
+        bins = pd.cut(
+            series,
+            bins=_ORTHOGONALITY_BINS,
+            include_lowest=True,
+            duplicates="drop",
+        )
+    except ValueError:
+        return 0.0
     counts = Counter(bins.dropna())
     if not counts:
         return 0.0

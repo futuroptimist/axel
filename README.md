@@ -14,6 +14,15 @@ and generate actionable quests.
 
 ## Quickstart (≤60s)
 
+Install the CLI with [pipx](https://pypa.github.io/pipx/):
+
+```bash
+pipx install axel
+axel repos list
+```
+
+Then optionally start the local token.place stack:
+
 ```bash
 git clone https://github.com/futuroptimist/axel
 cd axel
@@ -62,6 +71,12 @@ pre-commit install
 ```
 
 ## usage
+
+Once installed via pipx you can call `axel repos ...` and `axel tasks ...`
+to reuse the existing module CLIs without remembering their dotted paths.
+The wrapper forwards arguments to `axel.repo_manager` and `axel.task_manager`,
+with coverage in `tests/test_cli.py::test_cli_repos_list` and
+`tests/test_cli.py::test_cli_tasks_round_trip`.
 
 1. Add a repo with `python -m axel.repo_manager add <url>` (use `https://...`).
    Alternatively, edit `repos.txt`.

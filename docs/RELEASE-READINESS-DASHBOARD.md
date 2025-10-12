@@ -10,7 +10,8 @@ Definition of Done for v0.1
 - [x] Mini architecture: 3 bullets + 1 diagram (see README#architecture and tests/test_readme.py::test_readme_includes_architecture_section_with_diagram)
 - [ ] CI green on default branch; coverage badge visible
 - [ ] Security: CodeQL + credential scanning + Dependabot
-- [ ] Docs: FAQ, Known issues/Footguns, Status: Alpha badge
+- [x] Docs: FAQ, Known issues/Footguns, Status: Alpha badge (see
+  `tests/test_release_readiness_dashboard.py`)
 - [ ] Community: CONTRIBUTING, CoC, Issue/PR templates, ≥3 good first issues
 
 Summary Table

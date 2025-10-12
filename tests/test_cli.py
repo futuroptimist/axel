@@ -131,16 +131,44 @@ def test_cli_defaults_to_sys_argv(
     repo_file = tmp_path / "repos.txt"
     repo_file.write_text("https://github.com/example/sysargv\n")
 
-    monkeypatch.setattr(sys, "argv", [
-        "axel",
-        "repos",
-        "list",
-        "--path",
-        str(repo_file),
-    ])
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "axel",
+            "repos",
+            "list",
+            "--path",
+            str(repo_file),
+        ],
+    )
 
     exit_code = cli.main()
     captured = capsys.readouterr()
 
     assert exit_code == 0
     assert "https://github.com/example/sysargv" in captured.out
+
+
+def test_cli_repos_propagates_exit_code(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Exit codes returned by the repo manager should bubble up."""
+
+    def fake_main(args: list[str]) -> int:
+        assert args == ["--custom"]
+        return 3
+
+    monkeypatch.setattr(cli.repo_manager, "main", fake_main)
+
+    assert cli.main(["repos", "--custom"]) == 3
+
+
+def test_cli_tasks_coerces_bool_exit(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Boolean return values from the task manager should convert to ints."""
+
+    def fake_main(args: list[str]) -> bool:
+        assert args == []
+        return True
+
+    monkeypatch.setattr(cli.task_manager, "main", fake_main)
+
+    assert cli.main(["tasks"]) == 1

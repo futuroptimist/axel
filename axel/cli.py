@@ -9,6 +9,16 @@ from typing import Sequence
 from . import repo_manager, task_manager
 
 
+def _normalize_exit_code(result: object) -> int:
+    """Convert a manager return value into a process exit code."""
+
+    if isinstance(result, bool):
+        return int(result)
+    if isinstance(result, int):
+        return result
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Entry point for the unified axel CLI."""
 
@@ -35,11 +45,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     command, forwarded = argv[0], argv[1:]
 
     if command == "repos":
-        repo_manager.main(forwarded)
-        return 0
+        return _normalize_exit_code(repo_manager.main(forwarded))
     if command == "tasks":
-        task_manager.main(forwarded)
-        return 0
+        return _normalize_exit_code(task_manager.main(forwarded))
 
     try:
         parser.error(f"unknown command: {command}")

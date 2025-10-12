@@ -178,6 +178,54 @@ def test_load_repos_missing_file(tmp_path: Path):
     assert load_repos(path=file) == []
 
 
+def test_load_repos_auto_fetches_when_enabled(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Missing repo files trigger an automatic fetch when opt-in is set."""
+
+    collected: dict[str, Path | None] = {"path": None}
+
+    def fake_fetch_repos(*, path: Path | None = None, **_: object) -> list[str]:
+        collected["path"] = path
+        assert path is not None
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("https://example.com/axel\n", encoding="utf-8")
+        return ["https://example.com/axel"]
+
+    repo_file = tmp_path / "repos.txt"
+
+    monkeypatch.setenv("AXEL_AUTO_FETCH_REPOS", "1")
+    monkeypatch.setattr("axel.repo_manager.fetch_repos", fake_fetch_repos)
+
+    from axel import repo_manager as rm
+
+    repos = rm.load_repos(path=repo_file)
+
+    assert repos == ["https://example.com/axel"]
+    assert collected["path"] == repo_file
+
+
+def test_load_repos_auto_fetch_handles_errors(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Auto fetch falls back to an empty list when fetching fails."""
+
+    def fake_fetch_repos(*, path: Path | None = None, **_: object) -> list[str]:
+        raise RuntimeError("credentials required")
+
+    repo_file = tmp_path / "repos.txt"
+
+    monkeypatch.setenv("AXEL_AUTO_FETCH_REPOS", "1")
+    monkeypatch.setattr("axel.repo_manager.fetch_repos", fake_fetch_repos)
+
+    from axel import repo_manager as rm
+
+    repos = rm.load_repos(path=repo_file)
+
+    assert repos == []
+    assert not repo_file.exists()
+
+
 def test_load_repos_ignores_comments(tmp_path: Path) -> None:
     file = tmp_path / "repos.txt"
     file.write_text(

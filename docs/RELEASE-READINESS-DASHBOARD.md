@@ -6,11 +6,13 @@ Definition of Done for v0.1
 - [ ] Tag v0.1.0 and publish Release notes (What’s new, Try it in 60s, Roadmap next)
 - [x] 1‑click install path (pipx install axel + unified CLI wiring)
 - [ ] 90‑second demo video/GIF linked at top of README
-- [ ] Quickstart (≤60s) at top of README
+- [x] Quickstart (≤60s) at top of README (guarded by
+  `tests/test_release_readiness.py::test_release_dashboard_marks_quickstart_complete`)
 - [x] Mini architecture: 3 bullets + 1 diagram (see README#architecture and tests/test_readme.py::test_readme_includes_architecture_section_with_diagram)
 - [ ] CI green on default branch; coverage badge visible
 - [ ] Security: CodeQL + credential scanning + Dependabot
-- [ ] Docs: FAQ, Known issues/Footguns, Status: Alpha badge
+- [x] Docs: FAQ, Known issues/Footguns, Status: Alpha badge (see
+  `tests/test_release_readiness_dashboard.py`)
 - [ ] Community: CONTRIBUTING, CoC, Issue/PR templates, ≥3 good first issues
 
 Summary Table

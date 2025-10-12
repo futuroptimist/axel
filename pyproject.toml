@@ -15,9 +15,9 @@ dependencies = [
     "requests==2.32.5",
 ]
 
-[project.scripts]
-axel-repo = "axel.repo_manager:main"
+[project.entry-points."console_scripts"]
 axel = "axel.cli:main"
+axel-repo = "axel.repo_manager:main"
 axel-task = "axel.task_manager:main"
 
 [project.urls]

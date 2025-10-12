@@ -194,6 +194,8 @@ export AXEL_TASK_FILE=local/tasks.json
 
 - **CLI & repo management** – `axel.repo_manager`, `axel.task_manager`, and helper scripts
   keep `repos.txt` and `tasks.json` organized on disk so quests start with clean data.
+- **Critic analytics** – `axel analyze-orthogonality` and `axel analyze-saturation`
+  record orthogonality, merge conflict, and prompt saturation metrics under `analytics/`.
 - **Discord ingestion** – `axel.discord_bot` captures conversations into `local/discord/`
   and surfaces slash commands for search, summaries, digests, and quest generation.
 - **Quest engine & integrations** – `axel.quests` pairs repositories, enriches the model

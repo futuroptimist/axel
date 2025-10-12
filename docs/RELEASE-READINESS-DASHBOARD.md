@@ -4,7 +4,7 @@ Legend: [ ] = not started · [x] = done
 
 Definition of Done for v0.1
 - [ ] Tag v0.1.0 and publish Release notes (What’s new, Try it in 60s, Roadmap next)
-- [ ] 1‑click install path (pipx / docker compose / brew or scoop, as applicable)
+- [x] 1‑click install path (pipx install axel + unified CLI wiring)
 - [ ] 90‑second demo video/GIF linked at top of README
 - [x] Quickstart (≤60s) at top of README (guarded by
   `tests/test_release_readiness.py::test_release_dashboard_marks_quickstart_complete`)

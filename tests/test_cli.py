@@ -101,3 +101,46 @@ def test_cli_prints_help_for_missing_command(
 
     assert exit_code == 0
     assert "usage:" in output
+
+
+def test_cli_prints_help_for_flag(capsys: pytest.CaptureFixture[str]) -> None:
+    """The unified CLI should print help when invoked with --help."""
+
+    exit_code = cli.main(["--help"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "Unified CLI for repository and task helpers" in captured.out
+
+
+def test_cli_unknown_command(capsys: pytest.CaptureFixture[str]) -> None:
+    """An unknown command should produce an argparse error exit code."""
+
+    exit_code = cli.main(["unknown"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 2
+    assert "unknown command: unknown" in captured.err
+
+
+def test_cli_defaults_to_sys_argv(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """When argv is omitted the CLI should read from sys.argv."""
+
+    repo_file = tmp_path / "repos.txt"
+    repo_file.write_text("https://github.com/example/sysargv\n")
+
+    monkeypatch.setattr(sys, "argv", [
+        "axel",
+        "repos",
+        "list",
+        "--path",
+        str(repo_file),
+    ])
+
+    exit_code = cli.main()
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "https://github.com/example/sysargv" in captured.out

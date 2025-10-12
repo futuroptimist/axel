@@ -28,22 +28,23 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Subcommand to run",
     )
 
-    try:
-        parsed = parser.parse_args(argv[:1])
-    except SystemExit as exc:  # pragma: no cover - argparse handles messaging
-        return int(exc.code)
+    if not argv or argv[0] in {"-h", "--help"}:
+        parser.print_help()
+        return 0
 
-    forwarded = argv[1:]
+    command, forwarded = argv[0], argv[1:]
 
-    if parsed.command == "repos":
+    if command == "repos":
         repo_manager.main(forwarded)
         return 0
-    if parsed.command == "tasks":
+    if command == "tasks":
         task_manager.main(forwarded)
         return 0
 
-    parser.print_help()
-    return 0
+    try:
+        parser.error(f"unknown command: {command}")
+    except SystemExit as exc:  # pragma: no cover - argparse handles messaging
+        return int(exc.code)
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry point

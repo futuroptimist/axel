@@ -7,6 +7,7 @@ from typing import List, Sequence
 import requests
 
 DEFAULT_REPO_FILE = Path(__file__).resolve().parent.parent / "repos.txt"
+_AUTO_FETCH_ENV = "AXEL_AUTO_FETCH_REPOS"
 
 
 def get_repo_file() -> Path:
@@ -30,10 +31,19 @@ def load_repos(path: Path | None = None) -> List[str]:
 
     Trailing slashes are stripped to keep entries canonical and duplicates are
     removed case-insensitively while preserving the first occurrence's case.
-    The resulting list is sorted alphabetically, ignoring case.
+    The resulting list is sorted alphabetically, ignoring case. When the target
+    file is missing and ``AXEL_AUTO_FETCH_REPOS`` is set to a truthy value
+    (``1``, ``true``, ``yes`` or ``on``), the GitHub API is queried via
+    :func:`fetch_repos` to populate the list automatically.
     """
     path = _resolve_path(path)
     if not path.exists():
+        flag = os.getenv(_AUTO_FETCH_ENV, "").strip().lower()
+        if flag in {"1", "true", "yes", "on"}:
+            try:
+                return fetch_repos(path=path)
+            except (RuntimeError, requests.RequestException):
+                return []
         return []
     repos: List[str] = []
     seen: set[str] = set()

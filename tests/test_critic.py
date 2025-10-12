@@ -153,6 +153,97 @@ def test_cli_commands(critic_module, monkeypatch, tmp_path, capsys):
     assert "Saturation" in output
 
 
+def test_load_history_handles_missing_and_invalid_lines(critic_module, tmp_path):
+    missing_path = tmp_path / "missing.jsonl"
+    missing_history = critic_module._load_history(missing_path)
+    assert missing_history.empty
+
+    history_path = tmp_path / "history.jsonl"
+    history_payload = [
+        "",
+        json.dumps({"value": 1}),
+        "not-json",
+        json.dumps({"value": 2}),
+    ]
+    history_path.write_text("\n".join(history_payload) + "\n", encoding="utf-8")
+    history = critic_module._load_history(history_path)
+    assert len(history) == 2
+
+
+def test_fetch_pull_request_handles_api_errors(monkeypatch, critic_module):
+    class DummyResponse:
+        def __init__(self, status_code: int, payload: dict[str, object]):
+            self.status_code = status_code
+            self._payload = payload
+
+        def json(self) -> dict[str, object]:
+            return self._payload
+
+    responses = [
+        DummyResponse(500, {}),
+        DummyResponse(
+            200,
+            {
+                "merged": False,
+                "mergeable": False,
+                "mergeable_state": None,
+            },
+        ),
+    ]
+
+    def fake_get(url: str, headers: dict[str, str], timeout: int):  # noqa: ARG001
+        return responses.pop(0)
+
+    monkeypatch.setenv("GITHUB_TOKEN", "secret-token")
+    monkeypatch.setattr(critic_module.requests, "get", fake_get)
+
+    assert critic_module._fetch_pull_request("octo/demo", 1) is None
+    snapshot = critic_module._fetch_pull_request("octo/demo", 2)
+    assert snapshot is not None
+    assert snapshot.mergeable_state == "dirty"
+
+
+def test_conflict_rate_handles_inputs(monkeypatch, critic_module):
+    assert critic_module._conflict_rate(None, [], 0) == 0.0
+
+    def fake_fetch(repo: str, pr_number: int):  # noqa: ARG001
+        return critic_module.PullRequestSnapshot(merged=False, mergeable_state="dirty")
+
+    monkeypatch.setattr(critic_module, "_fetch_pull_request", fake_fetch)
+    rate = critic_module._conflict_rate("octo/demo", [1, 2], 2)
+    assert rate == 1.0
+
+
+def test_average_similarity_handles_short_sequences(monkeypatch, critic_module):
+    assert critic_module._average_pairwise_similarity(["only"]) == 0.0
+
+    monkeypatch.setattr(critic_module, "combinations", lambda *_args, **_kwargs: [])
+    assert critic_module._average_pairwise_similarity(["a", "b"]) == 0.0
+
+
+def test_load_latest_metrics_prefers_cache_and_env(monkeypatch, critic_module):
+    monkeypatch.setattr(critic_module, "_LATEST_RUN_METRICS", {"cached": True})
+    cached = critic_module._load_latest_metrics()
+    assert cached == {"cached": True}
+
+    monkeypatch.setattr(critic_module, "_LATEST_RUN_METRICS", None)
+    monkeypatch.setenv("AXEL_PROMPT_RUN_METRICS", "not-json")
+    assert critic_module._load_latest_metrics() == {}
+
+    payload = json.dumps({"fitness_delta": 0.5})
+    monkeypatch.setenv("AXEL_PROMPT_RUN_METRICS", payload)
+    parsed = critic_module._load_latest_metrics()
+    assert parsed["fitness_delta"] == 0.5
+
+
+def test_collect_recent_scores_flattens_values(critic_module):
+    series = critic_module.pd.Series(
+        [[0.1, "0.2"], "0.3", object(), None], dtype=object
+    )
+    scores = critic_module._collect_recent_scores(series)
+    assert scores == [0.1, 0.2, 0.3]
+
+
 def test_orthogonality_entropy_identical_scores_returns_zero(critic_module):
     result = critic_module._orthogonality_entropy([0.5, 0.5, 0.5, 0.5])
     assert result == 0.0
@@ -165,3 +256,55 @@ def test_orthogonality_entropy_handles_pd_cut_error(critic_module, monkeypatch):
     monkeypatch.setattr(critic_module.pd, "cut", fake_cut)
     result = critic_module._orthogonality_entropy([0.1, 0.9])
     assert result == 0.0
+
+
+def test_orthogonality_entropy_handles_empty_bins(monkeypatch, critic_module):
+    assert critic_module._orthogonality_entropy([]) == 0.0
+
+    def fake_cut_empty(series, **_kwargs):
+        return critic_module.pd.Series([critic_module.pd.NA] * len(series))
+
+    monkeypatch.setattr(critic_module.pd, "cut", fake_cut_empty)
+    assert critic_module._orthogonality_entropy([0.1, 0.9]) == 0.0
+
+    def fake_cut_single(series, **_kwargs):
+        return critic_module.pd.Series(["bin"] * len(series))
+
+    monkeypatch.setattr(critic_module.pd, "cut", fake_cut_single)
+    assert critic_module._orthogonality_entropy([0.2, 0.8]) == 0.0
+
+
+def test_track_prompt_saturation_coerces_non_list_scores(critic_module, tmp_path):
+    critic_module.ANALYTICS_ROOT = tmp_path / "analytics"
+    critic_module.set_latest_run_metrics(
+        {
+            "fitness_delta": 0.1,
+            "merged": 1,
+            "closed": 1,
+            "orthogonality_scores": "not-a-list",
+        }
+    )
+
+    result = critic_module.track_prompt_saturation("octo", "prompt.md")
+    assert result["orthogonality_entropy"] == 0.0
+
+
+def test_format_saturation_output_includes_recommendation(critic_module):
+    formatted = critic_module._format_saturation_output(
+        {
+            "prompt": "prompt.md",
+            "saturation_score": 0.25,
+            "fitness_delta_avg": 0.2,
+            "merge_rate": 0.4,
+            "orthogonality_entropy": 0.3,
+            "prompt_refresh_recommended": True,
+        }
+    )
+    assert "Recommendation" in formatted
+
+
+def test_main_without_command_shows_help(critic_module, capsys):
+    exit_code = critic_module.main([])
+    output = capsys.readouterr().out
+    assert exit_code == 1
+    assert "usage" in output.lower()

@@ -15,23 +15,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         prog="axel",
         description="Unified CLI for repository and task helpers",
     )
-    subparsers = parser.add_subparsers(dest="command")
-
-    repos_parser = subparsers.add_parser(
-        "repos",
-        help="Manage the repository list (delegates to axel.repo_manager)",
+    parser.add_argument(
+        "command",
+        nargs="?",
+        choices=("repos", "tasks"),
+        help="Subcommand to run",
     )
-    repos_parser.add_argument(
-        "args",
-        nargs=argparse.REMAINDER,
-        help=argparse.SUPPRESS,
-    )
-
-    tasks_parser = subparsers.add_parser(
-        "tasks",
-        help="Manage the task list (delegates to axel.task_manager)",
-    )
-    tasks_parser.add_argument(
+    parser.add_argument(
         "args",
         nargs=argparse.REMAINDER,
         help=argparse.SUPPRESS,

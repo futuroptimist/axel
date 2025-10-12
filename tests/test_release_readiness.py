@@ -32,6 +32,6 @@ def test_release_dashboard_marks_quickstart_complete() -> None:
 
     assert quickstart_index is not None, "README.md must include a Quickstart section"
     assert status_index is not None, "README.md must include a status section"
-    assert quickstart_index < status_index, (
-        "Quickstart section should appear before the status section in README.md"
-    )
+    assert (
+        quickstart_index < status_index
+    ), "Quickstart section should appear before the status section in README.md"

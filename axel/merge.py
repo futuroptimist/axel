@@ -90,7 +90,8 @@ def speculative_merge_check(
                     capture_output=True,
                 )
                 for line in status.stdout.splitlines():
-                    if line.startswith("UU "):
+                    code = line[:2]
+                    if code in _CONFLICT_CODES:
                         conflicted_files.append(line[3:].strip())
                 classifications = _classify_conflicts(worktree_path, conflicted_files)
                 summary = dict(Counter(classifications.values()))
@@ -109,7 +110,7 @@ def speculative_merge_check(
                 "output": output,
                 "conflict_classification": classifications,
                 "conflict_summary": summary,
-                "auto_resolvable": _auto_resolvable(summary),
+                "auto_resolvable": _auto_resolvable(summary, conflicts),
             }
         finally:
             _run_git(
@@ -149,6 +150,9 @@ def _format_result(base: str, head: str, result: dict[str, object]) -> str:
     return "\n".join(lines)
 
 
+_CONFLICT_CODES: set[str] = {"DD", "AU", "UD", "UA", "DU", "AA", "UU"}
+
+
 _COMMENT_PREFIXES: tuple[str, ...] = (
     "#",
     "//",
@@ -158,7 +162,9 @@ _COMMENT_PREFIXES: tuple[str, ...] = (
 )
 
 
-def _auto_resolvable(summary: dict[str, int]) -> bool:
+def _auto_resolvable(summary: dict[str, int], conflicts: bool) -> bool:
+    if conflicts and not summary:
+        return False
     if not summary:
         return True
     code_conflicts = summary.get("code", 0)

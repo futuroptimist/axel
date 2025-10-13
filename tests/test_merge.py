@@ -83,6 +83,28 @@ def test_speculative_merge_reports_conflicts(git_repo: Path) -> None:
     )
 
 
+def test_speculative_merge_reports_delete_vs_modify_conflict(git_repo: Path) -> None:
+    (git_repo / "shared.txt").write_text("alpha\n", encoding="utf-8")
+    _run_git("add", "shared.txt", cwd=git_repo)
+    _run_git("commit", "-m", "initial", cwd=git_repo)
+
+    _run_git("checkout", "-b", "feature", cwd=git_repo)
+    (git_repo / "shared.txt").write_text("feature\n", encoding="utf-8")
+    _run_git("commit", "-am", "feature", cwd=git_repo)
+
+    _run_git("checkout", "main", cwd=git_repo)
+    (git_repo / "shared.txt").unlink()
+    _run_git("commit", "-am", "delete", cwd=git_repo)
+
+    result = speculative_merge_check(git_repo, "main", "feature")
+
+    assert result["conflicts"] is True
+    assert "shared.txt" in result["conflicted_files"]
+    summary = result.get("conflict_summary") or {}
+    assert summary.get("unknown") == 1
+    assert result.get("auto_resolvable") is False
+
+
 def test_speculative_merge_classifies_comment_only_conflicts(git_repo: Path) -> None:
     (git_repo / "notes.py").write_text("# seed\nvalue = 1\n", encoding="utf-8")
     _run_git("add", "notes.py", cwd=git_repo)

@@ -81,7 +81,7 @@ CONTEXT:
 - Ensure `flake8 axel tests`, `pytest --cov=axel --cov=tests`,
   `pre-commit run --all-files`, and
   `git diff --cached | ./scripts/scan-secrets.py` succeed before committing.
-- Update cross-references (e.g., `docs/prompts/prompts-hillclimb.md`) if this
+- Update cross-references (e.g., `docs/prompts/codex/prompts-hillclimb.md`) if this
   file moves or its name changes.
 
 REQUEST:

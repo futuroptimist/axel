@@ -3,7 +3,7 @@
 
 **What it does:** Given an action card, Axel clones matching repos, creates N branches, and seeds each
 with an `AXEL_TASK.md` containing planner/coder/critique prompts and acceptance criteria. The prompts
-are documented in [prompts/prompts-hillclimb.md](prompts/prompts-hillclimb.md). By default it’s a dry
+are documented in [prompts/codex/prompts-hillclimb.md](prompts/codex/prompts-hillclimb.md). By default it’s a dry
 run. With `--execute`, it pushes branches and opens **draft** PRs so CI and humans can iterate safely.
 
 ## Quickstart
@@ -23,7 +23,7 @@ Configure
 .axel/hillclimb/config.yml: runs, touch budgets, labels, selection mode.
 
 .axel/hillclimb/cards/*.yml: action cards (acceptance criteria + constraints).
-See [example action cards](prompts/prompts-hillclimb.md#example-action-cards).
+See [example action cards](prompts/codex/prompts-hillclimb.md#example-action-cards).
 
 .env: set GITHUB_TOKEN= (see .env.example).
 

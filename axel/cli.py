@@ -6,7 +6,7 @@ import argparse
 import sys
 from typing import Sequence
 
-from . import repo_manager, task_manager
+from . import critic, repo_manager, task_manager
 
 
 def _normalize_exit_code(result: object) -> int:
@@ -34,7 +34,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "command",
         nargs="?",
-        choices=("repos", "tasks"),
+        choices=("repos", "tasks", "analyze-orthogonality", "analyze-saturation"),
         help="Subcommand to run",
     )
 
@@ -48,6 +48,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _normalize_exit_code(repo_manager.main(forwarded))
     if command == "tasks":
         return _normalize_exit_code(task_manager.main(forwarded))
+    if command in {"analyze-orthogonality", "analyze-saturation"}:
+        return _normalize_exit_code(critic.main([command, *forwarded]))
 
     try:
         parser.error(f"unknown command: {command}")

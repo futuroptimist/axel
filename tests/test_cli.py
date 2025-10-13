@@ -8,6 +8,60 @@ import pytest  # noqa: E402
 import axel.cli as cli  # noqa: E402
 
 
+def test_cli_analyze_orthogonality_delegates_to_critic(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The analytics verb should flow through to the critic module."""
+
+    captured: dict[str, list[str]] = {}
+
+    def fake_main(argv: list[str]) -> int:
+        captured["argv"] = argv
+        return 0
+
+    proxy = type("CriticProxy", (), {"main": staticmethod(fake_main)})()
+    monkeypatch.setattr(cli, "critic", proxy, raising=False)
+
+    exit_code = cli.main(["analyze-orthogonality", "--diff-file", "a.diff"])
+
+    assert exit_code == 0
+    assert captured["argv"] == ["analyze-orthogonality", "--diff-file", "a.diff"]
+
+
+def test_cli_analyze_saturation_normalizes_bool_exit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Boolean exits from the critic should coerce to integers."""
+
+    captured: dict[str, list[str]] = {}
+
+    def fake_main(argv: list[str]) -> bool:
+        captured["argv"] = argv
+        return True
+
+    proxy = type("CriticProxy", (), {"main": staticmethod(fake_main)})()
+    monkeypatch.setattr(cli, "critic", proxy, raising=False)
+
+    exit_code = cli.main(
+        [
+            "analyze-saturation",
+            "--repo",
+            "demo/repo",
+            "--prompt",
+            "prompt.md",
+        ]
+    )
+
+    assert exit_code == 1
+    assert captured["argv"] == [
+        "analyze-saturation",
+        "--repo",
+        "demo/repo",
+        "--prompt",
+        "prompt.md",
+    ]
+
+
 def test_cli_repos_list(capsys: pytest.CaptureFixture[str], tmp_path: Path) -> None:
     """The unified CLI should delegate to the repo manager."""
 

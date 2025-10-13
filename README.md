@@ -77,6 +77,10 @@ to reuse the existing module CLIs without remembering their dotted paths.
 The wrapper forwards arguments to `axel.repo_manager` and `axel.task_manager`,
 with coverage in `tests/test_cli.py::test_cli_repos_list` and
 `tests/test_cli.py::test_cli_tasks_round_trip`.
+Analytics helpers are exposed through the same entry point using
+`axel analyze-orthogonality` and `axel analyze-saturation`, covered by
+`tests/test_cli.py::test_cli_analyze_orthogonality_delegates_to_critic` and
+`tests/test_cli.py::test_cli_analyze_saturation_normalizes_bool_exit`.
 
 1. Add a repo with `python -m axel.repo_manager add <url>` (use `https://...`).
    Alternatively, edit `repos.txt`.

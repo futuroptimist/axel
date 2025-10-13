@@ -25,7 +25,7 @@ def test_allows_safe_text() -> None:
     assert result.stderr == ""
 
 
-@pytest.mark.parametrize("var", ["apikey", "api_key", "api-key"])
+@pytest.mark.parametrize("var", ["apikey", "api_key", "api-key", "api key"])
 def test_detects_api_keys(var: str) -> None:
     result = run_scan(f"{var}=123")
     assert result.returncode == 1

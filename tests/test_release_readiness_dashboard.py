@@ -24,3 +24,16 @@ def test_release_dashboard_marks_ci_and_coverage_complete() -> None:
 
     readme = (root / "README.md").read_text(encoding="utf-8")
     assert "[![Coverage]" in readme
+
+
+def test_release_dashboard_marks_security_scans_complete() -> None:
+    """Security checklist should flip once CodeQL and scanning ship."""
+
+    root = Path(__file__).resolve().parents[1]
+    dashboard = (root / "docs" / "RELEASE-READINESS-DASHBOARD.md").read_text(
+        encoding="utf-8"
+    )
+    assert "- [x] Security: CodeQL + credential scanning + Dependabot" in dashboard
+
+    workflow = root / ".github" / "workflows" / "04-security.yml"
+    assert workflow.exists(), "CodeQL workflow should be present for security scans"

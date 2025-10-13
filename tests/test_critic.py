@@ -1,5 +1,6 @@
 import importlib
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -325,3 +326,142 @@ def test_main_without_command_shows_help(critic_module, capsys):
     output = capsys.readouterr().out
     assert exit_code == 1
     assert "usage" in output.lower()
+
+
+def test_speculative_merge_detects_conflicts_and_clean_merges(
+    critic_module, tmp_path
+) -> None:
+    """Speculative merge checks should flag conflicts before merging."""
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    def git(*args: str) -> None:
+        subprocess.run(
+            ["git", *args],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+    git("init", "-b", "main")
+    git("config", "user.name", "Axel Bot")
+    git("config", "user.email", "bot@example.com")
+
+    notes = repo / "notes.txt"
+    notes.write_text("base\n", encoding="utf-8")
+    git("add", "notes.txt")
+    git("commit", "-m", "base")
+
+    git("checkout", "-b", "feature-conflict")
+    notes.write_text("feature branch\n", encoding="utf-8")
+    git("commit", "-am", "feature change")
+
+    git("checkout", "main")
+    notes.write_text("main branch\n", encoding="utf-8")
+    git("commit", "-am", "main change")
+
+    git("checkout", "-b", "docs-update")
+    readme = repo / "README.md"
+    readme.write_text("docs update\n", encoding="utf-8")
+    git("add", "README.md")
+    git("commit", "-m", "docs update")
+    git("checkout", "main")
+
+    conflict = critic_module.speculative_merge_conflicts(
+        repo, "main", "feature-conflict"
+    )
+    assert conflict.has_conflicts is True
+    assert "notes.txt" in conflict.conflicted_files
+    assert conflict.merge_base
+
+    clean = critic_module.speculative_merge_conflicts(repo, "main", "docs-update")
+    assert clean.has_conflicts is False
+    assert clean.conflicted_files == ()
+
+
+def test_speculative_merge_conflicts_validates_inputs(critic_module, tmp_path) -> None:
+    """Speculative merge helper should raise clear errors for invalid refs."""
+
+    missing = tmp_path / "missing"
+    with pytest.raises(RuntimeError, match="does not exist"):
+        critic_module.speculative_merge_conflicts(missing, "main", "feature")
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    def git(*args: str) -> None:
+        subprocess.run(
+            ["git", *args],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+    git("init", "-b", "main")
+    git("config", "user.name", "Axel Bot")
+    git("config", "user.email", "bot@example.com")
+
+    (repo / "base.txt").write_text("main\n", encoding="utf-8")
+    git("add", "base.txt")
+    git("commit", "-m", "base")
+
+    git("checkout", "--orphan", "orphan")
+    git("config", "user.name", "Axel Bot")
+    git("config", "user.email", "bot@example.com")
+    (repo / "orphan.txt").write_text("orphan\n", encoding="utf-8")
+    git("add", "orphan.txt")
+    git("commit", "-m", "orphan")
+
+    with pytest.raises(RuntimeError, match="No merge base"):
+        critic_module.speculative_merge_conflicts(repo, "main", "orphan")
+
+
+def test_parse_merge_tree_output_handles_multiple_patterns(critic_module) -> None:
+    """Synthetic merge-tree output should map to conflict metadata."""
+
+    output = "\n".join(
+        [
+            "",  # blank line triggers skip branch
+            "changed in both",
+            "  base   100644 aaa conflict.txt",
+            "  our    100644 bbb conflict.txt",
+            "  their  100644 ccc conflict.txt",
+            "conflict.txt",
+            "@@ -1 +1 @@",
+            "<<<<<<< ours",
+            "foo",
+            "=======",
+            "bar",
+            ">>>>>>> theirs",
+            "content conflict in docs/guide.md",
+        ]
+    )
+
+    has_conflicts, files = critic_module._parse_merge_tree_output(output)
+    assert has_conflicts is True
+    assert files == ("conflict.txt", "docs/guide.md")
+
+    minimal = "\n".join(
+        [
+            "file.txt",
+            "@@ -1 +1 @@",
+            "<<<<<<< ours",
+            "foo",
+            "=======",
+            "bar",
+            ">>>>>>> theirs",
+        ]
+    )
+    has_minimal_conflict, minimal_files = critic_module._parse_merge_tree_output(
+        minimal
+    )
+    assert has_minimal_conflict is True
+    assert minimal_files == ("file.txt",)
+
+    lonely = "<<<<<<< lonely"
+    has_lonely_conflict, lonely_files = critic_module._parse_merge_tree_output(lonely)
+    assert has_lonely_conflict is True
+    assert lonely_files == ()

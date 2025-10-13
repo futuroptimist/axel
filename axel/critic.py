@@ -6,6 +6,7 @@ import argparse
 import json
 import math
 import os
+import subprocess
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -31,6 +32,18 @@ class PullRequestSnapshot:
 
     merged: bool
     mergeable_state: str | None
+
+
+@dataclass(frozen=True)
+class SpeculativeMergeResult:
+    """Result from probing a merge between two refs without mutating the repo."""
+
+    base_ref: str
+    head_ref: str
+    merge_base: str
+    has_conflicts: bool
+    conflicted_files: tuple[str, ...]
+    output: str
 
 
 def set_repository(repo: str | None) -> None:
@@ -129,6 +142,115 @@ def _average_pairwise_similarity(task_versions: list[str]) -> float:
 
 def _clip_score(value: float) -> float:
     return max(0.0, min(1.0, value))
+
+
+def _run_git(
+    repo: Path, *args: str, check: bool = True
+) -> subprocess.CompletedProcess[str]:
+    """Run ``git`` with ``args`` inside ``repo`` and return the completed process."""
+
+    try:
+        return subprocess.run(
+            ["git", *args],
+            cwd=repo,
+            check=check,
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as exc:  # pragma: no cover - defensive
+        stderr = exc.stderr.strip() if isinstance(exc.stderr, str) else ""
+        command = " ".join(args)
+        raise RuntimeError(
+            f"git {command} failed with exit code {exc.returncode}: {stderr}"
+        ) from exc
+
+
+def _parse_merge_tree_output(output: str) -> tuple[bool, tuple[str, ...]]:
+    """Return conflict flag and filenames parsed from ``git merge-tree`` output."""
+
+    conflicts: list[str] = []
+    current_file: str | None = None
+    in_conflict_block = False
+    lines = output.splitlines()
+
+    for idx, line in enumerate(lines):
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("changed in"):
+            current_file = None
+            in_conflict_block = True
+            continue
+        if stripped.startswith("added in"):
+            current_file = None
+            in_conflict_block = False
+            continue
+        if stripped.startswith(("base ", "our ", "their ")):
+            parts = stripped.split()
+            if parts:
+                candidate = parts[-1]
+                current_file = candidate
+                if in_conflict_block and candidate not in conflicts:
+                    conflicts.append(candidate)
+            continue
+        if stripped.startswith("content") and " in " in stripped:
+            candidate = stripped.rsplit(" in ", 1)[-1]
+            if candidate and candidate not in conflicts:
+                conflicts.append(candidate)
+            current_file = None
+            continue
+        next_line = lines[idx + 1] if idx + 1 < len(lines) else ""
+        if next_line.startswith("@@"):
+            parts = stripped.split()
+            current_file = parts[-1] if parts else stripped
+            continue
+        if stripped.startswith("@@"):
+            continue
+        if stripped.startswith("<<<<<<<") and current_file:
+            if current_file not in conflicts:
+                conflicts.append(current_file)
+
+    has_conflicts = bool(conflicts)
+    if not has_conflicts and "<<<<<<<" in output:
+        has_conflicts = True
+    return has_conflicts, tuple(conflicts)
+
+
+def speculative_merge_conflicts(
+    repo: str | os.PathLike[str] | Path,
+    base_ref: str,
+    head_ref: str,
+) -> SpeculativeMergeResult:
+    """Return speculative merge outcome between ``base_ref`` and ``head_ref``.
+
+    The helper uses ``git merge-tree`` to evaluate whether merging ``head_ref``
+    into ``base_ref`` would introduce conflicts. The repository is left
+    untouched, making it safe to call from analytics or CI checks.
+    """
+
+    repo_path = Path(repo).expanduser().resolve()
+    if not repo_path.exists():
+        raise RuntimeError(f"Repository path does not exist: {repo_path}")
+
+    merge_base_proc = _run_git(repo_path, "merge-base", base_ref, head_ref, check=False)
+    stdout = merge_base_proc.stdout.strip() if merge_base_proc.stdout else ""
+    merge_base = stdout.splitlines() if stdout else []
+    if not merge_base:
+        raise RuntimeError(f"No merge base found between {base_ref!r} and {head_ref!r}")
+    base_commit = merge_base[0]
+
+    merge_tree_proc = _run_git(repo_path, "merge-tree", base_commit, base_ref, head_ref)
+    output = merge_tree_proc.stdout
+    has_conflicts, conflicted_files = _parse_merge_tree_output(output)
+
+    return SpeculativeMergeResult(
+        base_ref=base_ref,
+        head_ref=head_ref,
+        merge_base=base_commit,
+        has_conflicts=has_conflicts,
+        conflicted_files=conflicted_files,
+        output=output,
+    )
 
 
 def analyze_orthogonality(

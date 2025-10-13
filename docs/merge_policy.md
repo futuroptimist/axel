@@ -112,8 +112,19 @@ To mitigate conflicts before full autonomy:
 - [x] Convert this doc into `axel/docs/merge_policy.md`.
 - [x] Define `axel/policies/merge_policy.yaml` for programmatic enforcement.
 - [ ] Extend Flywheel’s merge prompt doc with critic self-evaluation and conflict classification.
-- [ ] Implement “speculative merge” checks for open Codex branches.
+- [x] Implement “speculative merge” checks for open Codex branches (see
+  `tests/test_merge.py::test_speculative_merge_reports_clean_result` and
+  `tests/test_merge.py::test_speculative_merge_reports_conflicts`).
 - [ ] Develop Axel agent hooks for merge detection and policy enforcement.
+
+Run speculative merge analysis locally with:
+
+```bash
+python -m axel.merge check --base main --head codex/feature-branch
+```
+
+The command uses a temporary git worktree to detect conflicts without modifying
+the active checkout.
 
 ---
 

@@ -51,12 +51,20 @@ def speculative_merge_check(
     """
 
     repo = _resolve_repository(repo_path)
-    _run_git("rev-parse", "--verify", base, cwd=repo)
-    _run_git("rev-parse", "--verify", head, cwd=repo)
+    _run_git("rev-parse", "--verify", base, cwd=repo, capture_output=True)
+    _run_git("rev-parse", "--verify", head, cwd=repo, capture_output=True)
 
     with tempfile.TemporaryDirectory(prefix="axel-merge-") as tempdir:
         worktree_path = Path(tempdir)
-        _run_git("worktree", "add", "--detach", str(worktree_path), base, cwd=repo)
+        _run_git(
+            "worktree",
+            "add",
+            "--detach",
+            str(worktree_path),
+            base,
+            cwd=repo,
+            capture_output=True,
+        )
         try:
             merge_result = _run_git(
                 "merge",

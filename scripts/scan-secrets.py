@@ -8,7 +8,7 @@ are found, messages are printed to stderr and the script exits with status 1.
 import re
 import sys
 
-PATTERN = re.compile(r"(token|secret|password|api[_-]?key)", re.IGNORECASE)
+PATTERN = re.compile(r"(token|secret|password|api[\s_-]*key)", re.IGNORECASE)
 
 
 def main() -> int:

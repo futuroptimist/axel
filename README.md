@@ -314,6 +314,9 @@ git diff --cached | python scripts/scan-secrets.py
 
 This helper flags suspicious lines containing keywords like "token", "secret",
 "password", or "api key" in the diff before they reach the commit history.
+Automated coverage includes
+`tests/test_scan_secrets.py::test_detects_api_key_with_space` so secrets with
+spaced "api key" markers are caught during review.
 
 The repos in `repos.txt` come from various projects like
 [`dspace`](https://github.com/democratizedspace/dspace) and

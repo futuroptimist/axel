@@ -83,6 +83,131 @@ def test_speculative_merge_reports_conflicts(git_repo: Path) -> None:
     )
 
 
+def test_speculative_merge_classifies_comment_only_conflicts(git_repo: Path) -> None:
+    (git_repo / "notes.py").write_text("# seed\nvalue = 1\n", encoding="utf-8")
+    _run_git("add", "notes.py", cwd=git_repo)
+    _run_git("commit", "-m", "initial", cwd=git_repo)
+
+    _run_git("checkout", "-b", "feature", cwd=git_repo)
+    (git_repo / "notes.py").write_text(
+        "# feature comment\nvalue = 1\n",
+        encoding="utf-8",
+    )
+    _run_git("commit", "-am", "feature", cwd=git_repo)
+
+    _run_git("checkout", "main", cwd=git_repo)
+    (git_repo / "notes.py").write_text(
+        "# main comment\nvalue = 1\n",
+        encoding="utf-8",
+    )
+    _run_git("commit", "-am", "main", cwd=git_repo)
+
+    result = speculative_merge_check(git_repo, "main", "feature")
+
+    assert result["conflicts"] is True
+    classifications = result.get("conflict_classification") or {}
+    summary = result.get("conflict_summary") or {}
+    note_class = classifications.get("notes.py")
+    assert note_class == "comment_only"
+    assert summary.get("comment_only") == 1
+    assert result.get("auto_resolvable") is True
+
+
+def test_speculative_merge_classifies_code_conflicts(git_repo: Path) -> None:
+    (git_repo / "app.py").write_text("value = 1\n", encoding="utf-8")
+    _run_git("add", "app.py", cwd=git_repo)
+    _run_git("commit", "-m", "initial", cwd=git_repo)
+
+    _run_git("checkout", "-b", "feature", cwd=git_repo)
+    (git_repo / "app.py").write_text("value = 2\n", encoding="utf-8")
+    _run_git("commit", "-am", "feature", cwd=git_repo)
+
+    _run_git("checkout", "main", cwd=git_repo)
+    (git_repo / "app.py").write_text("value = 3\n", encoding="utf-8")
+    _run_git("commit", "-am", "main", cwd=git_repo)
+
+    result = speculative_merge_check(git_repo, "main", "feature")
+
+    assert result["conflicts"] is True
+    classifications = result.get("conflict_classification") or {}
+    summary = result.get("conflict_summary") or {}
+    app_class = classifications.get("app.py")
+    assert app_class == "code"
+    assert summary.get("code") == 1
+    assert result.get("auto_resolvable") is False
+
+
+def test_classify_conflicts_marks_missing_files_unknown(tmp_path: Path) -> None:
+    from axel import merge as merge_module
+
+    classifications = merge_module._classify_conflicts(tmp_path, ["missing.txt"])
+
+    assert classifications["missing.txt"] == "unknown"
+
+
+def test_classify_segments_handles_html_comments() -> None:
+    from axel import merge as merge_module
+
+    result = merge_module._classify_segments([(["<!-- note -->"], ["<!-- alt -->"])])
+
+    assert result == "comment_only"
+
+
+def test_extract_conflict_segments_handles_blank_lines(tmp_path: Path) -> None:
+    from axel import merge as merge_module
+
+    content = (
+        "<<<<<<< ours\n"
+        "# comment\n"
+        "\n"
+        "=======\n"
+        "# alt\n"
+        "\n"
+        ">>>>>>> theirs\n"
+    )
+    file_path = tmp_path / "conflict.txt"
+    file_path.write_text(content, encoding="utf-8")
+
+    segments = merge_module._extract_conflict_segments(
+        file_path.read_text(encoding="utf-8")
+    )
+
+    assert segments == [(["# comment", ""], ["# alt", ""])]
+
+
+def test_classify_segments_returns_unknown_for_empty_segments() -> None:
+    from axel import merge as merge_module
+
+    assert merge_module._classify_segments([]) == "unknown"
+
+
+def test_is_comment_line_handles_blank_and_html() -> None:
+    from axel import merge as merge_module
+
+    assert merge_module._is_comment_line("   ")
+    assert merge_module._is_comment_line("<!-- reminder -->")
+
+
+def test_prune_common_lines_removes_shared_entries() -> None:
+    from axel import merge as merge_module
+
+    ours_unique, theirs_unique = merge_module._prune_common_lines(
+        ["# main", "value"],
+        ["# feature", "value"],
+    )
+
+    assert ours_unique == ["# main"]
+    assert theirs_unique == ["# feature"]
+
+
+def test_classify_segments_skips_identical_chunks() -> None:
+    from axel import merge as merge_module
+
+    result = merge_module._classify_segments([(["value"], ["value"])])
+
+    assert result == "comment_only"
+
+
 def test_format_result_lists_conflicted_files() -> None:
     from axel import merge as merge_module
 

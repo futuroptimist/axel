@@ -111,7 +111,11 @@ To mitigate conflicts before full autonomy:
 
 - [x] Convert this doc into `axel/docs/merge_policy.md`.
 - [x] Define `axel/policies/merge_policy.yaml` for programmatic enforcement.
-- [ ] Extend Flywheel’s merge prompt doc with critic self-evaluation and conflict classification.
+- [x] Extend Flywheel’s merge prompt doc with critic self-evaluation and conflict classification
+  (see `tests/test_merge.py::test_speculative_merge_classifies_comment_only_conflicts`,
+  `tests/test_merge.py::test_speculative_merge_classifies_code_conflicts`,
+  `tests/test_critic.py::test_self_evaluate_merge_conflicts_rewards_comment_only`, and
+  `tests/test_critic.py::test_self_evaluate_merge_conflicts_detects_code_conflicts`).
 - [x] Implement “speculative merge” checks for open Codex branches (see
   `tests/test_merge.py::test_speculative_merge_reports_clean_result` and
   `tests/test_merge.py::test_speculative_merge_reports_conflicts`).

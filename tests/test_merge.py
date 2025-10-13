@@ -79,8 +79,7 @@ def test_speculative_merge_reports_conflicts(git_repo: Path) -> None:
     assert result["conflicts"] is True
     assert "shared.txt" in result["conflicted_files"]
     assert (
-        "CONFLICT" in result["output"]
-        or "Automatic merge failed" in result["output"]
+        "CONFLICT" in result["output"] or "Automatic merge failed" in result["output"]
     )
 
 
@@ -106,8 +105,9 @@ def test_format_result_reports_clean_merge() -> None:
 
 
 def test_merge_cli_outputs_json(tmp_path, capsys) -> None:
-    from axel import merge as merge_module
     import json
+
+    from axel import merge as merge_module
 
     repo = _init_repo(tmp_path / "cli-clean")
     (repo / "base.txt").write_text("seed\n", encoding="utf-8")

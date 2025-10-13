@@ -175,6 +175,47 @@ def test_load_history_handles_missing_and_invalid_lines(critic_module, tmp_path)
     assert invalid_history.empty
 
 
+def test_self_evaluate_merge_conflicts_rewards_comment_only(critic_module):
+    summary = {"comment_only": 2, "unknown": 1}
+
+    result = critic_module.self_evaluate_merge_conflicts(summary)
+
+    assert 0.0 <= result["conflict_score"] <= 1.0
+    assert result["auto_resolvable"] is False
+    assert result["comment_only"] == 2
+    assert result["unknown"] == 1
+    assert "comment" in (result["assessment"] or "").lower()
+
+
+def test_self_evaluate_merge_conflicts_detects_code_conflicts(critic_module):
+    summary = {"code": 1}
+
+    result = critic_module.self_evaluate_merge_conflicts(summary)
+
+    assert result["conflict_score"] == 0.0
+    assert result["auto_resolvable"] is False
+    assert result["code"] == 1
+    assert "manual" in (result["assessment"] or "").lower()
+
+
+def test_self_evaluate_merge_conflicts_auto_resolves_comments(critic_module):
+    summary = {"comment_only": 3}
+
+    result = critic_module.self_evaluate_merge_conflicts(summary)
+
+    assert result["conflict_score"] == 1.0
+    assert result["auto_resolvable"] is True
+    assert "safe" in (result["assessment"] or "").lower()
+
+
+def test_self_evaluate_merge_conflicts_handles_empty_summary(critic_module):
+    result = critic_module.self_evaluate_merge_conflicts({})
+
+    assert result["conflict_score"] == 1.0
+    assert result["auto_resolvable"] is True
+    assert result["assessment"].lower().startswith("no conflicts")
+
+
 def test_fetch_pull_request_handles_api_errors(monkeypatch, critic_module):
     class DummyResponse:
         def __init__(self, status_code: int, payload: dict[str, object]):

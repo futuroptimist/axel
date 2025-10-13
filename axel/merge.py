@@ -1,9 +1,12 @@
+"""Speculative merge helpers and conflict classification utilities."""
+
 from __future__ import annotations
 
 import argparse
 import json
 import subprocess
 import tempfile
+from collections import Counter
 from pathlib import Path
 from typing import Sequence
 
@@ -78,6 +81,7 @@ def speculative_merge_check(
             output = ((merge_result.stdout or "") + (merge_result.stderr or "")).strip()
             conflicts = merge_result.returncode != 0
             conflicted_files: list[str] = []
+            classifications: dict[str, str] = {}
             if conflicts:
                 status = _run_git(
                     "status",
@@ -86,8 +90,11 @@ def speculative_merge_check(
                     capture_output=True,
                 )
                 for line in status.stdout.splitlines():
-                    if line.startswith("UU "):
+                    code = line[:2]
+                    if code in _CONFLICT_CODES:
                         conflicted_files.append(line[3:].strip())
+                classifications = _classify_conflicts(worktree_path, conflicted_files)
+                summary = dict(Counter(classifications.values()))
                 _run_git(
                     "merge",
                     "--abort",
@@ -95,10 +102,15 @@ def speculative_merge_check(
                     check=False,
                     capture_output=True,
                 )
+            else:
+                summary = {}
             return {
                 "conflicts": conflicts,
                 "conflicted_files": conflicted_files,
                 "output": output,
+                "conflict_classification": classifications,
+                "conflict_summary": summary,
+                "auto_resolvable": _auto_resolvable(summary, conflicts),
             }
         finally:
             _run_git(
@@ -128,9 +140,122 @@ def _format_result(base: str, head: str, result: dict[str, object]) -> str:
         if conflicted:
             lines.append("Conflicted files:")
             lines.extend(f"- {name}" for name in conflicted)
+        summary = result.get("conflict_summary") or {}
+        if summary:
+            lines.append("Conflict summary:")
+            for key, value in sorted(summary.items()):
+                lines.append(f"- {key}: {value}")
     else:
         lines = [f"Merge is clean when merging {head} into {base}"]
     return "\n".join(lines)
+
+
+_CONFLICT_CODES: set[str] = {"DD", "AU", "UD", "UA", "DU", "AA", "UU"}
+
+
+_COMMENT_PREFIXES: tuple[str, ...] = (
+    "#",
+    "//",
+    "/*",
+    "*",
+    "--",
+)
+
+
+def _auto_resolvable(summary: dict[str, int], conflicts: bool) -> bool:
+    if conflicts and not summary:
+        return False
+    if not summary:
+        return True
+    code_conflicts = summary.get("code", 0)
+    unknown_conflicts = summary.get("unknown", 0)
+    return code_conflicts == 0 and unknown_conflicts == 0
+
+
+def _extract_conflict_segments(content: str) -> list[tuple[list[str], list[str]]]:
+    segments: list[tuple[list[str], list[str]]] = []
+    ours: list[str] = []
+    theirs: list[str] = []
+    state: str | None = None
+    for line in content.splitlines():
+        if line.startswith("<<<<<<<"):
+            ours = []
+            theirs = []
+            state = "ours"
+            continue
+        if line.startswith("=======") and state == "ours":
+            state = "theirs"
+            continue
+        if line.startswith(">>>>>>>") and state == "theirs":
+            segments.append((ours, theirs))
+            state = None
+            continue
+        if state == "ours":
+            ours.append(line)
+        elif state == "theirs":
+            theirs.append(line)
+    return segments
+
+
+def _is_comment_line(line: str) -> bool:
+    stripped = line.strip()
+    if not stripped:
+        return True
+    for prefix in _COMMENT_PREFIXES:
+        if stripped.startswith(prefix):
+            return True
+    if stripped.endswith("-->") and stripped.startswith("<!--"):
+        return True
+    return False
+
+
+def _prune_common_lines(
+    ours: list[str], theirs: list[str]
+) -> tuple[list[str], list[str]]:
+    theirs_counter = Counter(theirs)
+    ours_unique: list[str] = []
+    for line in ours:
+        if theirs_counter.get(line, 0) > 0:
+            theirs_counter[line] -= 1
+        else:
+            ours_unique.append(line)
+    ours_counter = Counter(ours)
+    theirs_unique: list[str] = []
+    for line in theirs:
+        if ours_counter.get(line, 0) > 0:
+            ours_counter[line] -= 1
+        else:
+            theirs_unique.append(line)
+    return ours_unique, theirs_unique
+
+
+def _classify_segments(segments: list[tuple[list[str], list[str]]]) -> str:
+    if not segments:
+        return "unknown"
+    for ours, theirs in segments:
+        ours_unique, theirs_unique = _prune_common_lines(ours, theirs)
+        lines = [*ours_unique, *theirs_unique]
+        if not lines:
+            continue
+        if not all(_is_comment_line(line) for line in lines):
+            return "code"
+    return "comment_only"
+
+
+def _classify_conflicts(
+    worktree_path: Path, conflicted_files: list[str]
+) -> dict[str, str]:
+    classifications: dict[str, str] = {}
+    for name in conflicted_files:
+        file_path = worktree_path / name
+        try:
+            content = file_path.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            classifications[name] = "unknown"
+            continue
+        segments = _extract_conflict_segments(content)
+        classifications[name] = _classify_segments(segments)
+    return classifications
 
 
 def main(argv: Sequence[str] | None = None) -> int:

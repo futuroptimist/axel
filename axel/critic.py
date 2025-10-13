@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from itertools import combinations
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 
 import pandas as pd
 import requests
@@ -210,6 +210,45 @@ def _orthogonality_entropy(scores: list[float]) -> float:
     if max_entropy == 0:
         return 0.0
     return entropy / max_entropy
+
+
+def self_evaluate_merge_conflicts(summary: Mapping[str, int]) -> dict[str, Any]:
+    """Return a critic assessment for merge conflicts based on classification counts."""
+
+    summary_counter = Counter({k: int(v) for k, v in summary.items() if int(v) > 0})
+    total_conflicts = sum(summary_counter.values())
+    comment_only = summary_counter.get("comment_only", 0)
+    code_conflicts = summary_counter.get("code", 0)
+    unknown_conflicts = summary_counter.get("unknown", 0)
+    if total_conflicts == 0:
+        return {
+            "conflict_score": 1.0,
+            "auto_resolvable": True,
+            "comment_only": 0,
+            "code": 0,
+            "unknown": 0,
+            "assessment": "No conflicts detected",
+        }
+    score = comment_only / total_conflicts
+    auto_resolvable = code_conflicts == 0 and unknown_conflicts == 0
+    if code_conflicts:
+        assessment = "Manual review required for code conflicts"
+    elif unknown_conflicts:
+        assessment = (
+            "Comment-focused conflicts require inspection before auto-resolution"
+            if comment_only
+            else "Conflicts require inspection before auto-resolution"
+        )
+    else:
+        assessment = "Conflicts limited to comments; safe to auto-resolve"
+    return {
+        "conflict_score": _clip_score(score),
+        "auto_resolvable": auto_resolvable,
+        "comment_only": comment_only,
+        "code": code_conflicts,
+        "unknown": unknown_conflicts,
+        "assessment": assessment,
+    }
 
 
 def track_prompt_saturation(repo: str, prompt_doc: str) -> dict[str, Any]:

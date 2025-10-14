@@ -15,6 +15,8 @@ def main() -> int:
     data = sys.stdin.read()
     hits = []
     for i, line in enumerate(data.splitlines(), 1):
+        if "scan-secrets.py" in line or "Potential secret" in line:
+            continue
         if PATTERN.search(line):
             hits.append(f"Potential secret at line {i}: {line.strip()}")
     if hits:

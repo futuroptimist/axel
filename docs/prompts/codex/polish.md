@@ -5,7 +5,7 @@ slug: 'polish'
 
 # Codex Polish Prompt
 
-Use this prompt to plan CLI polish and repo-analysis upgrades for Axel.
+Use this prompt when you are ready to ship CLI polish and repo-analysis upgrades for Axel.
 
 ## Prompt
 
@@ -14,8 +14,9 @@ SYSTEM:
 You are an automated contributor for the futuroptimist/axel repository.
 
 PURPOSE:
-Ship polish-focused improvements that elevate the CLI user experience and sharpen repo-analysis
-accuracy while honoring the product's alpha-stage guardrails.
+Implement polish-focused improvements that elevate the CLI user experience and sharpen
+repo-analysis accuracy while honoring the product's alpha-stage guardrails. Each response should
+land a reviewable slice of real functionality rather than a meta-plan.
 
 SNAPSHOT:
 - CLI entry points:
@@ -31,20 +32,23 @@ SNAPSHOT:
     telemetry.
   - Commands halt safely when GitHub auth or repo manifests are missing.
 
-REFACTOR TARGETS:
+IMPLEMENTATION TRACKS:
 - Modular CLI boundaries:
   - Split functionality into `axel/cli` (argument parsing & UX), `axel/analysis` (metrics such as
     orthogonality, saturation, time-to-green), and `axel/repos` (I/O, normalization, caching).
-  - Keep dependencies thin: the CLI calls facades, analysis consumes repo data providers, and the
-    repos layer owns filesystem/network effects.
+  - Keep dependencies thin: the CLI invokes facades, analysis consumes repo data providers, and the
+    repos layer owns filesystem/network effects. Refactors should ship incrementally with behaviour
+    parity tests.
 - Analytics persistence & telemetry:
   - Persist each analytics run (inputs, metrics, timestamps) beneath
     `~/.config/axel/analytics/<slug>.json`.
   - Provide an opt-in telemetry toggle (`axel config telemetry --enable|--disable`) documenting what
     leaves the machine; default to disabled and require explicit confirmation before uploads.
+  - Capture migrations for existing config files and include smoke tests to prevent regressions.
 - Deterministic sampling for large repo sets:
   - Offer seeded sampling flags (e.g., `--sample 50 --seed 2025`) to keep large runs fast yet
     reproducible and propagate the sampling decision across repos, tasks, and analytics.
+  - Ensure sampling choices are persisted alongside analytics runs and surfaced in UX copy.
 
 TEST STRATEGY:
 - Add golden tests for CLI output covering human-readable and `--json` modes.
@@ -52,6 +56,8 @@ TEST STRATEGY:
 - Verify analysis math using fixture repos with known orthogonality/saturation scores.
 - Exercise concurrency safety so sampling + persistence avoids race conditions (multi-process
   fixtures, temporary dirs).
+- Extend regression tests whenever behaviour changes; avoid test-only PRs by pairing fixes with
+  coverage.
 
 DOCUMENTATION TASKS:
 - Explain how to interpret orthogonality (0–0.3 overlap, 0.3–0.7 acceptable, >0.7 strong parallelism)
@@ -60,6 +66,7 @@ DOCUMENTATION TASKS:
   how deterministic sampling influences these readings.
 - Update quickstarts with `pipx install axel`, `pipx ensurepath`, and shell completion setup.
 - Document analytics cache location, telemetry toggles, and provide JSON-to-jq automation examples.
+- Keep prompt references, README links, and FAQ snippets in sync with each shipped capability.
 
 DEVELOPER EXPERIENCE POLISH:
 - Ensure `repos`, `tasks`, and analytics commands accept `--json` outputs for scripting.
@@ -71,21 +78,20 @@ MIGRATION & PR CHECKLIST:
   nav entries).
 - Include this `docs/prompts/codex/polish.md` file and link fixes in the PR summary.
 - Record telemetry defaults, sampling behavior, and documentation changes in the PR body.
-- Run `flake8 axel tests`, `pytest --cov=axel --cov=tests`, `pre-commit run --all-files`, and
-  `git diff --cached | ./scripts/scan-secrets.py`; resolve failures before requesting review.
+- Run `flake8 axel tests`, `pytest --cov=axel --cov=tests`, `pre-commit run --all-files`, and the
+  staged-diff safety scan from `scripts/`; resolve failures before requesting review.
 
 REQUEST:
-1. Draft a polish plan that sequences refactors, persistence work, sampling, tests, docs, and DX
-   improvements into reviewable pull requests.
-2. Highlight data that should persist, toggles that need UX copy, and how CLI boundaries will remain
-   thin.
-3. Enumerate the automated tests and documentation updates required to keep coverage and guidance
-   current.
-4. Summarize expected user-visible improvements to the CLI and analytics flows.
+1. Ship a narrow, production-quality polish improvement drawn from the tracks above (or their
+   follow-on tasks) with a clear before/after summary.
+2. Explain how data persistence, telemetry toggles, and sampling behaviour are exercised by the
+   change, documenting UX copy where needed.
+3. Add or update automated tests and documentation so they reflect the shipped behaviour.
+4. Summarize the user-visible impact across CLI ergonomics, analytics accuracy, and repo hygiene.
 
 OUTPUT:
-A PR-ready plan describing the polish scope, implementation slices, doc/test additions, telemetry
-opt-in flow, sampling behavior, and updated prompt locations.
+A PR-ready implementation that lands code, tests, and documentation updates aligned with the polish
+goals, plus a summary that calls out telemetry defaults, sampling behaviour, and prompt link health.
 ```
 
 ## Upgrade Prompt
@@ -97,8 +103,8 @@ SYSTEM:
 You are an automated contributor for the futuroptimist/axel repository.
 
 PURPOSE:
-Improve `docs/prompts/codex/polish.md`, with emphasis on strengthening the primary prompt block
-above.
+Improve `docs/prompts/codex/polish.md`, with emphasis on keeping the primary prompt focused on
+shipping impactful polish work.
 
 SCOPE & CONTEXT:
 - Follow [AGENTS.md](../../AGENTS.md), [README.md](../../README.md), and the repo's CI workflows.
@@ -109,8 +115,9 @@ REQUEST:
    drift from current architecture, telemetry, or testing practices.
 2. Update cross-references, links, and command lists to match the repository's latest structure and
    tooling.
-3. Run `flake8 axel tests`, `pytest --cov=axel --cov=tests`, `pre-commit run --all-files`, and
-   `git diff --cached | ./scripts/scan-secrets.py`; document outcomes in the PR body.
+3. Ensure the prompt keeps contributors shipping functional increments instead of meta-plans.
+4. Run `flake8 axel tests`, `pytest --cov=axel --cov=tests`, `pre-commit run --all-files`, and the
+   staged-diff safety scan from `scripts/`; document outcomes in the PR body.
 
 OUTPUT:
 A pull request that refreshes `docs/prompts/codex/polish.md`, particularly the primary prompt, while

@@ -1,110 +1,109 @@
 # Axel CLI & Analytics Polish Plan
 
 ## Overview
-This plan sequences the refactors, persistence upgrades, deterministic sampling features, testing
-coverage, documentation refreshes, and developer experience polish required to harden the Axel CLI
-while keeping alpha guardrails intact.
+This plan sequences the CLI boundary refactor, analytics persistence, deterministic sampling,
+expanded test coverage, documentation refresh, and developer-experience polish into focused pull
+requests. Each slice keeps guardrails intact, preserves thin module dependencies, and lands with the
+required checks (`flake8`, `pytest --cov`, `pre-commit`, credential scan) before review.
 
 ## Release Slices & Sequencing
-1. **Foundational CLI boundary refactor**
-   - Carve the package into three top-level modules: `axel/cli` (argument parsing & UX),
-     `axel/repos` (I/O, repo manifest normalization, caching), and `axel/analysis` (metrics
-     computation facades).
-   - Introduce thin facade classes/functions that expose high-level operations for each command,
-     keeping CLI entry points focused on parsing/formatting.
-   - Add dependency injection hooks so analysis modules consume repo providers instead of reaching
-     directly into filesystem/network code.
-   - Include targeted unit tests ensuring the new boundaries preserve existing command behaviors.
+1. **Module boundary realignment**
+   - Restructure the package into `axel/cli`, `axel/repos`, and `axel/analysis` namespaces with
+     explicit facades. Keep the CLI layer limited to argument parsing, option validation, and output
+     formatting while delegating work to injected services from the repos and analysis layers.
+   - Introduce adapters that translate CLI options into repository-provider requests, ensuring
+     analytics never touch filesystem/network code directly.
+   - Backfill unit tests that pin existing command behaviors (e.g., dry-run defaults, auth failure
+     messaging) to catch regressions during the move.
 
-2. **Analytics persistence & telemetry groundwork**
-   - Implement run record writing beneath `~/.config/axel/analytics/<slug>.json`, capturing inputs,
-     metrics, timestamps, CLI version, and sampling metadata.
-   - Create a `TelemetryConfig` helper backed by the config directory that stores the opt-in flag,
-     consent timestamp, and last upload status.
-   - Add `axel config telemetry --enable|--disable` with explicit UX copy describing what data is
-     transmitted and reinforcing the default-disabled posture.
-   - Wire telemetry checks into analytics flows while keeping dry-run behavior and rejecting uploads
-     when opt-in is absent.
-   - Extend analytics tests with fixtures verifying persistence artifacts and telemetry gating.
+2. **Persistence + telemetry groundwork**
+   - Implement analytics run persistence beneath
+     `~/.config/axel/analytics/<slug>.json`, capturing inputs, sampling parameters, metrics, CLI
+     version, timestamps, and command variants.
+   - Add a `TelemetryConfig` helper storing opt-in state, consent timestamps, and last upload
+     metadata. Build `axel config telemetry --enable|--disable` with explicit UX copy that explains
+     default-off behavior, enumerates transmitted fields, and requires interactive confirmation (or a
+     `--yes` bypass for CI).
+   - Extend analytics flows to read telemetry state, short-circuit uploads when disabled, and record
+     persistence failures with actionable error messages.
+   - Cover persistence schema, telemetry toggles, and dry-run protection with integration tests.
 
-3. **Deterministic sampling for large repo sets**
-   - Extend `repos`, `tasks`, and analytics commands with `--sample` and `--seed` flags that accept
-     shared defaults.
-   - Push sampling choices through repo discovery, task aggregation, and analytics data providers so
-     all downstream consumers receive the same filtered set.
-   - Document the sampling decision in persistence records and command output (human + `--json`).
-   - Add tests covering sampling reproducibility, including multi-process fixtures to ensure
-     concurrency safety when persisting analytics runs.
+3. **Deterministic sampling rollout**
+   - Add shared `--sample` and `--seed` flags to `axel repos`, `axel tasks`, and `axel analytics`,
+     flowing the filtered set through repo discovery, task aggregation, and analysis providers so all
+     downstream consumers observe the same subset.
+   - Document sampling decisions in human-readable output and `--json` payloads, and embed sampling
+     metadata in persisted analytics records.
+   - Add reproducibility tests (seeded runs yield identical selections) plus concurrency fixtures to
+     ensure multi-process analytics writes remain race-safe.
 
-4. **Golden UX polish & CLI outputs**
-   - Introduce golden tests for human-readable and JSON outputs across `axel repos`, `axel tasks`,
-     and `axel analytics` flows.
-   - Ensure every primary command respects `--json` and returns machine-friendly structures.
-   - Add shell completion support exposed via `axel --install-completions` and document installation
-     in quickstarts.
+4. **CLI UX polish & golden tests**
+   - Introduce golden fixtures for primary commands covering default text output and `--json` modes,
+     and verify `--json` support exists on repos, tasks, and analytics entry points.
+   - Harden error messaging (missing GitHub auth, absent repo manifests) and ensure dry-run guardrails
+     stay prominent.
+   - Add shell completion plumbing exposed via `axel --install-completions` and surface generated
+     scripts in the docs and quickstarts.
 
-5. **Documentation & prompt migrations**
-   - Update README quickstarts with `pipx install axel`, `pipx ensurepath`, analytics cache details,
-     telemetry toggle instructions, deterministic sampling guidance, and jq usage examples.
-   - Refresh FAQ entries to surface DX improvements and clarify orthogonality (0–0.3 low overlap,
-     0.3–0.7 acceptable, >0.7 high parallelism) and saturation thresholds (<0.4 under-utilized,
-     0.4–0.85 healthy, >0.85 slowdown risk) with illustrative scenarios.
-   - Move any lingering prompt references into `docs/prompts/codex/`, ensuring navigation and issue
-     templates link to the new locations.
-   - Capture telemetry defaults, sampling behavior, and documentation updates in the PR body per
-     checklist.
+5. **Analytics math validation**
+   - Build fixture repositories with predetermined orthogonality and saturation scores to assert
+     analytic correctness, including regression tests for edge cases (high overlap, sparse activity,
+     drift scenarios).
+   - Profile the refactored analysis layer; if persistence or sampling adds overhead, record baseline
+     vs. post-change metrics to justify optimizations.
 
-6. **Follow-up analytics refinements**
-   - Validate orthogonality and saturation math against fixture repos with known metrics; store
-     expectations as part of regression tests.
-   - Monitor performance implications of persistence and sampling; if needed, iterate on caching
-     strategies within `axel/repos` while keeping side effects isolated.
+6. **Documentation, prompts, and DX updates**
+   - Update README quickstarts, FAQ, and analytics docs with `pipx install axel`, `pipx ensurepath`,
+     shell completion instructions, telemetry defaults, sampling behavior, analytics cache paths, and
+     jq automation examples.
+   - Explain orthogonality (0–0.3 low overlap, 0.3–0.7 acceptable, >0.7 strong parallelism) and
+     saturation thresholds (<0.4 under-utilized, 0.4–0.85 healthy, >0.85 slowdown warnings) with
+     concrete task comparisons.
+   - Ensure all prompt references live under `docs/prompts/codex/`, refresh links across the README,
+     hillclimb docs, issue templates, and navigation, and highlight the new prompt location in the PR
+     summary.
+   - Capture telemetry defaults, sampling expectations, and documentation updates within PR bodies as
+     mandated by the migration checklist.
 
-## Data Persistence & Telemetry Considerations
-- **Persisted Data:**
-  - Analytics inputs (repo list, sampling parameters, command options).
-  - Computed metrics (orthogonality, saturation, drift, timestamps, CLI version).
-  - Telemetry state (opt-in flag, consent timestamp, last attempted upload metadata).
-- **Telemetry UX Copy:**
-  - Clearly state telemetry is disabled by default, enumerate the fields sent, and require explicit
-    confirmation (`--enable` plus an interactive confirmation prompt or `--yes` flag for scripting).
-  - Provide reassurance that disabling telemetry (`--disable`) halts uploads immediately and deletes
-    pending queues.
-- **Thin Boundaries:**
-  - CLI modules remain responsible for parsing, validation, and formatting only; they delegate to
-    facades that wrap repos and analysis layers.
-  - Repos layer centralizes filesystem/network operations, exposing pure data providers.
-  - Analysis layer focuses on computations, consuming dependency-injected providers to stay
-    test-friendly.
+## Data Persistence & Telemetry Details
+- **Persisted analytics payloads:** repo list identifiers, normalization metadata, sampling inputs
+  (size, seed, filters), executed command, computed metrics, CLI version, timestamps, and exit status.
+- **Telemetry ledger:** opt-in flag, consent text hash/version, confirmation timestamp, last upload
+  attempt, success/failure codes, and a rolling identifier for pending uploads.
+- **UX copy requirements:** reinforce that telemetry is disabled by default, enumerate outbound
+  fields before enabling, provide `--disable` to revoke consent immediately, and surface a `--status`
+  view for transparency.
+- **Thin boundaries:** CLI modules remain pure orchestrators; repos handle filesystem/network I/O and
+  caching; analysis only consumes abstract providers, making metric computations deterministic and
+  test-friendly.
 
-## Testing Additions
-- Golden output tests for `repos`, `tasks`, and analytics commands (text + JSON).
-- Repo normalization tests spanning https/ssh URLs, `.git` suffix handling, and casing differences.
-- Analytics metric verification using fixture repos with predetermined orthogonality/saturation
-  values.
-- Persistence tests ensuring analytics runs write the correct JSON schema and remain race-safe under
-  concurrent execution.
-- Telemetry config tests covering enable/disable flows, confirmation prompts, and behavior when
-  telemetry is disabled.
-- Deterministic sampling tests verifying seeded reproducibility across commands and persistence
-  records.
-- Concurrency fixtures exercising sampling plus persistence to guard against write collisions.
+## Automated Test Additions
+- Golden output comparisons for repos/tasks/analytics (text + JSON modes).
+- Repo normalization coverage across https vs. ssh, `.git` suffixes, and case variations.
+- Analytics metric assertions using fixture repos with known orthogonality/saturation values.
+- Persistence schema tests and race-condition simulations for concurrent analytics writes.
+- Telemetry enable/disable flow tests, including confirmation prompts and non-interactive `--yes`
+  usage.
+- Deterministic sampling reproducibility checks across commands and persisted records.
+- Regression suites guarding dry-run behavior, error messaging, and shell completion generation.
 
-## Documentation Updates
-- README quickstart (pipx install + ensurepath, completions, telemetry toggle, analytics cache path,
-  deterministic sampling guidance, jq snippets).
-- FAQ additions for DX notes, orthogonality interpretation, saturation thresholds, and telemetry
-  expectations.
-- Analytics documentation detailing persistence location, JSON schema, and sampling implications.
-- Prompt documentation cleanup consolidating everything under `docs/prompts/codex/` with refreshed
-  links (hillclimb, README, issue templates, navigation).
-- New or updated developer guides noting required checks (`flake8`, `pytest --cov`, `pre-commit`,
-  credential scan) per PR checklist.
+## Documentation & Prompt Updates
+- README and FAQ refreshes capturing new installation, sampling, telemetry, analytics cache, and jq
+  guidance.
+- Analytics-focused docs outlining persistence locations, JSON schema, telemetry safeguards, and
+  sampling implications.
+- Prompt migrations consolidated under `docs/prompts/codex/` with updated cross-links in the
+  README, hillclimb guide, issue templates, and docs navigation.
+- Contributor notes emphasizing required pre-review checks (`flake8`, `pytest --cov`, `pre-commit`,
+  the repository's credential scanning tooling run on staged diffs)
+  to keep trunk green.
 
-## User-Visible Improvements
-- Clearer CLI command boundaries that yield faster, more maintainable UX iterations.
-- Persistent analytics history enabling trend analysis and reproducible diagnostics.
-- Deterministic sampling options that make large repo runs predictable and scriptable.
-- Consistent `--json` support plus shell completions, smoothing automation and onboarding.
-- Expanded documentation that explains analytics metrics, sampling impacts, telemetry defaults, and
-  setup steps, improving contributor confidence in the tooling.
+## Expected User-Visible Improvements
+- Cleaner CLI architecture enabling faster UX tweaks and more predictable behavior.
+- Persistent analytics history for trend analysis, plus transparent telemetry controls that respect
+  opt-in defaults.
+- Deterministic sampling that keeps large runs fast, reproducible, and clearly documented in outputs
+  and persisted artifacts.
+- Consistent `--json` support, sharper error messaging, and shell completions that enhance scripting
+  and onboarding workflows.
+- Documentation and prompts that explain metrics, guardrails, and DX tips where users look first.

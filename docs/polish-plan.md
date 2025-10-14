@@ -6,6 +6,24 @@ expanded test coverage, documentation refresh, and developer-experience polish i
 requests. Each slice keeps guardrails intact, preserves thin module dependencies, and lands with the
 required checks (`flake8`, `pytest --cov`, `pre-commit`, credential scan) before review.
 
+### Goals at a Glance
+- Deliver a modular CLI (`axel/cli`, `axel/repos`, `axel/analysis`) that keeps orchestration thin and
+  testable.
+- Persist analytics runs, expose an explicit telemetry opt-in toggle, and document outbound data.
+- Provide seeded sampling so large repo sets remain reproducible across repos, tasks, and analytics.
+- Maintain comprehensive test coverage (CLI golden files, normalization, analytics math,
+  persistence, telemetry, concurrency) and refresh docs/prompts to guide contributors.
+
+### PR Stream
+| PR | Focus | Key Deliverables |
+| --- | --- | --- |
+| 1 | Module boundary realignment | Package reshuffle, CLI facade adapters, regression tests |
+| 2 | Persistence + telemetry | Analytics persistence, telemetry CLI UX, opt-in schema + tests |
+| 3 | Deterministic sampling | Shared sampling flags, metadata propagation, reproducibility tests |
+| 4 | CLI UX polish | Golden outputs, error messaging, `--json` parity, shell completions |
+| 5 | Analytics math validation | Fixture repos, metric assertions, performance notes |
+| 6 | Docs & prompts | README/FAQ refresh, telemetry/sampling docs, prompt link migrations |
+
 ## Release Slices & Sequencing
 1. **Module boundary realignment**
    - Restructure the package into `axel/cli`, `axel/repos`, and `axel/analysis` namespaces with
@@ -67,15 +85,17 @@ required checks (`flake8`, `pytest --cov`, `pre-commit`, credential scan) before
 
 ## Data Persistence & Telemetry Details
 - **Persisted analytics payloads:** repo list identifiers, normalization metadata, sampling inputs
-  (size, seed, filters), executed command, computed metrics, CLI version, timestamps, and exit status.
+  (size, seed, filters), executed command, computed metrics, CLI version, timestamps, exit status,
+  and telemetry opt-in state at execution time.
 - **Telemetry ledger:** opt-in flag, consent text hash/version, confirmation timestamp, last upload
-  attempt, success/failure codes, and a rolling identifier for pending uploads.
+  attempt, success/failure codes, a rolling identifier for pending uploads, and audit entries that
+  record which analytics runs were eligible for upload.
 - **UX copy requirements:** reinforce that telemetry is disabled by default, enumerate outbound
-  fields before enabling, provide `--disable` to revoke consent immediately, and surface a `--status`
-  view for transparency.
+  fields before enabling, provide `--disable` to revoke consent immediately, surface a `--status`
+  view for transparency, and prompt for confirmation unless `--yes` is specified for automation.
 - **Thin boundaries:** CLI modules remain pure orchestrators; repos handle filesystem/network I/O and
   caching; analysis only consumes abstract providers, making metric computations deterministic and
-  test-friendly.
+  test-friendly while keeping telemetry hooks centralized.
 
 ## Automated Test Additions
 - Golden output comparisons for repos/tasks/analytics (text + JSON modes).
@@ -88,15 +108,17 @@ required checks (`flake8`, `pytest --cov`, `pre-commit`, credential scan) before
 - Regression suites guarding dry-run behavior, error messaging, and shell completion generation.
 
 ## Documentation & Prompt Updates
-- README and FAQ refreshes capturing new installation, sampling, telemetry, analytics cache, and jq
-  guidance.
+- README and FAQ refreshes capturing new installation steps (`pipx install axel`, `pipx ensurepath`,
+  shell completion setup), sampling mechanics, telemetry defaults, analytics cache paths, and jq
+  automation examples.
 - Analytics-focused docs outlining persistence locations, JSON schema, telemetry safeguards, and
-  sampling implications.
-- Prompt migrations consolidated under `docs/prompts/codex/` with updated cross-links in the
-  README, hillclimb guide, issue templates, and docs navigation.
+  sampling implications, plus examples showing how seeded runs influence orthogonality/saturation
+  interpretation.
+- Prompt migrations consolidated under `docs/prompts/codex/` with updated cross-links in the README,
+  hillclimb guide, issue templates, docs navigation, and any automation referencing prior paths.
 - Contributor notes emphasizing required pre-review checks (`flake8`, `pytest --cov`, `pre-commit`,
-  the repository's credential scanning tooling run on staged diffs)
-  to keep trunk green.
+  the repository's credential scanning tooling run on staged diffs) to keep trunk green and telemetry
+  narratives consistent across PR bodies.
 
 ## Expected User-Visible Improvements
 - Cleaner CLI architecture enabling faster UX tweaks and more predictable behavior.

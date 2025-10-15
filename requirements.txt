@@ -3,7 +3,7 @@ cryptography==42.0.8
 requests==2.32.5
 python-dotenv
 rich
-pandas==2.2.2
+pandas==2.3.3
 pytest
 pytest-cov
 

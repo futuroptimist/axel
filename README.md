@@ -26,7 +26,7 @@ Then optionally start the local token.place stack:
 ```bash
 git clone https://github.com/futuroptimist/axel
 cd axel
-docker compose -f docker-compose-mock.yml up
+docker compose -f infra/docker-compose-mock.yml up
 ```
 
 This launches the token.place server, relay and a mock LLM using one command.
@@ -136,7 +136,7 @@ Quests that involve token.place automatically reference `gabriel` to reinforce t
 security layer described in `issues/0003-gabriel-security-layer.md`; see
 `tests/test_quests.py::test_suggest_cross_repo_quests_mentions_gabriel_for_sensitive_pairs`.
 When a token.place server is reachable (for example via `docker compose -f
-docker-compose-mock.yml up`), Axel now queries `/api/v1/models` to highlight the
+infra/docker-compose-mock.yml up`), Axel now queries `/api/v1/models` to highlight the
 featured model in the quest details. Coverage lives in
 `tests/test_token_place.py::test_list_models_parses_openai_like_payload` and
 `tests/test_quests.py::test_suggest_cross_repo_quests_enriches_token_place_with_models`,

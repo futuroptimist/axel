@@ -192,6 +192,16 @@ def test_install_completions_writes_script(tmp_path: Path) -> None:
     assert "complete -F _axel_completions axel" in content
 
 
+def test_install_completions_accepts_shell_suffix(tmp_path: Path) -> None:
+    """Shell names with suffixes should normalize to the supported shell."""
+
+    destination = tmp_path / "axel.zsh"
+    result = install_completions(shell="/usr/local/bin/zsh-5.9", path=destination)
+
+    assert result.shell == "zsh"
+    assert destination.read_text(encoding="utf-8").startswith("# Axel shell")
+
+
 def test_install_completions_infers_shell(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -217,12 +227,37 @@ def test_install_completions_rejects_unknown_shell(tmp_path: Path) -> None:
         install_completions(shell="csh", path=destination)
 
 
+def test_install_completions_requires_explicit_shell_value(tmp_path: Path) -> None:
+    """Empty shell values should be rejected when provided explicitly."""
+
+    destination = tmp_path / "axel.bash"
+
+    with pytest.raises(ValueError):
+        install_completions(shell="", path=destination)
+
+
 def test_install_completions_defaults_to_bash(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """Missing SHELL should fall back to bash destinations."""
 
     monkeypatch.delenv("SHELL", raising=False)
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+    result = install_completions()
+
+    expected = tmp_path / ".local" / "share" / "axel" / "completions" / "axel.bash"
+    assert result.shell == "bash"
+    assert result.path == expected
+    assert expected.exists()
+
+
+def test_install_completions_falls_back_for_unknown_shell(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Unknown detected shells should fall back to bash destinations."""
+
+    monkeypatch.setenv("SHELL", "/usr/local/bin/tcsh")
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
     result = install_completions()
@@ -250,6 +285,22 @@ def test_cli_install_completions_command(
     assert "source" in captured.out
 
 
+def test_cli_install_completions_fish_custom_path(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    """Custom fish destinations should prompt the user to link the file manually."""
+
+    target = tmp_path / "custom" / "axel.fish"
+    exit_code = cli.main(
+        ["--install-completions", "--shell", "fish", "--path", str(target)]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert target.exists()
+    assert "Copy the file into ~/.config/fish/completions" in captured.out
+
+
 def test_cli_install_completions_fish_default(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
@@ -265,6 +316,52 @@ def test_cli_install_completions_fish_default(
     assert "Fish loads files" in captured.out
 
 
+def test_cli_install_completions_help_flag(capsys: pytest.CaptureFixture[str]) -> None:
+    """Passing --help with --install-completions should print the completions help."""
+
+    exit_code = cli.main(["--install-completions", "--help"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "Install shell completion scripts" in captured.out
+
+
+def test_cli_install_completions_missing_shell_value(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Missing values for --shell should surface argparse's helpful error."""
+
+    exit_code = cli.main(["--install-completions", "--shell"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 2
+    assert "expected one argument" in captured.err
+
+
+def test_cli_install_completions_rejects_extra_arguments(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Additional arguments after --install-completions should trigger an error."""
+
+    exit_code = cli.main(["--install-completions", "--", "extra"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 2
+    assert "does not accept additional arguments: -- extra" in captured.err
+
+
+def test_cli_install_completions_rejects_flag_like_arguments(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Flag-style arguments should also be rejected when installing completions."""
+
+    exit_code = cli.main(["--install-completions", "-x"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 2
+    assert "does not accept additional arguments: -x" in captured.err
+
+
 def test_cli_shell_flag_requires_install(capsys: pytest.CaptureFixture[str]) -> None:
     """Passing --shell alone should surface a helpful error."""
 
@@ -272,6 +369,30 @@ def test_cli_shell_flag_requires_install(capsys: pytest.CaptureFixture[str]) -> 
     captured = capsys.readouterr()
     assert exit_code == 2
     assert "--shell and --path require --install-completions" in captured.err
+
+
+def test_cli_install_completions_rejects_invalid_shell(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Unsupported shells via the CLI should surface a helpful error."""
+
+    exit_code = cli.main(["--install-completions", "--shell", "csh"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 2
+    assert "unsupported shell: csh" in captured.err
+
+
+def test_cli_install_completions_rejects_empty_shell(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Explicit empty shell values should be treated as missing."""
+
+    exit_code = cli.main(["--install-completions", "--shell", ""])
+    captured = capsys.readouterr()
+
+    assert exit_code == 2
+    assert "shell is required" in captured.err
 
 
 def test_cli_defaults_to_sys_argv(

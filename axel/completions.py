@@ -167,9 +167,7 @@ def install_completions(
         else _detect_shell()
     )
     destination = (
-        Path(path).expanduser()
-        if path is not None
-        else _default_destination(selected)
+        Path(path).expanduser() if path is not None else _default_destination(selected)
     )
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(_generate_script(selected), encoding="utf-8")

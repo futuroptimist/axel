@@ -70,7 +70,8 @@ DOCUMENTATION TASKS:
 
 DEVELOPER EXPERIENCE POLISH:
 - Ensure `repos`, `tasks`, and analytics commands accept `--json` outputs for scripting.
-- Publish shell completion installation steps via `axel --install-completions`.
+- Publish shell completion installation steps via `axel --install-completions`
+  (see `tests/test_cli.py::test_cli_install_completions_command`).
 - Capture DX notes inside README/FAQ so contributors discover them quickly.
 
 MIGRATION & PR CHECKLIST:

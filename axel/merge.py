@@ -7,8 +7,12 @@ import json
 import subprocess
 import tempfile
 from collections import Counter
+from dataclasses import dataclass
+from fnmatch import fnmatch
 from pathlib import Path
-from typing import Sequence
+from typing import Any, Mapping, Sequence
+
+import yaml
 
 
 def _run_git(
@@ -153,6 +157,23 @@ def _format_result(base: str, head: str, result: dict[str, object]) -> str:
 _CONFLICT_CODES: set[str] = {"DD", "AU", "UD", "UA", "DU", "AA", "UU"}
 
 
+@dataclass(frozen=True)
+class MergePlan:
+    """Structured response tying merge results to enforcement policy."""
+
+    base: str
+    head: str
+    result: dict[str, Any]
+    resolutions: dict[str, str]
+    safety_checks: list[dict[str, Any]]
+    auto_resolve: bool
+    requires_manual_review: bool
+    policy_metadata: dict[str, Any]
+
+
+_POLICY_PATH = Path(__file__).resolve().parent / "policies" / "merge_policy.yaml"
+
+
 _COMMENT_PREFIXES: tuple[str, ...] = (
     "#",
     "//",
@@ -256,6 +277,125 @@ def _classify_conflicts(
         segments = _extract_conflict_segments(content)
         classifications[name] = _classify_segments(segments)
     return classifications
+
+
+def load_merge_policy(path: str | Path | None = None) -> dict[str, Any]:
+    """Return the configured merge policy as a mapping."""
+
+    location = Path(path) if path is not None else _POLICY_PATH
+    data = yaml.safe_load(location.read_text(encoding="utf-8"))
+    if data is None:
+        return {}
+    if not isinstance(data, Mapping):
+        raise ValueError("Merge policy must be a mapping")
+    return dict(data)
+
+
+def _match_priority_rule(name: str, rules: Sequence[Mapping[str, Any]]) -> str | None:
+    for rule in rules:
+        pattern = rule.get("pattern") if isinstance(rule, Mapping) else None
+        resolution = rule.get("resolution") if isinstance(rule, Mapping) else None
+        if pattern and resolution and fnmatch(name, pattern):
+            return str(resolution)
+    return None
+
+
+def _build_resolutions(
+    classifications: Mapping[str, str],
+    conflict_policy: Mapping[str, Any],
+) -> tuple[dict[str, str], bool]:
+    rules = (
+        conflict_policy.get("priority_rules")
+        if isinstance(conflict_policy, Mapping)
+        else []
+    )
+    fallback = (
+        conflict_policy.get("fallback")
+        if isinstance(conflict_policy, Mapping)
+        else "manual_review"
+    )
+    heuristics = (
+        conflict_policy.get("heuristics")
+        if isinstance(conflict_policy, Mapping)
+        else {}
+    )
+    comment_auto = bool(
+        isinstance(heuristics, Mapping)
+        and heuristics.get("comment_only_conflicts_auto_resolve")
+    )
+    resolutions: dict[str, str] = {}
+    rule_entries: Sequence[Mapping[str, Any]]
+    if isinstance(rules, Sequence):
+        rule_entries = [rule for rule in rules if isinstance(rule, Mapping)]
+    else:  # pragma: no cover - defensive branch
+        rule_entries = []
+    for name, classification in classifications.items():
+        matched = _match_priority_rule(name, rule_entries)
+        if matched:
+            resolutions[name] = matched
+            continue
+        if classification == "comment_only" and comment_auto:
+            resolutions[name] = "auto_resolve_comment"
+            continue
+        resolutions[name] = str(fallback or "manual_review")
+    return resolutions, comment_auto
+
+
+def plan_merge_actions(
+    repo_path: str | Path,
+    base: str,
+    head: str,
+    *,
+    policy_path: str | Path | None = None,
+) -> MergePlan:
+    """Run merge detection and map conflicts to policy guidance."""
+
+    policy = load_merge_policy(policy_path)
+    merge_policy = policy.get("merge_policy") if isinstance(policy, Mapping) else {}
+    conflict_policy = (
+        merge_policy.get("conflict_resolution")
+        if isinstance(merge_policy, Mapping)
+        else {}
+    )
+    result = speculative_merge_check(repo_path, base, head)
+    classifications = result.get("conflict_classification") or {}
+    if not isinstance(classifications, Mapping):
+        classifications = {}
+    resolutions, comment_auto = _build_resolutions(classifications, conflict_policy)
+
+    conflicts_present = bool(result.get("conflicts"))
+    auto_resolve = not conflicts_present
+    if conflicts_present:
+        auto_resolve = bool(result.get("auto_resolvable"))
+        if classifications and comment_auto:
+            auto_resolve = all(
+                classification == "comment_only"
+                for classification in classifications.values()
+            )
+
+    raw_checks = (
+        merge_policy.get("safety_checks") if isinstance(merge_policy, Mapping) else []
+    )
+    safety_checks: list[dict[str, Any]] = []
+    if isinstance(raw_checks, Sequence):
+        for entry in raw_checks:
+            if isinstance(entry, Mapping):
+                safety_checks.append(dict(entry))
+
+    metadata = merge_policy.get("metadata") if isinstance(merge_policy, Mapping) else {}
+    if not isinstance(metadata, Mapping):
+        metadata = {}
+
+    return MergePlan(
+        base=base,
+        head=head,
+        result=result,
+        resolutions=resolutions,
+        safety_checks=safety_checks,
+        auto_resolve=auto_resolve,
+        requires_manual_review=not auto_resolve,
+        policy_metadata=dict(metadata),
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:

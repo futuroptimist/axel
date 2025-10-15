@@ -119,7 +119,14 @@ To mitigate conflicts before full autonomy:
 - [x] Implement “speculative merge” checks for open Codex branches (see
   `tests/test_merge.py::test_speculative_merge_reports_clean_result` and
   `tests/test_merge.py::test_speculative_merge_reports_conflicts`).
-- [ ] Develop Axel agent hooks for merge detection and policy enforcement.
+- [x] Develop Axel agent hooks for merge detection and policy enforcement (see
+  `tests/test_merge.py::test_plan_merge_actions_auto_resolves_comment_conflicts` and
+  `tests/test_merge.py::test_plan_merge_actions_uses_priority_rules`).
+
+Use `axel.merge.plan_merge_actions` to combine `speculative_merge_check` output with the
+policy defined in `axel/policies/merge_policy.yaml`. The helper highlights whether conflicts
+can be auto-resolved, surfaces file-level resolutions using priority rules, and echoes the
+safety checks agents must run before merging.
 
 Run speculative merge analysis locally with:
 

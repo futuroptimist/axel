@@ -6,7 +6,12 @@ from .critic import (
     track_prompt_saturation,
 )
 from .flywheel import evaluate_flywheel_alignment
-from .merge import speculative_merge_check
+from .merge import (
+    MergePlan,
+    load_merge_policy,
+    plan_merge_actions,
+    speculative_merge_check,
+)
 from .quests import suggest_cross_repo_quests
 from .repo_manager import add_repo, get_repo_file, list_repos, load_repos, remove_repo
 from .task_manager import (
@@ -38,7 +43,10 @@ __all__ = [
     "run_discord_bot",
     "strip_ansi",
     "suggest_cross_repo_quests",
+    "MergePlan",
     "speculative_merge_check",
+    "plan_merge_actions",
+    "load_merge_policy",
     "evaluate_flywheel_alignment",
     "analyze_orthogonality",
     "track_prompt_saturation",

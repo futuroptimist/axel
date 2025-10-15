@@ -31,6 +31,20 @@ docker compose -f infra/docker-compose-mock.yml up
 
 This launches the token.place server, relay and a mock LLM using one command.
 
+## Map of the repo
+
+- `axel/` – core Python package with CLI entry points, repo/task managers and analytics helpers.
+- `tests/` – pytest suite mirroring CLI flows, analytics helpers and README expectations.
+- `docs/` – long-form documentation, FAQs and security notes referenced throughout the README.
+- `analytics/` – orthogonality and saturation workbooks that back the `axel analyze-*` commands.
+- `hardware/` – CAD and STL assets for the token.place hardware experiments.
+- `examples/` – sample repository lists and walkthrough data for local experimentation.
+- `issues/` – markdown task tracker that keeps roadmap items grounded in actionable quests.
+- `scripts/` – maintenance helpers such as the secret scanner invoked before publishing.
+- `dict/allow.txt` – custom dictionary that keeps spell-checkers aligned with Axel terminology.
+
+Update this section when directories move so the README stays authoritative for new contributors.
+
 ## status
 
 Axel is currently in **alpha** while workflows and integrations continue to harden.

@@ -5,7 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from axel.merge import speculative_merge_check
+from axel.merge import (
+    MergePlan,
+    load_merge_policy,
+    plan_merge_actions,
+    speculative_merge_check,
+)
 
 
 def _run_git(*args: str, cwd: Path) -> subprocess.CompletedProcess[str]:
@@ -325,3 +330,125 @@ def test_merge_cli_requires_command(capsys) -> None:
 
     assert exit_code == 1
     assert "usage" in captured.out.lower()
+
+
+def test_plan_merge_actions_auto_resolves_comment_conflicts(git_repo: Path) -> None:
+    """Comment-only conflicts should auto-resolve per policy heuristics."""
+
+    (git_repo / "notes.py").write_text("# seed\nvalue = 1\n", encoding="utf-8")
+    _run_git("add", "notes.py", cwd=git_repo)
+    _run_git("commit", "-m", "initial", cwd=git_repo)
+
+    _run_git("checkout", "-b", "feature", cwd=git_repo)
+    (git_repo / "notes.py").write_text("# feature\nvalue = 1\n", encoding="utf-8")
+    _run_git("commit", "-am", "feature", cwd=git_repo)
+
+    _run_git("checkout", "main", cwd=git_repo)
+    (git_repo / "notes.py").write_text("# main\nvalue = 1\n", encoding="utf-8")
+    _run_git("commit", "-am", "main", cwd=git_repo)
+
+    plan = plan_merge_actions(git_repo, "main", "feature")
+
+    assert isinstance(plan, MergePlan)
+    assert plan.auto_resolve is True
+    assert plan.requires_manual_review is False
+    assert plan.resolutions.get("notes.py") == "auto_resolve_comment"
+    assert any(check.get("command") for check in plan.safety_checks)
+    assert plan.policy_metadata.get("author") == "Futuroptimist"
+
+
+def test_plan_merge_actions_uses_priority_rules(git_repo: Path) -> None:
+    """Priority rules should steer resolutions for matching paths."""
+
+    (git_repo / "infra").mkdir()
+    config = git_repo / "infra" / "config.yml"
+    config.write_text("value: 1\n", encoding="utf-8")
+    _run_git("add", "infra/config.yml", cwd=git_repo)
+    _run_git("commit", "-m", "initial", cwd=git_repo)
+
+    _run_git("checkout", "-b", "feature", cwd=git_repo)
+    config.write_text("value: feature\n", encoding="utf-8")
+    _run_git("commit", "-am", "feature", cwd=git_repo)
+
+    _run_git("checkout", "main", cwd=git_repo)
+    config.write_text("value: main\n", encoding="utf-8")
+    _run_git("commit", "-am", "main", cwd=git_repo)
+
+    plan = plan_merge_actions(git_repo, "main", "feature")
+
+    assert plan.auto_resolve is False
+    assert plan.requires_manual_review is True
+    assert plan.resolutions.get("infra/config.yml") == "main_wins"
+
+
+def test_auto_resolvable_false_for_conflicts_without_summary() -> None:
+    from axel import merge as merge_module
+
+    assert merge_module._auto_resolvable({}, conflicts=True) is False
+
+
+def test_load_merge_policy_requires_mapping(tmp_path: Path) -> None:
+    invalid = tmp_path / "policy.yaml"
+    invalid.write_text("[]", encoding="utf-8")
+
+    with pytest.raises(ValueError):
+        load_merge_policy(invalid)
+
+
+def test_load_merge_policy_returns_empty_for_blank_file(tmp_path: Path) -> None:
+    empty = tmp_path / "policy.yaml"
+    empty.write_text("", encoding="utf-8")
+
+    assert load_merge_policy(empty) == {}
+
+
+def test_plan_merge_actions_handles_non_mapping_classifications(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _fake_speculative_merge(
+        repo_path: Path | str, base: str, head: str
+    ) -> dict[str, object]:
+        return {
+            "conflicts": False,
+            "auto_resolvable": True,
+            "conflict_classification": ["unexpected"],
+        }
+
+    monkeypatch.setattr("axel.merge.speculative_merge_check", _fake_speculative_merge)
+
+    plan = plan_merge_actions(".", "main", "feature")
+
+    assert plan.auto_resolve is True
+    assert plan.resolutions == {}
+
+
+def test_plan_merge_actions_uses_fallback_and_metadata_defaults(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    policy = {
+        "merge_policy": {
+            "conflict_resolution": {"fallback": "manual_review"},
+            "metadata": "string",  # triggers defensive branch
+            "safety_checks": [{"command": "pytest"}],
+        }
+    }
+
+    def _fake_policy(path: Path | str | None = None) -> dict[str, object]:
+        return policy
+
+    def _fake_spec(repo_path: Path | str, base: str, head: str) -> dict[str, object]:
+        return {
+            "conflicts": True,
+            "auto_resolvable": False,
+            "conflict_classification": {"src/app.py": "code"},
+        }
+
+    monkeypatch.setattr("axel.merge.load_merge_policy", _fake_policy)
+    monkeypatch.setattr("axel.merge.speculative_merge_check", _fake_spec)
+
+    plan = plan_merge_actions(".", "main", "feature")
+
+    assert plan.auto_resolve is False
+    assert plan.requires_manual_review is True
+    assert plan.resolutions.get("src/app.py") == "manual_review"
+    assert plan.policy_metadata == {}

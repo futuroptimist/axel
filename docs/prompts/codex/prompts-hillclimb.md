@@ -79,7 +79,7 @@ must_pass:
 ```
 
 ```yaml
-# docker-compose-mock.yml
+# infra/docker-compose-mock.yml
 key: docker-compose-mock
 title: One-command docker compose (relay + server + mock LLM)
 applies_to: ["token.place"]

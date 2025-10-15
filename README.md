@@ -171,6 +171,11 @@ gabriel security layer milestone remains marked complete.
     `tests/test_token_place.py::test_plan_client_integrations_generates_pairs`,
     `tests/test_token_place.py::test_plan_client_integrations_reuses_model_metadata`, and
     `tests/test_token_place.py::test_main_clients_prints_plan`.
+18. Install shell completions with `axel --install-completions --shell bash` (pass `--path` to control the
+    output location). The command writes a reusable completion script and prints sourcing instructions.
+    Automated coverage lives in `tests/test_cli.py::test_cli_install_completions_command`,
+    `tests/test_cli.py::test_install_completions_writes_script`, and
+    `tests/test_cli.py::test_install_completions_infers_shell`.
 
 ## quests
 

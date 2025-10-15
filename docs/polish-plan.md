@@ -30,7 +30,7 @@ default, explicit telemetry opt-ins), and lands with the required checks (`flake
    reproducibility, concurrency, and dry-run regression tests.
 4. **CLI UX polish** – capture golden outputs for human/JSON modes, guarantee `--json`
    parity, and wire `axel --install-completions`. Validate completions install cleanly and
-   refine UX copy.
+   refine UX copy (see `tests/test_cli.py::test_cli_install_completions_command`).
 5. **Analytics math validation** – create fixture repos with known orthogonality/
    saturation baselines and confirm metrics plus performance envelopes.
 6. **Docs & prompt migration** – refresh README/FAQ/analytics docs, move prompt links
@@ -80,9 +80,10 @@ default, explicit telemetry opt-ins), and lands with the required checks (`flake
      exist everywhere and keep output keys consistent.
    - Refine error messaging for missing GitHub auth or repo manifests, ensure dry-run
      messaging stays prominent, and improve exit codes where necessary.
-   - Wire `axel --install-completions` to generate shell completion scripts
-     (bash/zsh/fish) and verify they install cleanly. Document the workflow in
-     quickstarts.
+  - Wire `axel --install-completions` to generate shell completion scripts
+    (bash/zsh/fish) and verify they install cleanly (see
+    `tests/test_cli.py::test_install_completions_writes_script`). Document the
+    workflow in quickstarts.
 
 5. **Analytics math validation**
    - Build fixture repositories (or synthetic commit histories) with predetermined

@@ -6,6 +6,7 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))  # noqa: E402
 import pytest  # noqa: E402
 
 import axel.cli as cli  # noqa: E402
+from axel.completions import CompletionInstallation, install_completions  # noqa: E402
 
 
 def test_cli_analyze_orthogonality_delegates_to_critic(
@@ -175,6 +176,102 @@ def test_cli_unknown_command(capsys: pytest.CaptureFixture[str]) -> None:
 
     assert exit_code == 2
     assert "unknown command: unknown" in captured.err
+
+
+def test_install_completions_writes_script(tmp_path: Path) -> None:
+    """Installing completions should create the requested script."""
+
+    destination = tmp_path / "axel.bash"
+    result = install_completions(shell="bash", path=destination)
+
+    assert isinstance(result, CompletionInstallation)
+    assert result.shell == "bash"
+    assert result.path == destination
+    assert destination.exists()
+    content = destination.read_text(encoding="utf-8")
+    assert "complete -F _axel_completions axel" in content
+
+
+def test_install_completions_infers_shell(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """When shell is omitted the helper should infer it from $SHELL."""
+
+    monkeypatch.setenv("SHELL", "/usr/bin/fish")
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+    result = install_completions()
+
+    expected = tmp_path / ".config" / "fish" / "completions" / "axel.fish"
+    assert result.shell == "fish"
+    assert result.path == expected
+    assert expected.exists()
+
+
+def test_install_completions_rejects_unknown_shell(tmp_path: Path) -> None:
+    """Unsupported shells should raise a ValueError."""
+
+    destination = tmp_path / "axel.csh"
+
+    with pytest.raises(ValueError):
+        install_completions(shell="csh", path=destination)
+
+
+def test_install_completions_defaults_to_bash(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Missing SHELL should fall back to bash destinations."""
+
+    monkeypatch.delenv("SHELL", raising=False)
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+    result = install_completions()
+
+    expected = tmp_path / ".local" / "share" / "axel" / "completions" / "axel.bash"
+    assert result.shell == "bash"
+    assert result.path == expected
+    assert expected.exists()
+
+
+def test_cli_install_completions_command(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    """--install-completions should write the script and print instructions."""
+
+    target = tmp_path / "axel.bash"
+    exit_code = cli.main(
+        ["--install-completions", "--shell", "bash", "--path", str(target)]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert target.exists()
+    assert "Installed axel completions for bash" in captured.out
+    assert "source" in captured.out
+
+
+def test_cli_install_completions_fish_default(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    """The CLI should install to the default fish path when --path is omitted."""
+
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    exit_code = cli.main(["--install-completions", "--shell", "fish"])
+    captured = capsys.readouterr()
+
+    expected = tmp_path / ".config" / "fish" / "completions" / "axel.fish"
+    assert exit_code == 0
+    assert expected.exists()
+    assert "Fish loads files" in captured.out
+
+
+def test_cli_shell_flag_requires_install(capsys: pytest.CaptureFixture[str]) -> None:
+    """Passing --shell alone should surface a helpful error."""
+
+    exit_code = cli.main(["--shell", "bash"])
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert "--shell and --path require --install-completions" in captured.err
 
 
 def test_cli_defaults_to_sys_argv(

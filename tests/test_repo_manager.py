@@ -36,6 +36,93 @@ def test_cli_list_with_path(tmp_path: Path):
     assert "https://example.com/repo" in result.stdout
 
 
+def test_main_list_supports_sampling(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from axel import repo_manager
+
+    file = tmp_path / "repos.txt"
+    urls = [
+        "https://github.com/example/delta",
+        "https://github.com/example/alpha",
+        "https://github.com/example/charlie",
+        "https://github.com/example/bravo",
+    ]
+
+    for url in urls:
+        repo_manager.add_repo(url, path=file)
+
+    repo_manager.main(
+        [
+            "list",
+            "--path",
+            str(file),
+            "--sample=2",
+            "--seed",
+            "7",
+        ]
+    )
+
+    captured = capsys.readouterr().out.splitlines()
+    output = [line.strip() for line in captured if line.strip()]
+    assert output == [
+        "https://github.com/example/alpha",
+        "https://github.com/example/charlie",
+    ]
+
+
+def test_main_list_requires_sample_value() -> None:
+    from axel import repo_manager
+
+    with pytest.raises(SystemExit):
+        repo_manager.main(["list", "--sample"])
+
+
+def test_main_list_requires_seed_value() -> None:
+    from axel import repo_manager
+
+    with pytest.raises(SystemExit):
+        repo_manager.main(["list", "--seed"])
+
+
+def test_main_list_accepts_seed_equals_form(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from axel import repo_manager
+
+    file = tmp_path / "repos.txt"
+    repo_manager.add_repo("https://example.com/repo", path=file)
+
+    repo_manager.main(
+        [
+            "list",
+            "--path",
+            str(file),
+            "--seed=5",
+        ]
+    )
+
+    assert "https://example.com/repo" in capsys.readouterr().out
+
+
+def test_main_list_rejects_non_numeric_sample(tmp_path: Path) -> None:
+    from axel import repo_manager
+
+    file = tmp_path / "repos.txt"
+    repo_manager.add_repo("https://example.com/repo", path=file)
+
+    with pytest.raises(SystemExit):
+        repo_manager.main(
+            [
+                "list",
+                "--path",
+                str(file),
+                "--sample",
+                "oops",
+            ]
+        )
+
+
 def test_main_add_accepts_path_after_subcommand(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -224,6 +311,16 @@ def test_load_repos_auto_fetch_handles_errors(
 
     assert repos == []
     assert not repo_file.exists()
+
+
+def test_apply_sampling_edge_cases() -> None:
+    from axel import repo_manager as rm
+
+    repos = ["one", "two", "three"]
+
+    assert rm._apply_sampling(repos, sample=None, seed=42) == repos
+    assert rm._apply_sampling(repos, sample=0, seed=42) == []
+    assert rm._apply_sampling(repos, sample=5, seed=42) == repos
 
 
 def test_load_repos_ignores_comments(tmp_path: Path) -> None:

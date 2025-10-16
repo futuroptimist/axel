@@ -1,3 +1,4 @@
+import json
 import sys
 from pathlib import Path
 
@@ -144,6 +145,59 @@ def test_cli_tasks_forwards_flags(
     assert list_code == 0
     assert "finish docs" in add_output
     assert "[ ] finish docs" in list_output
+
+
+def test_cli_repos_list_json(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    repo_file = tmp_path / "repos.txt"
+    repo_file.write_text("https://github.com/example/json\n")
+
+    exit_code = cli.main(
+        [
+            "repos",
+            "list",
+            "--path",
+            str(repo_file),
+            "--json",
+        ]
+    )
+
+    output = capsys.readouterr().out.strip()
+    assert exit_code == 0
+    assert json.loads(output) == ["https://github.com/example/json"]
+
+
+def test_cli_tasks_list_json(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    tasks_file = tmp_path / "tasks.json"
+    cli.main(
+        [
+            "tasks",
+            "add",
+            "write docs",
+            "--path",
+            str(tasks_file),
+        ]
+    )
+    capsys.readouterr()
+
+    exit_code = cli.main(
+        [
+            "tasks",
+            "list",
+            "--path",
+            str(tasks_file),
+            "--json",
+        ]
+    )
+
+    output = capsys.readouterr().out.strip()
+    assert exit_code == 0
+    assert json.loads(output) == [
+        {"id": 1, "description": "write docs", "completed": False}
+    ]
 
 
 def test_cli_prints_help_for_missing_command(

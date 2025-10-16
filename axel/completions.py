@@ -90,11 +90,11 @@ _axel_completions() {
     case "${command}" in
         repos)
             local repos_opts='add list remove fetch --path --token '\
-                '--visibility --help -h'
+                '--visibility --json --help -h'
             COMPREPLY=( $(compgen -W "${repos_opts}" -- "${cur}") )
             ;;
         tasks)
-            local tasks_opts='add list complete remove clear --path --help -h'
+            local tasks_opts='add list complete remove clear --path --json --help -h'
             COMPREPLY=( $(compgen -W "${tasks_opts}" -- "${cur}") )
             ;;
         analyze-orthogonality)
@@ -131,8 +131,12 @@ complete -c axel -n '__fish_use_subcommand' -a 'analyze-saturation' \
     -d 'Analyze saturation'
 complete -c axel -n '__fish_seen_subcommand_from repos' \
     -a 'add list remove fetch'
+complete -c axel -n '__fish_seen_subcommand_from repos' \
+    -l json -d 'Output JSON'
 complete -c axel -n '__fish_seen_subcommand_from tasks' \
     -a 'add list complete remove clear'
+complete -c axel -n '__fish_seen_subcommand_from tasks' \
+    -l json -d 'Output JSON'
 complete -c axel -n '__fish_seen_subcommand_from analyze-orthogonality' \
     -l repo -d 'Repository slug' -r
 complete -c axel -n '__fish_seen_subcommand_from analyze-orthogonality' \

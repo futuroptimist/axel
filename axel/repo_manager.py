@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 import random
 import sys
@@ -209,8 +210,7 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     args_list: list[str] = list(argv)
     path_override: str | None = None
-    sample_override: str | None = None
-    seed_override: str | None = None
+    json_flag = False
     cleaned: list[str] = []
     i = 0
     while i < len(args_list):
@@ -227,28 +227,8 @@ def main(argv: Sequence[str] | None = None) -> None:
             path_override = arg.split("=", 1)[1]
             i += 1
             continue
-        if arg == "--sample":
-            if i + 1 >= len(args_list):
-                cleaned.append(arg)
-                i += 1
-                continue
-            sample_override = args_list[i + 1]
-            i += 2
-            continue
-        if arg.startswith("--sample="):
-            sample_override = arg.split("=", 1)[1]
-            i += 1
-            continue
-        if arg == "--seed":
-            if i + 1 >= len(args_list):
-                cleaned.append(arg)
-                i += 1
-                continue
-            seed_override = args_list[i + 1]
-            i += 2
-            continue
-        if arg.startswith("--seed="):
-            seed_override = arg.split("=", 1)[1]
+        if arg == "--json":
+            json_flag = True
             i += 1
             continue
         cleaned.append(arg)
@@ -262,16 +242,9 @@ def main(argv: Sequence[str] | None = None) -> None:
         help="Path to repo list (defaults to AXEL_REPO_FILE or repos.txt)",
     )
     parser.add_argument(
-        "--sample",
-        type=int,
-        default=None,
-        help="Limit output to a deterministic sample of repositories",
-    )
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=None,
-        help="Seed used when sampling repositories",
+        "--json",
+        action="store_true",
+        help="Output repositories as JSON",
     )
     sub = parser.add_subparsers(dest="cmd")
 
@@ -281,7 +254,19 @@ def main(argv: Sequence[str] | None = None) -> None:
     remove_p = sub.add_parser("remove", help="Remove a repository URL")
     remove_p.add_argument("url")
 
-    sub.add_parser("list", help="List repositories")
+    list_p = sub.add_parser("list", help="List repositories")
+    list_p.add_argument(
+        "--sample",
+        type=int,
+        default=None,
+        help="Return a deterministic subset of repositories",
+    )
+    list_p.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Seed used when sampling repositories",
+    )
     fetch_p = sub.add_parser("fetch", help="Fetch repositories from GitHub")
     fetch_p.add_argument("--token", help="GitHub token", default=None)
     fetch_p.add_argument(
@@ -292,25 +277,8 @@ def main(argv: Sequence[str] | None = None) -> None:
     )
 
     args = parser.parse_args(cleaned)
-
-    def _coerce_int(value: str | None, flag: str) -> int | None:
-        if value is None:
-            return None
-        try:
-            return int(value)
-        except ValueError:
-            try:
-                parser.error(f"{flag} requires an integer")
-            except SystemExit:  # pragma: no cover - argparse handles messaging
-                raise
-            return None  # pragma: no cover - parser.error raises SystemExit
-
-    sample_value = _coerce_int(sample_override, "--sample")
-    seed_value = _coerce_int(seed_override, "--seed")
-    if sample_value is not None:
-        args.sample = sample_value
-    if seed_value is not None:
-        args.seed = seed_value
+    if json_flag:
+        args.json = True
 
     if path_override is not None:
         path = Path(path_override).expanduser()
@@ -329,11 +297,16 @@ def main(argv: Sequence[str] | None = None) -> None:
             path=args.path, token=args.token, visibility=args.visibility
         )
     else:
-        repos = _apply_sampling(
-            list_repos(path=args.path), sample=args.sample, seed=args.seed
-        )
-    for repo in repos:
-        print(repo)
+        repos = list_repos(path=args.path)
+        sample = getattr(args, "sample", None)
+        seed = getattr(args, "seed", None)
+        repos = _apply_sampling(repos, sample, seed)
+
+    if args.json:
+        print(json.dumps(repos, indent=2, ensure_ascii=False))
+    else:
+        for repo in repos:
+            print(repo)
 
 
 if __name__ == "__main__":  # pragma: no cover - manual use

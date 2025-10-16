@@ -112,6 +112,29 @@ def test_cli_add(tmp_path: Path) -> None:
     assert "1 [ ] write code" in result.stdout
 
 
+def test_main_list_supports_json_output(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from axel import task_manager
+
+    tasks_file = tmp_path / "tasks.json"
+    add_task("write docs", path=tasks_file)
+
+    task_manager.main(
+        [
+            "list",
+            "--path",
+            str(tasks_file),
+            "--json",
+        ]
+    )
+
+    output = capsys.readouterr().out.strip()
+    assert json.loads(output) == [
+        {"id": 1, "description": "write docs", "completed": False},
+    ]
+
+
 def test_main_add_accepts_path_after_subcommand(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

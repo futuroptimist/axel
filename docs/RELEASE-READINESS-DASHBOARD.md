@@ -15,7 +15,9 @@ Definition of Done for v0.1
   `tests/test_release_readiness_dashboard.py::test_release_dashboard_marks_security_scans_complete`)
 - [x] Docs: FAQ, Known issues/Footguns, Status: Alpha badge (see
   `tests/test_release_readiness_dashboard.py`)
-- [ ] Community: CONTRIBUTING, CoC, Issue/PR templates, ≥3 good first issues
+- [x] Community: CONTRIBUTING, CoC, Issue/PR templates, ≥3 good first issues
+  (guarded by
+  `tests/test_release_readiness_dashboard.py::test_release_dashboard_marks_community_complete`)
 
 Summary Table
 Repo v0.1 tag Release notes 1‑click install Demo Landing page CI green Coverage badge Security scans Arch doc

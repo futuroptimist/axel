@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import random
 import sys
 from pathlib import Path
 from typing import List, Sequence
@@ -112,6 +113,23 @@ def remove_repo(url: str, path: Path | None = None) -> List[str]:
 def list_repos(path: Path | None = None) -> List[str]:
     """Return the list of repository URLs."""
     return load_repos(path)
+
+
+def _apply_sampling(
+    repos: Sequence[str], sample: int | None, seed: int | None
+) -> list[str]:
+    """Return a deterministic subset of ``repos`` using ``sample`` and ``seed``."""
+
+    if sample is None:
+        return list(repos)
+    if sample <= 0:
+        return []
+    if sample >= len(repos):
+        return list(repos)
+
+    rng = random.Random(seed)
+    indices = sorted(rng.sample(range(len(repos)), sample))
+    return [repos[index] for index in indices]
 
 
 def fetch_repo_urls(

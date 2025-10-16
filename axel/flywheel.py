@@ -53,6 +53,14 @@ def _workflow_exists(slug: str, filename: str, token: str | None) -> bool:
         return True
     if response.status_code == 404:
         return False
+    if response.status_code in {401, 403}:
+        location = f"{slug}/.github/workflows/{filename}"
+        raise RuntimeError(
+            "GitHub returned HTTP "
+            f"{response.status_code} for {location}. "
+            "Provide a token via --token or set GH_TOKEN/GITHUB_TOKEN "
+            "to access private repositories."
+        )
     response.raise_for_status()
     return False  # pragma: no cover - raise_for_status always raises here
 

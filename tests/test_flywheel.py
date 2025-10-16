@@ -190,6 +190,29 @@ def test_workflow_exists_raises_on_unexpected_status(
         )
 
 
+def test_workflow_exists_prompts_for_token_on_forbidden(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class ForbiddenResponse(DummyResponse):
+        def __init__(self) -> None:
+            super().__init__(403)
+
+        def raise_for_status(self) -> None:  # pragma: no cover - handled earlier
+            raise RuntimeError("forbidden")
+
+    def fake_get(url: str, *, headers: dict[str, str], timeout: int) -> DummyResponse:
+        return ForbiddenResponse()
+
+    monkeypatch.setattr(flywheel.requests, "get", fake_get)
+
+    with pytest.raises(RuntimeError) as excinfo:
+        flywheel._workflow_exists("owner/repo", "01-lint-format.yml", None)
+
+    message = str(excinfo.value)
+    assert "HTTP 403" in message
+    assert "GH_TOKEN" in message
+
+
 def test_slug_from_url_invalid() -> None:
     with pytest.raises(ValueError):
         flywheel._slug_from_url("not-a-repo")

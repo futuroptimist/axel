@@ -254,7 +254,19 @@ def main(argv: Sequence[str] | None = None) -> None:
     remove_p = sub.add_parser("remove", help="Remove a repository URL")
     remove_p.add_argument("url")
 
-    sub.add_parser("list", help="List repositories")
+    list_p = sub.add_parser("list", help="List repositories")
+    list_p.add_argument(
+        "--sample",
+        type=int,
+        default=None,
+        help="Return a deterministic subset of repositories",
+    )
+    list_p.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Seed used when sampling repositories",
+    )
     fetch_p = sub.add_parser("fetch", help="Fetch repositories from GitHub")
     fetch_p.add_argument("--token", help="GitHub token", default=None)
     fetch_p.add_argument(
@@ -286,6 +298,9 @@ def main(argv: Sequence[str] | None = None) -> None:
         )
     else:
         repos = list_repos(path=args.path)
+        sample = getattr(args, "sample", None)
+        seed = getattr(args, "seed", None)
+        repos = _apply_sampling(repos, sample, seed)
 
     if args.json:
         print(json.dumps(repos, indent=2, ensure_ascii=False))

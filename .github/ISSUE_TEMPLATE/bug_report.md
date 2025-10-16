@@ -12,9 +12,9 @@ labels: bug, good first issue
 
 <!-- List the commands or actions that triggered the bug. -->
 
-1. 
-2. 
-3. 
+1. ...
+2. ...
+3. ...
 
 ## Expected behavior
 

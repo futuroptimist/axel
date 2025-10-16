@@ -70,6 +70,11 @@ DOCUMENTATION TASKS:
 
 DEVELOPER EXPERIENCE POLISH:
 - Ensure `repos`, `tasks`, and analytics commands accept `--json` outputs for scripting.
+  (`repos` and `tasks` now satisfy this via
+  `tests/test_repo_manager.py::test_main_list_supports_json_output`,
+  `tests/test_task_manager.py::test_main_list_supports_json_output`,
+  `tests/test_cli.py::test_cli_repos_list_json`, and
+  `tests/test_cli.py::test_cli_tasks_list_json`; analytics still pending.)
 - Publish shell completion installation steps via `axel --install-completions`
   (see `tests/test_cli.py::test_cli_install_completions_command`).
 - Capture DX notes inside README/FAQ so contributors discover them quickly.

@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
@@ -191,6 +192,7 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     args_list: list[str] = list(argv)
     path_override: str | None = None
+    json_flag = False
     cleaned: list[str] = []
     i = 0
     while i < len(args_list):
@@ -207,6 +209,10 @@ def main(argv: Sequence[str] | None = None) -> None:
             path_override = arg.split("=", 1)[1]
             i += 1
             continue
+        if arg == "--json":
+            json_flag = True
+            i += 1
+            continue
         cleaned.append(arg)
         i += 1
 
@@ -216,6 +222,11 @@ def main(argv: Sequence[str] | None = None) -> None:
         type=Path,
         default=None,
         help="Path to repo list (defaults to AXEL_REPO_FILE or repos.txt)",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output repositories as JSON",
     )
     sub = parser.add_subparsers(dest="cmd")
 
@@ -236,6 +247,8 @@ def main(argv: Sequence[str] | None = None) -> None:
     )
 
     args = parser.parse_args(cleaned)
+    if json_flag:
+        args.json = True
 
     if path_override is not None:
         path = Path(path_override).expanduser()
@@ -255,8 +268,12 @@ def main(argv: Sequence[str] | None = None) -> None:
         )
     else:
         repos = list_repos(path=args.path)
-    for repo in repos:
-        print(repo)
+
+    if args.json:
+        print(json.dumps(repos, indent=2, ensure_ascii=False))
+    else:
+        for repo in repos:
+            print(repo)
 
 
 if __name__ == "__main__":  # pragma: no cover - manual use

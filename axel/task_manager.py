@@ -112,6 +112,7 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     args_list: list[str] = list(argv)
     path_override: str | None = None
+    json_flag = False
     cleaned: list[str] = []
     i = 0
     while i < len(args_list):
@@ -128,6 +129,10 @@ def main(argv: Sequence[str] | None = None) -> None:
             path_override = arg.split("=", 1)[1]
             i += 1
             continue
+        if arg == "--json":
+            json_flag = True
+            i += 1
+            continue
         cleaned.append(arg)
         i += 1
 
@@ -137,6 +142,11 @@ def main(argv: Sequence[str] | None = None) -> None:
         type=Path,
         default=None,
         help="Path to task database (defaults to AXEL_TASK_FILE or tasks.json)",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output tasks as JSON",
     )
     sub = parser.add_subparsers(dest="cmd")
 
@@ -154,6 +164,8 @@ def main(argv: Sequence[str] | None = None) -> None:
     sub.add_parser("clear", help="Remove all tasks")
 
     args = parser.parse_args(cleaned)
+    if json_flag:
+        args.json = True
 
     if path_override is not None:
         path = Path(path_override).expanduser()
@@ -173,6 +185,11 @@ def main(argv: Sequence[str] | None = None) -> None:
         tasks = clear_tasks(path=args.path)
     else:
         tasks = list_tasks(path=args.path)
+
+    if args.json:
+        print(json.dumps(tasks, indent=2, ensure_ascii=False))
+        return
+
     for task in tasks:
         completed = bool(task.get("completed"))
         status = "[x]" if completed else "[ ]"

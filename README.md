@@ -104,7 +104,10 @@ Analytics helpers are exposed through the same entry point using
    The repository list is kept sorted alphabetically, ignoring case. Removing entries
    preserves this order. Duplicate URLs are automatically removed (case-insensitive).
 2. View the list with `python -m axel.repo_manager list`. Output is sorted
-   alphabetically, ignoring case.
+   alphabetically, ignoring case. Pass `--json` to emit machine-friendly
+   arrays for scripting (see
+   `tests/test_repo_manager.py::test_main_list_supports_json_output` and
+   `tests/test_cli.py::test_cli_repos_list_json`).
 3. Remove a repo with `python -m axel.repo_manager remove <url>`.
 4. Replace `repos.txt` with the authenticated user's repos via
    `python -m axel.repo_manager fetch`. Pass `--token` or set ``GH_TOKEN`` or
@@ -165,7 +168,10 @@ gabriel security layer milestone remains marked complete.
 11. Clear all tasks with `python -m axel.task_manager clear`.
 12. Pass `--path <file>` or set `AXEL_TASK_FILE` to use a custom task list. The task CLI also
     accepts `--path` before or after the subcommand (see
-    `tests/test_task_manager.py::test_main_add_accepts_path_after_subcommand`).
+    `tests/test_task_manager.py::test_main_add_accepts_path_after_subcommand`). Use
+    `--json` when listing tasks to script against structured output (see
+    `tests/test_task_manager.py::test_main_list_supports_json_output` and
+    `tests/test_cli.py::test_cli_tasks_list_json`).
 13. Empty, invalid, or non-list `tasks.json` files are treated as containing no tasks.
 14. Legacy task entries missing the `completed` field default to pending output (see
     `tests/test_task_manager.py::test_main_list_handles_missing_completed_field`).

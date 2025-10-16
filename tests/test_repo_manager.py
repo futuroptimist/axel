@@ -1,4 +1,5 @@
 import importlib
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -54,6 +55,27 @@ def test_main_add_accepts_path_after_subcommand(
 
     assert load_repos(path=file) == ["https://example.com/repo"]
     assert "https://example.com/repo" in capsys.readouterr().out
+
+
+def test_main_list_supports_json_output(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from axel import repo_manager
+
+    repo_file = tmp_path / "repos.txt"
+    add_repo("https://example.com/repo", path=repo_file)
+
+    repo_manager.main(
+        [
+            "list",
+            "--path",
+            str(repo_file),
+            "--json",
+        ]
+    )
+
+    output = capsys.readouterr().out.strip()
+    assert json.loads(output) == ["https://example.com/repo"]
 
 
 def test_main_add_uses_default_repo_file(

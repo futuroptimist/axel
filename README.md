@@ -105,6 +105,9 @@ Analytics helpers are exposed through the same entry point using
    preserves this order. Duplicate URLs are automatically removed (case-insensitive).
 2. View the list with `python -m axel.repo_manager list`. Output is sorted
    alphabetically, ignoring case.
+   Pass `--sample <count>` and optionally `--seed <value>` to display a
+   reproducible subset when working with large lists (see
+   `tests/test_repo_manager.py::test_main_list_supports_sampling`).
 3. Remove a repo with `python -m axel.repo_manager remove <url>`.
 4. Replace `repos.txt` with the authenticated user's repos via
    `python -m axel.repo_manager fetch`. Pass `--token` or set ``GH_TOKEN`` or

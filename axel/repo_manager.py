@@ -1,5 +1,6 @@
 import argparse
 import os
+import random
 import sys
 from pathlib import Path
 from typing import List, Sequence
@@ -113,6 +114,23 @@ def list_repos(path: Path | None = None) -> List[str]:
     return load_repos(path)
 
 
+def _apply_sampling(
+    repos: Sequence[str], sample: int | None, seed: int | None
+) -> list[str]:
+    """Return a deterministic subset of ``repos`` using ``sample`` and ``seed``."""
+
+    if sample is None:
+        return list(repos)
+    if sample <= 0:
+        return []
+    if sample >= len(repos):
+        return list(repos)
+
+    rng = random.Random(seed)
+    indices = sorted(rng.sample(range(len(repos)), sample))
+    return [repos[index] for index in indices]
+
+
 def fetch_repo_urls(
     token: str | None = None, visibility: str | None = None
 ) -> List[str]:
@@ -191,6 +209,8 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     args_list: list[str] = list(argv)
     path_override: str | None = None
+    sample_override: str | None = None
+    seed_override: str | None = None
     cleaned: list[str] = []
     i = 0
     while i < len(args_list):
@@ -207,6 +227,30 @@ def main(argv: Sequence[str] | None = None) -> None:
             path_override = arg.split("=", 1)[1]
             i += 1
             continue
+        if arg == "--sample":
+            if i + 1 >= len(args_list):
+                cleaned.append(arg)
+                i += 1
+                continue
+            sample_override = args_list[i + 1]
+            i += 2
+            continue
+        if arg.startswith("--sample="):
+            sample_override = arg.split("=", 1)[1]
+            i += 1
+            continue
+        if arg == "--seed":
+            if i + 1 >= len(args_list):
+                cleaned.append(arg)
+                i += 1
+                continue
+            seed_override = args_list[i + 1]
+            i += 2
+            continue
+        if arg.startswith("--seed="):
+            seed_override = arg.split("=", 1)[1]
+            i += 1
+            continue
         cleaned.append(arg)
         i += 1
 
@@ -216,6 +260,18 @@ def main(argv: Sequence[str] | None = None) -> None:
         type=Path,
         default=None,
         help="Path to repo list (defaults to AXEL_REPO_FILE or repos.txt)",
+    )
+    parser.add_argument(
+        "--sample",
+        type=int,
+        default=None,
+        help="Limit output to a deterministic sample of repositories",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Seed used when sampling repositories",
     )
     sub = parser.add_subparsers(dest="cmd")
 
@@ -237,6 +293,25 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     args = parser.parse_args(cleaned)
 
+    def _coerce_int(value: str | None, flag: str) -> int | None:
+        if value is None:
+            return None
+        try:
+            return int(value)
+        except ValueError:
+            try:
+                parser.error(f"{flag} requires an integer")
+            except SystemExit:  # pragma: no cover - argparse handles messaging
+                raise
+            return None  # pragma: no cover - parser.error raises SystemExit
+
+    sample_value = _coerce_int(sample_override, "--sample")
+    seed_value = _coerce_int(seed_override, "--seed")
+    if sample_value is not None:
+        args.sample = sample_value
+    if seed_value is not None:
+        args.seed = seed_value
+
     if path_override is not None:
         path = Path(path_override).expanduser()
     elif args.path is not None:
@@ -254,7 +329,9 @@ def main(argv: Sequence[str] | None = None) -> None:
             path=args.path, token=args.token, visibility=args.visibility
         )
     else:
-        repos = list_repos(path=args.path)
+        repos = _apply_sampling(
+            list_repos(path=args.path), sample=args.sample, seed=args.seed
+        )
     for repo in repos:
         print(repo)
 

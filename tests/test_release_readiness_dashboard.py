@@ -37,3 +37,35 @@ def test_release_dashboard_marks_security_scans_complete() -> None:
 
     workflow = root / ".github" / "workflows" / "04-security.yml"
     assert workflow.exists(), "CodeQL workflow should be present for security scans"
+
+
+def test_release_dashboard_marks_community_complete() -> None:
+    """Community checklist should confirm templates and starter issues exist."""
+
+    root = Path(__file__).resolve().parents[1]
+    dashboard = (root / "docs" / "RELEASE-READINESS-DASHBOARD.md").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        "- [x] Community: CONTRIBUTING, CoC, Issue/PR templates, ≥3 good first issues"
+        in dashboard
+    )
+
+    templates_dir = root / ".github" / "ISSUE_TEMPLATE"
+    assert templates_dir.exists(), "Issue templates directory should exist"
+    assert any(
+        path.suffix.lower() in {".md", ".markdown", ".yml", ".yaml"}
+        for path in templates_dir.iterdir()
+        if path.is_file()
+    ), "Issue templates should include Markdown or YAML files"
+
+    pr_template = root / ".github" / "PULL_REQUEST_TEMPLATE.md"
+    assert pr_template.exists(), "Pull request template should exist"
+
+    issue_dir = root / "issues"
+    tagged = [
+        path
+        for path in issue_dir.glob("*.md")
+        if "good first issue" in path.read_text(encoding="utf-8").lower()
+    ]
+    assert len(tagged) >= 3

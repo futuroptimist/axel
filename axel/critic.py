@@ -376,6 +376,11 @@ def main(argv: list[str] | None = None) -> int:
     ortho_parser.add_argument(
         "--repo", dest="repo", help="owner/name for GitHub repository"
     )
+    ortho_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output orthogonality analytics as JSON",
+    )
 
     sat_parser = subparsers.add_parser(
         "analyze-saturation", help="Compute prompt saturation analytics"
@@ -388,6 +393,11 @@ def main(argv: list[str] | None = None) -> int:
         "--metrics",
         help="Path to JSON file containing latest run metrics",
     )
+    sat_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output saturation analytics as JSON",
+    )
 
     args = parser.parse_args(argv)
     if args.command == "analyze-orthogonality":
@@ -398,6 +408,9 @@ def main(argv: list[str] | None = None) -> int:
             data = Path(file_path).read_text(encoding="utf-8")
             task_versions.append(data)
         result = analyze_orthogonality(task_versions, args.prs or [])
+        if args.json:
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+            return 0
         print(_format_orthogonality_output(result))
         return 0
     if args.command == "analyze-saturation":
@@ -406,6 +419,9 @@ def main(argv: list[str] | None = None) -> int:
             metrics = json.loads(Path(args.metrics).read_text(encoding="utf-8"))
         set_latest_run_metrics(metrics)
         result = track_prompt_saturation(args.repo, args.prompt)
+        if args.json:
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+            return 0
         print(_format_saturation_output(result))
         return 0
     parser.print_help()

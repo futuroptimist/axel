@@ -105,24 +105,30 @@ def test_cli_commands(critic_module, monkeypatch, tmp_path, capsys):
     diff_a.write_text("diff --git a/file b/file\n+foo\n", encoding="utf-8")
     diff_b.write_text("diff --git a/file b/file\n+bar\n", encoding="utf-8")
 
-    exit_code = critic_module.main(
-        [
-            "analyze-orthogonality",
-            "--diff-file",
-            str(diff_a),
-            "--diff-file",
-            str(diff_b),
-            "--pr",
-            "1",
-            "--pr",
-            "2",
-            "--repo",
-            "octo/demo",
-        ]
-    )
+    common_args = [
+        "analyze-orthogonality",
+        "--diff-file",
+        str(diff_a),
+        "--diff-file",
+        str(diff_b),
+        "--pr",
+        "1",
+        "--pr",
+        "2",
+        "--repo",
+        "octo/demo",
+    ]
+
+    exit_code = critic_module.main(common_args)
     assert exit_code == 0
     output = capsys.readouterr().out
     assert "Orthogonality" in output
+
+    exit_code = critic_module.main([*common_args, "--json"])
+    assert exit_code == 0
+    json_output = json.loads(capsys.readouterr().out)
+    assert json_output["total_tasks"] == 2
+    assert json_output["merged_prs"] == [1, 2]
 
     metrics_file = tmp_path / "metrics.json"
     metrics_file.write_text(
@@ -137,20 +143,26 @@ def test_cli_commands(critic_module, monkeypatch, tmp_path, capsys):
         encoding="utf-8",
     )
 
-    exit_code = critic_module.main(
-        [
-            "analyze-saturation",
-            "--repo",
-            "octo/demo",
-            "--prompt",
-            "implement.md",
-            "--metrics",
-            str(metrics_file),
-        ]
-    )
+    sat_args = [
+        "analyze-saturation",
+        "--repo",
+        "octo/demo",
+        "--prompt",
+        "implement.md",
+        "--metrics",
+        str(metrics_file),
+    ]
+
+    exit_code = critic_module.main(sat_args)
     assert exit_code == 0
     output = capsys.readouterr().out
     assert "Saturation" in output
+
+    exit_code = critic_module.main([*sat_args, "--json"])
+    assert exit_code == 0
+    sat_json = json.loads(capsys.readouterr().out)
+    assert sat_json["repo"] == "octo/demo"
+    assert sat_json["prompt"] == "implement.md"
 
 
 def test_load_history_handles_missing_and_invalid_lines(critic_module, tmp_path):

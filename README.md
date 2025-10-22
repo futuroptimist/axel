@@ -95,6 +95,8 @@ Analytics helpers are exposed through the same entry point using
 `axel analyze-orthogonality` and `axel analyze-saturation`, covered by
 `tests/test_cli.py::test_cli_analyze_orthogonality_delegates_to_critic` and
 `tests/test_cli.py::test_cli_analyze_saturation_normalizes_bool_exit`.
+Pass `--json` to either command to emit machine-readable output for
+automation (see `tests/test_critic.py::test_cli_commands`).
 
 1. Add a repo with `python -m axel.repo_manager add <url>` (use `https://...`).
    Alternatively, edit `repos.txt`.

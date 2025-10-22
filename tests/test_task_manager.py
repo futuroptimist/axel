@@ -418,6 +418,76 @@ def test_clear_tasks_default_path(monkeypatch, tmp_path: Path) -> None:
     assert tm.load_tasks() == []
 
 
+def test_apply_sampling_edge_cases() -> None:
+    """Task sampling helper should mirror repo sampling edge cases."""
+
+    import axel.task_manager as tm
+
+    tasks = [
+        {"id": 1},
+        {"id": 2},
+        {"id": 3},
+    ]
+
+    assert tm._apply_sampling(tasks, sample=None, seed=42) == tasks
+    assert tm._apply_sampling(tasks, sample=0, seed=42) == []
+    assert tm._apply_sampling(tasks, sample=5, seed=42) == tasks
+
+
+def test_apply_sampling_deterministic() -> None:
+    """Sampling with the same seed should produce stable selections."""
+
+    import axel.task_manager as tm
+
+    tasks = [
+        {"id": 1},
+        {"id": 2},
+        {"id": 3},
+        {"id": 4},
+    ]
+
+    first = tm._apply_sampling(tasks, sample=2, seed=99)
+    second = tm._apply_sampling(tasks, sample=2, seed=99)
+
+    assert first == second
+    assert [task["id"] for task in first] == [task["id"] for task in second]
+
+
+def test_main_list_supports_sampling(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """``task_manager.main`` should apply sampling before printing tasks."""
+
+    file = tmp_path / "tasks.json"
+    add_task("write docs", path=file)
+    add_task("write code", path=file)
+    add_task("write tests", path=file)
+
+    import axel.task_manager as tm
+
+    tasks = tm.load_tasks(path=file)
+    expected = tm._apply_sampling(tasks, sample=2, seed=7)
+
+    from axel.task_manager import main
+
+    main(
+        [
+            "--path",
+            str(file),
+            "list",
+            "--sample",
+            "2",
+            "--seed",
+            "7",
+        ]
+    )
+
+    output = capsys.readouterr().out.strip().splitlines()
+    assert len(output) == 2
+    printed_ids = [int(line.split()[0]) for line in output]
+    assert printed_ids == [task["id"] for task in expected]
+
+
 def test_complete_task_missing_id(tmp_path: Path) -> None:
     """Completing an unknown task id raises ``ValueError``."""
     file = tmp_path / "tasks.json"

@@ -200,6 +200,63 @@ def test_cli_tasks_list_json(
     ]
 
 
+def test_cli_tasks_list_sample(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    tasks_file = tmp_path / "tasks.json"
+    cli.main(
+        [
+            "tasks",
+            "add",
+            "alpha",
+            "--path",
+            str(tasks_file),
+        ]
+    )
+    cli.main(
+        [
+            "tasks",
+            "add",
+            "beta",
+            "--path",
+            str(tasks_file),
+        ]
+    )
+    cli.main(
+        [
+            "tasks",
+            "add",
+            "gamma",
+            "--path",
+            str(tasks_file),
+        ]
+    )
+    capsys.readouterr()
+
+    exit_code = cli.main(
+        [
+            "tasks",
+            "list",
+            "--path",
+            str(tasks_file),
+            "--sample",
+            "1",
+            "--seed",
+            "3",
+        ]
+    )
+
+    output_lines = capsys.readouterr().out.strip().splitlines()
+    assert exit_code == 0
+    assert len(output_lines) == 1
+
+    import axel.task_manager as tm
+
+    expected = tm._apply_sampling(tm.load_tasks(path=tasks_file), sample=1, seed=3)
+    printed_id = int(output_lines[0].split()[0])
+    assert printed_id == expected[0]["id"]
+
+
 def test_cli_prints_help_for_missing_command(
     capsys: pytest.CaptureFixture[str],
 ) -> None:

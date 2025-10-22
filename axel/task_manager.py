@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import random
 import sys
 from pathlib import Path
 from typing import Dict, List, Sequence
@@ -103,6 +104,23 @@ def clear_tasks(path: Path | None = None) -> List[Dict]:
     return []
 
 
+def _apply_sampling(
+    tasks: Sequence[Dict], sample: int | None, seed: int | None
+) -> list[Dict]:
+    """Return a deterministic subset of ``tasks`` when sampling is requested."""
+
+    if sample is None:
+        return list(tasks)
+    if sample <= 0:
+        return []
+    if sample >= len(tasks):
+        return list(tasks)
+
+    rng = random.Random(seed)
+    indices = sorted(rng.sample(range(len(tasks)), sample))
+    return [tasks[index] for index in indices]
+
+
 def main(argv: Sequence[str] | None = None) -> None:
     """Simple command-line interface for managing tasks."""
     if argv is None:
@@ -153,7 +171,19 @@ def main(argv: Sequence[str] | None = None) -> None:
     add_p = sub.add_parser("add", help="Add a task")
     add_p.add_argument("description")
 
-    sub.add_parser("list", help="List tasks")
+    list_p = sub.add_parser("list", help="List tasks")
+    list_p.add_argument(
+        "--sample",
+        type=int,
+        default=None,
+        help="Return a deterministic subset of tasks",
+    )
+    list_p.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Seed used when sampling tasks",
+    )
 
     complete_p = sub.add_parser("complete", help="Mark a task as completed")
     complete_p.add_argument("id", type=int)
@@ -185,6 +215,9 @@ def main(argv: Sequence[str] | None = None) -> None:
         tasks = clear_tasks(path=args.path)
     else:
         tasks = list_tasks(path=args.path)
+        sample = getattr(args, "sample", None)
+        seed = getattr(args, "seed", None)
+        tasks = _apply_sampling(tasks, sample, seed)
 
     if args.json:
         print(json.dumps(tasks, indent=2, ensure_ascii=False))

@@ -171,7 +171,10 @@ gabriel security layer milestone remains marked complete.
     `tests/test_task_manager.py::test_main_add_accepts_path_after_subcommand`). Use
     `--json` when listing tasks to script against structured output (see
     `tests/test_task_manager.py::test_main_list_supports_json_output` and
-    `tests/test_cli.py::test_cli_tasks_list_json`).
+    `tests/test_cli.py::test_cli_tasks_list_json`). Deterministic sampling is available via
+    `--sample`/`--seed` so large backlogs stay manageable, covered by
+    `tests/test_task_manager.py::test_main_list_supports_sampling` and
+    `tests/test_cli.py::test_cli_tasks_list_sample`.
 13. Empty, invalid, or non-list `tasks.json` files are treated as containing no tasks.
 14. Legacy task entries missing the `completed` field default to pending output (see
     `tests/test_task_manager.py::test_main_list_handles_missing_completed_field`).

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from dataclasses import dataclass
 from itertools import combinations
 from pathlib import Path
@@ -84,9 +85,38 @@ _REDACTED_DETAIL = (
     "Quest detail withheld because --token-place-key was provided."
 )
 
+_REDACTED_SECRET = "[REDACTED]"
+
+_OUTPUT_TOKEN_PLACE_KEYS: tuple[str, ...] = ()
+
+
+def _known_token_place_keys(explicit_key: str | None) -> tuple[str, ...]:
+    """Return known token.place secrets from CLI and environment."""
+
+    keys: list[str] = []
+    for candidate in (explicit_key, os.getenv("TOKEN_PLACE_API_KEY")):
+        if not candidate:
+            continue
+        cleaned = candidate.strip()
+        if cleaned and cleaned not in keys:
+            keys.append(cleaned)
+    return tuple(keys)
+
+
+def _redact_token_place_secrets(text: str, secrets: Sequence[str]) -> str:
+    """Replace occurrences of known token.place secrets within ``text``."""
+
+    sanitized = text
+    for secret in secrets:
+        if secret:
+            sanitized = sanitized.replace(secret, _REDACTED_SECRET)
+    return sanitized
+
 
 def _sanitize_suggestions_for_output(
     suggestions: Sequence[Suggestion],
+    *,
+    known_token_place_keys: Sequence[str],
     hide_sensitive_details: bool,
 ) -> list[Suggestion]:
     """Return sanitized suggestions safe for CLI output."""
@@ -102,14 +132,14 @@ def _sanitize_suggestions_for_output(
         details_value = suggestion.get("details")
         summary = summary_value if isinstance(summary_value, str) else ""
         details = details_value if isinstance(details_value, str) else ""
+        sanitized_summary = _redact_token_place_secrets(summary, known_token_place_keys)
+        sanitized_details = _redact_token_place_secrets(details, known_token_place_keys)
         if hide_sensitive_details:
             sanitized_details = _REDACTED_DETAIL
-        else:
-            sanitized_details = details
         sanitized.append(
             {
                 "repos": repos,
-                "summary": summary,
+                "summary": sanitized_summary,
                 "details": sanitized_details,
             }
         )
@@ -119,7 +149,8 @@ def _sanitize_suggestions_for_output(
 def _emit_line(text: str) -> None:
     """Print ``text`` to stdout."""
 
-    print(text)
+    sanitized_text = _redact_token_place_secrets(text, _OUTPUT_TOKEN_PLACE_KEYS)
+    print(sanitized_text)
 
 
 def _build_suggestion(
@@ -272,6 +303,9 @@ def main(argv: Sequence[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     repos = load_repos(path=args.path)
+    known_token_place_keys = _known_token_place_keys(args.token_place_key)
+    global _OUTPUT_TOKEN_PLACE_KEYS
+    _OUTPUT_TOKEN_PLACE_KEYS = known_token_place_keys
     suggestions = suggest_cross_repo_quests(
         repos,
         limit=args.limit,
@@ -287,7 +321,8 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     sanitized_for_output = _sanitize_suggestions_for_output(
         suggestions,
-        bool(args.token_place_key),
+        known_token_place_keys=known_token_place_keys,
+        hide_sensitive_details=bool(args.token_place_key),
     )
     if args.json:
         json_output = json.dumps(

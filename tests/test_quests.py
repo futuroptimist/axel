@@ -306,6 +306,48 @@ def test_cli_redacts_token_place_key_from_json_output(
     assert "secret" not in output
 
 
+def test_cli_redacts_env_token_place_key_from_json_output(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import axel.quests as quests
+
+    repo_file = tmp_path / "repos.txt"
+    repo_file.write_text(
+        "https://github.com/futuroptimist/token.place\n"
+        "https://github.com/futuroptimist/axel\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setenv("TOKEN_PLACE_API_KEY", "env-secret")
+
+    def fake_detail(
+        primary_slug: str,
+        secondary_slug: str,
+        *,
+        base_url: str | None = None,
+        api_key: str | None = None,
+    ) -> str:
+        assert api_key is None
+        return "connect using env-secret context"
+
+    monkeypatch.setattr(quests.token_place_integration, "quest_detail", fake_detail)
+
+    quests.main(
+        [
+            "--path",
+            str(repo_file),
+            "--limit",
+            "1",
+            "--json",
+        ]
+    )
+
+    output = capsys.readouterr().out
+    payload = json.loads(output)
+    assert payload[0]["details"].count(quests._REDACTED_SECRET) >= 1
+    assert "env-secret" not in output
+
+
 def test_cli_forwards_token_place_configuration(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

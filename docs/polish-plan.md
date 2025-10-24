@@ -64,9 +64,9 @@ default, explicit telemetry opt-ins), and lands with the required checks (`flake
 
 3. **Deterministic sampling rollout**
    - Add shared `--sample` and `--seed` flags to `axel repos`, `axel tasks`, and `axel
-     analytics`. Ensure the filtered set flows through repo discovery, task
-     aggregation, and analytics providers so downstream consumers observe the identical
-     subset.
+     analytics`. The analytics CLI now exposes these flags (see
+     `tests/test_critic.py::test_cli_sampling_limits_diff_files`) so the filtered set
+     matches repo and task sampling, keeping downstream consumers aligned.
    - Annotate human-readable and JSON outputs with sampling decisions, and embed
      sampling metadata in persisted analytics records for auditing. Expose sampling
      knobs to analytics persistence and telemetry payloads.

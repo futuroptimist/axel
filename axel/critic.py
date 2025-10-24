@@ -6,13 +6,14 @@ import argparse
 import json
 import math
 import os
+import random
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from itertools import combinations
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any, Iterable, Mapping, Sequence, TypeVar
 
 import pandas as pd
 import requests
@@ -23,6 +24,8 @@ _ORTHOGONALITY_BINS = 5
 
 _CURRENT_REPO: str | None = None
 _LATEST_RUN_METRICS: dict[str, Any] | None = None
+
+T = TypeVar("T")
 
 
 @dataclass
@@ -60,6 +63,23 @@ def _append_jsonl(path: Path, payload: dict[str, Any]) -> None:
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(payload, default=str))
         handle.write("\n")
+
+
+def _apply_sampling(
+    items: Sequence[T], sample: int | None, seed: int | None
+) -> list[T]:
+    """Return a deterministic subset of ``items`` using ``sample`` and ``seed``."""
+
+    if sample is None:
+        return list(items)
+    if sample <= 0:
+        return []
+    if sample >= len(items):
+        return list(items)
+
+    rng = random.Random(seed)
+    indices = sorted(rng.sample(range(len(items)), sample))
+    return [items[index] for index in indices]
 
 
 def _load_history(path: Path) -> pd.DataFrame:
@@ -381,6 +401,18 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Output orthogonality analytics as JSON",
     )
+    ortho_parser.add_argument(
+        "--sample",
+        type=int,
+        default=None,
+        help="Analyze a deterministic subset of diff files",
+    )
+    ortho_parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Seed used when sampling diff files",
+    )
 
     sat_parser = subparsers.add_parser(
         "analyze-saturation", help="Compute prompt saturation analytics"
@@ -403,8 +435,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "analyze-orthogonality":
         if args.repo:
             set_repository(args.repo)
+        diff_files = _apply_sampling(
+            args.diff_files, getattr(args, "sample", None), getattr(args, "seed", None)
+        )
         task_versions: list[str] = []
-        for file_path in args.diff_files:
+        for file_path in diff_files:
             data = Path(file_path).read_text(encoding="utf-8")
             task_versions.append(data)
         result = analyze_orthogonality(task_versions, args.prs or [])

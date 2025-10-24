@@ -302,7 +302,7 @@ def test_cli_redacts_token_place_key_from_json_output(
 
     output = capsys.readouterr().out
     payload = json.loads(output)
-    assert payload[0]["details"] == "use *** to share context"
+    assert payload[0]["details"] == quests._REDACTED_DETAIL
     assert "secret" not in output
 
 
@@ -384,7 +384,7 @@ def test_cli_redacts_token_place_key_from_plaintext_output(
 
     output = capsys.readouterr().out
     assert "secret" not in output
-    assert "***" in output
+    assert quests._REDACTED_DETAIL in output
 
 
 def test_suggest_cross_repo_quests_handles_incomplete_urls() -> None:

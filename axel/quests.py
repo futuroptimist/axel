@@ -80,6 +80,11 @@ _DEFAULT_DETAIL = (
 Suggestion = dict[str, list[str] | str]
 
 
+_REDACTED_DETAIL = (
+    "Quest detail withheld because --token-place-key was provided."
+)
+
+
 def _redact_secret(text: str, secret: str | None) -> str:
     """Return ``text`` with ``secret`` removed when present."""
 
@@ -95,6 +100,7 @@ def _sanitize_suggestions_for_output(
     """Return sanitized suggestions safe for CLI output."""
 
     sanitized: list[Suggestion] = []
+    secret_provided = bool(secret)
     for suggestion in suggestions:
         repos_value = suggestion.get("repos")
         if isinstance(repos_value, list):
@@ -105,11 +111,15 @@ def _sanitize_suggestions_for_output(
         details_value = suggestion.get("details")
         summary = summary_value if isinstance(summary_value, str) else ""
         details = details_value if isinstance(details_value, str) else ""
+        if secret_provided:
+            sanitized_details = _REDACTED_DETAIL
+        else:
+            sanitized_details = _redact_secret(details, secret)
         sanitized.append(
             {
                 "repos": repos,
                 "summary": _redact_secret(summary, secret),
-                "details": _redact_secret(details, secret),
+                "details": sanitized_details,
             }
         )
     return sanitized

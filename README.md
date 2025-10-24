@@ -207,12 +207,15 @@ gabriel security layer milestone remains marked complete.
     Automated coverage lives in `tests/test_cli.py::test_cli_install_completions_command`,
     `tests/test_cli.py::test_install_completions_writes_script`, and
     `tests/test_cli.py::test_install_completions_infers_shell`.
-19. Manage analytics telemetry opt-in with `python -m axel.config telemetry --status`. Explicitly opt in via
-    `--enable` (confirmed interactively unless `--yes` is passed) or disable with `--disable`. Consent metadata
-    is stored under the Axel config directory with hashed consent copy and ISO 8601 timestamps so uploads remain
-    transparent. Coverage lives in `tests/test_config.py::test_enable_telemetry_records_consent`,
-    `tests/test_config.py::test_enable_requires_confirmation`, and
-    `tests/test_config.py::test_status_reports_current_state`.
+19. Manage analytics telemetry opt-in with `axel config telemetry --status` (or
+    `python -m axel.config telemetry --status`). Explicitly opt in via `--enable`
+    (confirmed interactively unless `--yes` is passed) or disable with
+    `--disable`. Consent metadata is stored under the Axel config directory with
+    hashed consent copy and ISO 8601 timestamps so uploads remain transparent.
+    Coverage lives in `tests/test_config.py::test_enable_telemetry_records_consent`,
+    `tests/test_config.py::test_enable_requires_confirmation`,
+    `tests/test_config.py::test_status_reports_current_state`, and
+    `tests/test_cli.py::test_cli_config_telemetry_status`.
 
 ## quests
 

@@ -64,7 +64,7 @@ _axel_completions() {
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
     local top_opts='--install-completions --shell --path --help -h'
-    local commands='repos tasks analyze-orthogonality analyze-saturation'
+    local commands='repos tasks analyze-orthogonality analyze-saturation config'
 
     if [[ ${cur} == -* ]]; then
         COMPREPLY=( $(compgen -W "${top_opts}" -- "${cur}") )
@@ -105,6 +105,18 @@ _axel_completions() {
             local sat_opts='--repo --prompt --metrics --help -h'
             COMPREPLY=( $(compgen -W "${sat_opts}" -- "${cur}") )
             ;;
+        config)
+            if [[ ${COMP_CWORD} -eq 2 ]]; then
+                local cfg_opts='telemetry --help -h'
+                COMPREPLY=( $(compgen -W "${cfg_opts}" -- "${cur}") )
+            else
+                local cfg_subcommand="${COMP_WORDS[2]}"
+                if [[ "${cfg_subcommand}" == 'telemetry' ]]; then
+                    local tele_opts='--enable --disable --status --yes --help -h'
+                    COMPREPLY=( $(compgen -W "${tele_opts}" -- "${cur}") )
+                fi
+            fi
+            ;;
     esac
 }
 
@@ -129,6 +141,7 @@ complete -c axel -n '__fish_use_subcommand' -a 'analyze-orthogonality' \
     -d 'Analyze orthogonality'
 complete -c axel -n '__fish_use_subcommand' -a 'analyze-saturation' \
     -d 'Analyze saturation'
+complete -c axel -n '__fish_use_subcommand' -a 'config' -d 'Manage configuration'
 complete -c axel -n '__fish_seen_subcommand_from repos' \
     -a 'add list remove fetch'
 complete -c axel -n '__fish_seen_subcommand_from repos' \
@@ -137,6 +150,20 @@ complete -c axel -n '__fish_seen_subcommand_from tasks' \
     -a 'add list complete remove clear'
 complete -c axel -n '__fish_seen_subcommand_from tasks' \
     -l json -d 'Output JSON'
+complete -c axel -n '__fish_seen_subcommand_from config' \
+    -a 'telemetry' -d 'Manage telemetry opt-in'
+complete -c axel -n '__fish_seen_subcommand_from config telemetry' \
+    -l enable -d 'Enable telemetry'
+complete -c axel -n '__fish_seen_subcommand_from config telemetry' \
+    -l disable -d 'Disable telemetry'
+complete -c axel -n '__fish_seen_subcommand_from config telemetry' \
+    -l status -d 'Show telemetry status'
+complete -c axel -n '__fish_seen_subcommand_from config telemetry' \
+    -l yes -d 'Auto-confirm prompts'
+complete -c axel -n '__fish_seen_subcommand_from config telemetry' \
+    -l help -d 'Show help'
+complete -c axel -n '__fish_seen_subcommand_from config telemetry' \
+    -s h -d 'Show help'
 complete -c axel -n '__fish_seen_subcommand_from analyze-orthogonality' \
     -l repo -d 'Repository slug' -r
 complete -c axel -n '__fish_seen_subcommand_from analyze-orthogonality' \

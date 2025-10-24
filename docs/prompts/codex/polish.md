@@ -42,8 +42,10 @@ IMPLEMENTATION TRACKS:
 - Analytics persistence & telemetry:
   - Persist each analytics run (inputs, metrics, timestamps) beneath
     `~/.config/axel/analytics/<slug>.json`.
-  - Provide an opt-in telemetry toggle (`axel config telemetry --enable|--disable`) documenting what
-    leaves the machine; default to disabled and require explicit confirmation before uploads.
+- Provide an opt-in telemetry toggle (`axel config telemetry --enable|--disable`) documenting what
+    leaves the machine; default to disabled and require explicit confirmation before uploads. Reference
+    automated coverage in `tests/test_config.py::test_enable_telemetry_records_consent` and
+    `tests/test_cli.py::test_cli_config_telemetry_status`.
   - Capture migrations for existing config files and include smoke tests to prevent regressions.
 - Deterministic sampling for large repo sets:
   - Offer seeded sampling flags (e.g., `--sample 50 --seed 2025`) to keep large runs fast yet

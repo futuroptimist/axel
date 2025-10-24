@@ -200,6 +200,20 @@ def test_cli_tasks_list_json(
     ]
 
 
+def test_cli_config_telemetry_status(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    """The unified CLI should forward config commands to the config module."""
+
+    monkeypatch.setenv("AXEL_CONFIG_DIR", str(tmp_path))
+
+    exit_code = cli.main(["config", "telemetry", "--status"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "Telemetry is disabled by default" in captured.out
+
+
 def test_cli_tasks_list_sample(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

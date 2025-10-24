@@ -100,9 +100,11 @@ automation (see `tests/test_critic.py::test_cli_commands`).
 Each run also appends a history entry under
 `~/.config/axel/analytics/orthogonality.jsonl` or
 `~/.config/axel/analytics/saturation.jsonl` so analytics persist across
-checkouts, with coverage in
+checkouts, capturing the CLI version and current telemetry state for auditing.
+Coverage lives in
 `tests/test_critic.py::test_analyze_orthogonality_appends_config_ledger` and
-`tests/test_critic.py::test_track_prompt_saturation_appends_config_ledger`.
+`tests/test_critic.py::test_track_prompt_saturation_appends_config_ledger`,
+which now assert the metadata is recorded with each entry.
 
 1. Add a repo with `python -m axel.repo_manager add <url>` (use `https://...`).
    Alternatively, edit `repos.txt`.

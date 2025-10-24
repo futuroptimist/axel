@@ -2,6 +2,7 @@ import importlib
 import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -59,6 +60,16 @@ def test_analyze_orthogonality_appends_config_ledger(
 
     monkeypatch.setattr(critic_module, "_fetch_pull_request", fake_fetch)
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    monkeypatch.setattr(
+        critic_module.importlib_metadata,
+        "version",
+        lambda _name: "test-cli-version",
+    )
+    monkeypatch.setattr(
+        critic_module,
+        "load_telemetry_config",
+        lambda: SimpleNamespace(opt_in=False, consent_timestamp=None),
+    )
     critic_module.set_repository("octo/demo")
 
     critic_module.analyze_orthogonality(
@@ -76,6 +87,9 @@ def test_analyze_orthogonality_appends_config_ledger(
     payload = json.loads(lines[-1])
     assert payload["metric"] == "orthogonality"
     assert "orthogonality_score" in payload
+    assert payload["cli_version"] == "test-cli-version"
+    assert payload["telemetry_opt_in"] is False
+    assert payload["telemetry_consent_timestamp"] is None
 
 
 def test_track_prompt_saturation_updates_log(critic_module, tmp_path):
@@ -123,6 +137,18 @@ def test_track_prompt_saturation_appends_config_ledger(
 ):
     critic_module.ANALYTICS_ROOT = tmp_path / "analytics"
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    monkeypatch.setattr(
+        critic_module.importlib_metadata,
+        "version",
+        lambda _name: "test-cli-version",
+    )
+    monkeypatch.setattr(
+        critic_module,
+        "load_telemetry_config",
+        lambda: SimpleNamespace(
+            opt_in=True, consent_timestamp="2025-01-01T00:00:00+00:00"
+        ),
+    )
     critic_module.set_latest_run_metrics(
         {
             "fitness_delta": 0.1,
@@ -142,6 +168,9 @@ def test_track_prompt_saturation_appends_config_ledger(
     assert payload["metric"] == "saturation"
     assert payload["repo"] == "octo/demo"
     assert payload["prompt"] == "implement.md"
+    assert payload["cli_version"] == "test-cli-version"
+    assert payload["telemetry_opt_in"] is True
+    assert payload["telemetry_consent_timestamp"] == "2025-01-01T00:00:00+00:00"
 
 
 def test_cli_commands(critic_module, monkeypatch, tmp_path, capsys):
@@ -361,6 +390,23 @@ def test_collect_recent_scores_flattens_values(critic_module):
     )
     scores = critic_module._collect_recent_scores(series)
     assert scores == [0.1, 0.2, 0.3]
+
+
+def test_cli_metadata_handles_missing_package(monkeypatch, critic_module):
+    def raise_missing(_name: str) -> str:
+        raise critic_module.importlib_metadata.PackageNotFoundError
+
+    monkeypatch.setattr(critic_module.importlib_metadata, "version", raise_missing)
+    monkeypatch.setattr(
+        critic_module,
+        "load_telemetry_config",
+        lambda: SimpleNamespace(opt_in=False, consent_timestamp=None),
+    )
+
+    metadata = critic_module._cli_metadata()
+
+    assert metadata["cli_version"] is None
+    assert metadata["telemetry_opt_in"] is False
 
 
 def test_orthogonality_entropy_identical_scores_returns_zero(critic_module):

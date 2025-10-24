@@ -10,12 +10,15 @@ from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
+from importlib import metadata as importlib_metadata
 from itertools import combinations
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 import pandas as pd
 import requests
+
+from .config import load_telemetry_config
 
 ANALYTICS_ROOT = Path("analytics")
 _DEFAULT_RECENT_WINDOW = 10
@@ -60,6 +63,21 @@ def _append_jsonl(path: Path, payload: dict[str, Any]) -> None:
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(payload, default=str))
         handle.write("\n")
+
+
+def _cli_metadata() -> dict[str, Any]:
+    """Return CLI metadata persisted alongside analytics entries."""
+
+    try:
+        version = importlib_metadata.version("axel")
+    except importlib_metadata.PackageNotFoundError:
+        version = None
+    config = load_telemetry_config()
+    return {
+        "cli_version": version,
+        "telemetry_opt_in": bool(config.opt_in),
+        "telemetry_consent_timestamp": config.consent_timestamp,
+    }
 
 
 def _config_analytics_root() -> Path:
@@ -168,7 +186,8 @@ def analyze_orthogonality(
     date_key = timestamp.split("T", 1)[0]
     log_path = ANALYTICS_ROOT / "orthogonality" / f"{date_key}.jsonl"
     _append_jsonl(log_path, result)
-    _append_config_analytics("orthogonality", result | {"metric": "orthogonality"})
+    config_payload = result | {"metric": "orthogonality"} | _cli_metadata()
+    _append_config_analytics("orthogonality", config_payload)
     return result
 
 
@@ -321,7 +340,8 @@ def track_prompt_saturation(repo: str, prompt_doc: str) -> dict[str, Any]:
         "prompt_refresh_recommended": prompt_refresh,
     }
     _append_jsonl(log_path, enriched_entry)
-    _append_config_analytics("saturation", enriched_entry | {"metric": "saturation"})
+    config_payload = enriched_entry | {"metric": "saturation"} | _cli_metadata()
+    _append_config_analytics("saturation", config_payload)
     return {
         "timestamp": timestamp,
         "repo": repo,

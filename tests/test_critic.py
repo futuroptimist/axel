@@ -118,6 +118,75 @@ def test_track_prompt_saturation_updates_log(critic_module, tmp_path):
     assert len(log_content) == 2
 
 
+def test_main_analyze_orthogonality_sampling(
+    critic_module, monkeypatch, tmp_path, capsys
+) -> None:
+    critic_module.ANALYTICS_ROOT = tmp_path / "analytics"
+
+    def fake_fetch(repo: str, pr_number: int):
+        return critic_module.PullRequestSnapshot(merged=False, mergeable_state="clean")
+
+    monkeypatch.setattr(critic_module, "_fetch_pull_request", fake_fetch)
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+    diffs = []
+    contents = [
+        "diff --git a/a.txt b/a.txt\n+alpha\n",
+        "diff --git a/b.txt b/b.txt\n+beta\n",
+        "diff --git a/c.txt b/c.txt\n+gamma\n",
+    ]
+    for index, content in enumerate(contents, start=1):
+        path = tmp_path / f"diff{index}.txt"
+        path.write_text(content, encoding="utf-8")
+        diffs.append(path)
+
+    exit_code = critic_module.main(
+        [
+            "analyze-orthogonality",
+            "--diff-file",
+            str(diffs[0]),
+            "--diff-file",
+            str(diffs[1]),
+            "--diff-file",
+            str(diffs[2]),
+            "--repo",
+            "octo/demo",
+            "--sample",
+            "2",
+            "--seed",
+            "11",
+            "--json",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    payload = json.loads(captured.out)
+    assert payload["total_tasks"] == 2
+    sampling = payload.get("sampling")
+    assert sampling is not None
+    assert sampling["requested"] == 2
+    assert sampling["seed"] == 11
+    assert sampling["original_task_count"] == 3
+    assert sampling["sampled_task_count"] == 2
+    assert sampling["applied"] is True
+
+    ledger = tmp_path / ".config" / "axel" / "analytics" / "orthogonality.jsonl"
+    assert ledger.exists()
+    latest = json.loads(ledger.read_text(encoding="utf-8").strip().splitlines()[-1])
+    assert latest["sampling"]["sampled_task_count"] == 2
+
+
+def test_apply_sampling_handles_non_positive_requests(critic_module) -> None:
+    entries = ["one", "two", "three"]
+    assert critic_module._apply_sampling(entries, sample=0, seed=5) == []
+
+
+def test_apply_sampling_returns_all_when_large_sample(critic_module) -> None:
+    entries = ["alpha", "beta"]
+    assert critic_module._apply_sampling(entries, sample=10, seed=42) == entries
+
+
 def test_track_prompt_saturation_appends_config_ledger(
     critic_module, monkeypatch, tmp_path
 ):

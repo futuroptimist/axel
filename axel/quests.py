@@ -125,10 +125,10 @@ def _sanitize_suggestions_for_output(
     return sanitized
 
 
-def _emit_line(text: str, secret: str | None) -> None:
-    """Print ``text`` after applying secret redaction."""
+def _emit_line(text: str) -> None:
+    """Print ``text`` to stdout."""
 
-    print(_redact_secret(text, secret))
+    print(text)
 
 
 def _build_suggestion(
@@ -287,17 +287,16 @@ def main(argv: Sequence[str] | None = None) -> None:
         token_place_base_url=args.token_place_url,
         token_place_api_key=args.token_place_key,
     )
-    redaction_secret = args.token_place_key
     if not suggestions:
         if args.json:
-            _emit_line("[]", redaction_secret)
+            _emit_line("[]")
         else:
-            _emit_line("No quests available", redaction_secret)
+            _emit_line("No quests available")
         return
 
     sanitized_for_output = _sanitize_suggestions_for_output(
         suggestions,
-        redaction_secret,
+        args.token_place_key,
     )
     if args.json:
         json_output = json.dumps(
@@ -305,15 +304,15 @@ def main(argv: Sequence[str] | None = None) -> None:
             indent=2,
             ensure_ascii=False,
         )
-        _emit_line(json_output, redaction_secret)
+        _emit_line(json_output)
         return
 
     for suggestion in sanitized_for_output:
         repos_line = ", ".join(suggestion["repos"])  # type: ignore[index]
-        _emit_line(f"- {suggestion['summary']}", redaction_secret)
-        _emit_line(f"  repos: {repos_line}", redaction_secret)
-        _emit_line(f"  quest: {suggestion['details']}", redaction_secret)
-        _emit_line("", None)
+        _emit_line(f"- {suggestion['summary']}")
+        _emit_line(f"  repos: {repos_line}")
+        _emit_line(f"  quest: {suggestion['details']}")
+        _emit_line("")
 
 
 if __name__ == "__main__":  # pragma: no cover - manual use

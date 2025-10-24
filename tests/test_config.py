@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import argparse
-from datetime import datetime
 import json
+from datetime import datetime
 from pathlib import Path
 
 import pytest
 
 import axel.config as config
-
 
 CONSENT_HASH = config.CONSENT_TEXT_HASH
 
@@ -71,9 +70,7 @@ def test_enable_with_yes_skips_prompt(
     assert data["opt_in"] is True
 
 
-def test_disable_clears_opt_in(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_disable_clears_opt_in(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Disabling telemetry should flip the opt-in flag and retain history."""
 
     monkeypatch.setenv("AXEL_CONFIG_DIR", str(tmp_path))

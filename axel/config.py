@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone
 import hashlib
 import json
 import os
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Sequence
-
 
 CONSENT_TEXT = (
     "Axel collects telemetry only after an explicit opt-in. When enabled, "
@@ -68,9 +67,7 @@ def load_telemetry_config(path: Path | None = None) -> TelemetryConfig:
     )
 
 
-def save_telemetry_config(
-    config: TelemetryConfig, *, path: Path | None = None
-) -> Path:
+def save_telemetry_config(config: TelemetryConfig, *, path: Path | None = None) -> Path:
     """Persist *config* to disk and return the path written."""
 
     config_path = path or _config_path()

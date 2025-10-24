@@ -75,9 +75,11 @@ default, explicit telemetry opt-ins), and lands with the required checks (`flake
      dry-run guardrails.
 
 4. **CLI UX polish & golden coverage**
-   - Capture golden fixtures for the main commands (`repos`, `tasks`, analytics
-     subcommands) covering both text and `--json` modes. Assert that `--json` switches
-     exist everywhere and keep output keys consistent.
+  - Capture golden fixtures for the main commands (`repos`, `tasks`, analytics
+    subcommands) covering both text and `--json` modes. Assert that `--json` switches
+    exist everywhere and keep output keys consistent. Axel's quests CLI now
+    participates in this parity with `tests/test_quests.py::test_cli_outputs_json`
+    guarding the structured output path.
    - Refine error messaging for missing GitHub auth or repo manifests, ensure dry-run
      messaging stays prominent, and improve exit codes where necessary.
   - Wire `axel --install-completions` to generate shell completion scripts

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -224,6 +225,43 @@ def test_cli_prints_suggestions(tmp_path: Path) -> None:
     assert "axel" in output
     assert "gabriel" in output
     assert "quest" in output
+
+
+def test_cli_outputs_json(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    repo_file = tmp_path / "repos.txt"
+    repo_file.write_text(
+        "https://github.com/futuroptimist/axel\n"
+        "https://github.com/futuroptimist/gabriel\n"
+        "https://github.com/futuroptimist/token.place\n",
+        encoding="utf-8",
+    )
+
+    from axel.quests import main
+
+    main(["--path", str(repo_file), "--limit", "1", "--json"])
+
+    output = capsys.readouterr().out
+    payload = json.loads(output)
+    assert isinstance(payload, list)
+    assert payload
+    first = payload[0]
+    assert first["repos"] == ["futuroptimist/axel", "futuroptimist/gabriel"]
+    assert "link" in first["summary"].lower()
+    assert "quest" in first["details"].lower()
+
+
+def test_cli_outputs_json_for_empty_results(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    repo_file = tmp_path / "repos.txt"
+    repo_file.write_text("https://github.com/futuroptimist/axel\n", encoding="utf-8")
+
+    from axel.quests import main
+
+    main(["--path", str(repo_file), "--json"])
+
+    output = capsys.readouterr().out.strip()
+    assert output == "[]"
 
 
 def test_cli_forwards_token_place_configuration(

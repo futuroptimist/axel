@@ -144,8 +144,10 @@ Generate cross-repo quests with `python -m axel.quests --limit 3`. The helper re
 pairings that highlight how multiple repositories can collaborate on a shared goal. Pass
 `--token-place-url` and `--token-place-key` to point at a custom token.place deployment,
 which keeps quest enrichment aligned with the configured relay or server (see
-`tests/test_quests.py::test_cli_forwards_token_place_configuration`). Programmatic callers
-can forward the same settings via `token_place_base_url` and `token_place_api_key` to
+`tests/test_quests.py::test_cli_forwards_token_place_configuration`). Pass `--json` to
+emit machine-friendly output for automation, guarded by
+`tests/test_quests.py::test_cli_outputs_json`. Programmatic callers can forward the same
+settings via `token_place_base_url` and `token_place_api_key` to
 `axel.quests.suggest_cross_repo_quests`, covered by
 `tests/test_quests.py::test_suggest_cross_repo_quests_forwards_token_place_config`. This
 module powers the "suggest quests" promise described in the roadmap and is covered by

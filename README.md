@@ -97,6 +97,9 @@ Analytics helpers are exposed through the same entry point using
 `tests/test_cli.py::test_cli_analyze_saturation_normalizes_bool_exit`.
 Pass `--json` to either command to emit machine-readable output for
 automation (see `tests/test_critic.py::test_cli_commands`).
+Use `--sample` and `--seed` with `axel analyze-orthogonality` to analyze a
+deterministic subset of diff files (see
+`tests/test_critic.py::test_cli_sampling_limits_diff_files`).
 
 1. Add a repo with `python -m axel.repo_manager add <url>` (use `https://...`).
    Alternatively, edit `repos.txt`.

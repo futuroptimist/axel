@@ -1,5 +1,6 @@
 import importlib
 import json
+import random
 import sys
 from pathlib import Path
 
@@ -163,6 +164,96 @@ def test_cli_commands(critic_module, monkeypatch, tmp_path, capsys):
     sat_json = json.loads(capsys.readouterr().out)
     assert sat_json["repo"] == "octo/demo"
     assert sat_json["prompt"] == "implement.md"
+
+
+def test_cli_sampling_limits_diff_files(
+    critic_module, monkeypatch, tmp_path, capsys
+) -> None:
+    """Sampling flags should deterministically limit analyzed diff files."""
+
+    diff_a = tmp_path / "diff_a.patch"
+    diff_b = tmp_path / "diff_b.patch"
+    diff_c = tmp_path / "diff_c.patch"
+    diffs = [
+        "diff --git a/file b/file\n+a\n",
+        "diff --git a/file b/file\n+b\n",
+        "diff --git a/file b/file\n+c\n",
+    ]
+    for path, content in zip((diff_a, diff_b, diff_c), diffs):
+        path.write_text(content, encoding="utf-8")
+
+    captured: list[list[str]] = []
+
+    def fake_analyze(task_versions: list[str], prs: list[int]) -> dict[str, object]:
+        captured.append(list(task_versions))
+        return {
+            "timestamp": "now",
+            "merge_conflict_rate": 0.0,
+            "avg_pairwise_similarity": 0.0,
+            "orthogonality_score": 1.0,
+            "merged_prs": prs,
+            "total_tasks": len(task_versions),
+        }
+
+    monkeypatch.setattr(critic_module, "analyze_orthogonality", fake_analyze)
+    monkeypatch.setattr(
+        critic_module,
+        "_format_orthogonality_output",
+        lambda result: "orthogonality sample",
+    )
+
+    args = [
+        "analyze-orthogonality",
+        "--diff-file",
+        str(diff_a),
+        "--diff-file",
+        str(diff_b),
+        "--diff-file",
+        str(diff_c),
+        "--sample",
+        "2",
+        "--seed",
+        "7",
+    ]
+
+    exit_code = critic_module.main(args)
+    assert exit_code == 0
+    capsys.readouterr()  # Drain captured output for cleanliness
+
+    assert captured[-1]
+    assert len(captured[-1]) == 2
+
+    expected_indexes = sorted(random.Random(7).sample(range(len(diffs)), 2))
+    expected_versions = [diffs[index] for index in expected_indexes]
+    assert captured[-1] == expected_versions
+
+    full_args = [
+        "analyze-orthogonality",
+        "--diff-file",
+        str(diff_a),
+        "--diff-file",
+        str(diff_b),
+        "--diff-file",
+        str(diff_c),
+        "--sample",
+        str(len(diffs)),
+    ]
+    exit_code = critic_module.main(full_args)
+    assert exit_code == 0
+    capsys.readouterr()
+    assert captured[-1] == diffs
+
+    empty_args = [
+        "analyze-orthogonality",
+        "--diff-file",
+        str(diff_a),
+        "--sample",
+        "0",
+    ]
+    exit_code = critic_module.main(empty_args)
+    assert exit_code == 0
+    capsys.readouterr()
+    assert captured[-1] == []
 
 
 def test_load_history_handles_missing_and_invalid_lines(critic_module, tmp_path):

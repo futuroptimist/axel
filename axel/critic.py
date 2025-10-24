@@ -458,7 +458,19 @@ def main(argv: list[str] | None = None) -> int:
             data = Path(file_path).read_text(encoding="utf-8")
             task_versions.append(data)
         original_count = len(task_versions)
-        sampled_versions = _apply_sampling(task_versions, args.sample, args.seed)
+
+        sampled_indices = list(range(original_count))
+        if args.sample is not None:
+            sampled_indices = _apply_sampling(sampled_indices, args.sample, args.seed)
+
+        sampled_versions = [task_versions[index] for index in sampled_indices]
+
+        merged_prs = args.prs or []
+        if merged_prs and args.sample is not None:
+            if len(merged_prs) == original_count:
+                merged_prs = [merged_prs[index] for index in sampled_indices]
+            else:
+                merged_prs = _apply_sampling(merged_prs, args.sample, args.seed)
         sampling_meta: dict[str, Any] | None = None
         if args.sample is not None:
             sampling_meta = {
@@ -470,7 +482,7 @@ def main(argv: list[str] | None = None) -> int:
             }
         result = analyze_orthogonality(
             sampled_versions,
-            args.prs or [],
+            merged_prs,
             sampling=sampling_meta,
         )
         if args.json:

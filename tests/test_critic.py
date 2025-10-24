@@ -151,6 +151,12 @@ def test_main_analyze_orthogonality_sampling(
             str(diffs[2]),
             "--repo",
             "octo/demo",
+            "--pr",
+            "101",
+            "--pr",
+            "102",
+            "--pr",
+            "103",
             "--sample",
             "2",
             "--seed",
@@ -163,6 +169,7 @@ def test_main_analyze_orthogonality_sampling(
     assert exit_code == 0
     payload = json.loads(captured.out)
     assert payload["total_tasks"] == 2
+    assert payload["merged_prs"] == [102, 103]
     sampling = payload.get("sampling")
     assert sampling is not None
     assert sampling["requested"] == 2

@@ -1,5 +1,12 @@
 """axel package."""
 
+from .config import (
+    TelemetryConfig,
+    disable_telemetry,
+    enable_telemetry,
+    load_telemetry_config,
+    status_message,
+)
 from .critic import (
     analyze_orthogonality,
     self_evaluate_merge_conflicts,
@@ -58,4 +65,9 @@ __all__ = [
     "load_tasks",
     "remove_task",
     "clear_tasks",
+    "TelemetryConfig",
+    "enable_telemetry",
+    "disable_telemetry",
+    "load_telemetry_config",
+    "status_message",
 ]

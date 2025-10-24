@@ -57,7 +57,9 @@ default, explicit telemetry opt-ins), and lands with the required checks (`flake
    - Ship `axel config telemetry --enable|--disable [--status] [--yes]` with UX copy that
      explains the default-off posture, enumerates outbound fields, and requires
      confirmation unless `--yes` supports automation. Block uploads until consent is
-     explicit.
+     explicit. Coverage now lives in `tests/test_config.py::test_enable_telemetry_records_consent`,
+     `tests/test_config.py::test_enable_requires_confirmation`, and
+     `tests/test_config.py::test_status_reports_current_state`.
    - Extend analytics flows to respect telemetry state, retry persistence with
      actionable errors, and surface telemetry state in `--json` output. Cover these
      paths with integration tests.

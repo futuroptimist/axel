@@ -264,6 +264,48 @@ def test_cli_outputs_json_for_empty_results(
     assert output == "[]"
 
 
+def test_cli_redacts_token_place_key_from_json_output(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import axel.quests as quests
+
+    repo_file = tmp_path / "repos.txt"
+    repo_file.write_text(
+        "https://github.com/futuroptimist/token.place\n"
+        "https://github.com/futuroptimist/axel\n",
+        encoding="utf-8",
+    )
+
+    def fake_detail(
+        primary_slug: str,
+        secondary_slug: str,
+        *,
+        base_url: str | None = None,
+        api_key: str | None = None,
+    ) -> str:
+        assert api_key == "secret"
+        return "use secret to share context"
+
+    monkeypatch.setattr(quests.token_place_integration, "quest_detail", fake_detail)
+
+    quests.main(
+        [
+            "--path",
+            str(repo_file),
+            "--limit",
+            "1",
+            "--json",
+            "--token-place-key",
+            "secret",
+        ]
+    )
+
+    output = capsys.readouterr().out
+    payload = json.loads(output)
+    assert payload[0]["details"] == "use *** to share context"
+    assert "secret" not in output
+
+
 def test_cli_forwards_token_place_configuration(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -304,6 +346,45 @@ def test_cli_forwards_token_place_configuration(
     )
 
     assert captured == [("https://token.place/api/v1", "secret")]
+
+
+def test_cli_redacts_token_place_key_from_plaintext_output(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import axel.quests as quests
+
+    repo_file = tmp_path / "repos.txt"
+    repo_file.write_text(
+        "https://github.com/futuroptimist/token.place\n"
+        "https://github.com/futuroptimist/axel\n",
+        encoding="utf-8",
+    )
+
+    def fake_detail(
+        primary_slug: str,
+        secondary_slug: str,
+        *,
+        base_url: str | None = None,
+        api_key: str | None = None,
+    ) -> str:
+        return "coordinate using secret and gabriel"
+
+    monkeypatch.setattr(quests.token_place_integration, "quest_detail", fake_detail)
+
+    quests.main(
+        [
+            "--path",
+            str(repo_file),
+            "--limit",
+            "1",
+            "--token-place-key",
+            "secret",
+        ]
+    )
+
+    output = capsys.readouterr().out
+    assert "secret" not in output
+    assert "***" in output
 
 
 def test_suggest_cross_repo_quests_handles_incomplete_urls() -> None:

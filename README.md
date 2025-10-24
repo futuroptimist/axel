@@ -96,7 +96,11 @@ Analytics helpers are exposed through the same entry point using
 `tests/test_cli.py::test_cli_analyze_orthogonality_delegates_to_critic` and
 `tests/test_cli.py::test_cli_analyze_saturation_normalizes_bool_exit`.
 Pass `--json` to either command to emit machine-readable output for
-automation (see `tests/test_critic.py::test_cli_commands`).
+automation (see `tests/test_critic.py::test_cli_commands`). When diff
+sets grow large, `axel analyze-orthogonality --sample <n> --seed <id>`
+processes a deterministic subset so reviews stay quick; this sampling
+flow is exercised in
+`tests/test_critic.py::test_main_analyze_orthogonality_sampling`.
 Each run also appends a history entry under
 `~/.config/axel/analytics/orthogonality.jsonl` or
 `~/.config/axel/analytics/saturation.jsonl` so analytics persist across

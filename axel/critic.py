@@ -6,6 +6,7 @@ import argparse
 import json
 import math
 import os
+import random
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -13,7 +14,7 @@ from difflib import SequenceMatcher
 from importlib import metadata as importlib_metadata
 from itertools import combinations
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any, Iterable, Mapping, Sequence
 
 import pandas as pd
 import requests
@@ -93,6 +94,23 @@ def _append_config_analytics(metric: str, payload: dict[str, Any]) -> None:
     _append_jsonl(path, payload)
 
 
+def _apply_sampling(
+    entries: Sequence[str], sample: int | None, seed: int | None
+) -> list[str]:
+    """Return a deterministic subset of ``entries`` when sampling is requested."""
+
+    if sample is None:
+        return list(entries)
+    if sample <= 0:
+        return []
+    if sample >= len(entries):
+        return list(entries)
+
+    rng = random.Random(seed)
+    indices = sorted(rng.sample(range(len(entries)), sample))
+    return [entries[index] for index in indices]
+
+
 def _load_history(path: Path) -> pd.DataFrame:
     if not path.exists():
         return pd.DataFrame()
@@ -163,7 +181,10 @@ def _clip_score(value: float) -> float:
 
 
 def analyze_orthogonality(
-    task_versions: list[str], merged_prs: list[int]
+    task_versions: list[str],
+    merged_prs: list[int],
+    *,
+    sampling: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Compute the orthogonality score for a group of Codex task versions."""
 
@@ -183,6 +204,8 @@ def analyze_orthogonality(
         "merged_prs": merged_prs,
         "total_tasks": total_tasks,
     }
+    if sampling:
+        result["sampling"] = dict(sampling)
     date_key = timestamp.split("T", 1)[0]
     log_path = ANALYTICS_ROOT / "orthogonality" / f"{date_key}.jsonl"
     _append_jsonl(log_path, result)
@@ -416,6 +439,18 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Output orthogonality analytics as JSON",
     )
+    ortho_parser.add_argument(
+        "--sample",
+        type=int,
+        default=None,
+        help="Analyze a deterministic subset of diff files",
+    )
+    ortho_parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Seed used when sampling diff files",
+    )
 
     sat_parser = subparsers.add_parser(
         "analyze-saturation", help="Compute prompt saturation analytics"
@@ -442,7 +477,34 @@ def main(argv: list[str] | None = None) -> int:
         for file_path in args.diff_files:
             data = Path(file_path).read_text(encoding="utf-8")
             task_versions.append(data)
-        result = analyze_orthogonality(task_versions, args.prs or [])
+        original_count = len(task_versions)
+
+        sampled_indices = list(range(original_count))
+        if args.sample is not None:
+            sampled_indices = _apply_sampling(sampled_indices, args.sample, args.seed)
+
+        sampled_versions = [task_versions[index] for index in sampled_indices]
+
+        merged_prs = args.prs or []
+        if merged_prs and args.sample is not None:
+            if len(merged_prs) == original_count:
+                merged_prs = [merged_prs[index] for index in sampled_indices]
+            else:
+                merged_prs = _apply_sampling(merged_prs, args.sample, args.seed)
+        sampling_meta: dict[str, Any] | None = None
+        if args.sample is not None:
+            sampling_meta = {
+                "requested": args.sample,
+                "seed": args.seed,
+                "original_task_count": original_count,
+                "sampled_task_count": len(sampled_versions),
+                "applied": args.sample <= 0 or len(sampled_versions) != original_count,
+            }
+        result = analyze_orthogonality(
+            sampled_versions,
+            merged_prs,
+            sampling=sampling_meta,
+        )
         if args.json:
             print(json.dumps(result, indent=2, ensure_ascii=False))
             return 0

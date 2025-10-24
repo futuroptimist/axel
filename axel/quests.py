@@ -80,6 +80,14 @@ _DEFAULT_DETAIL = (
 Suggestion = dict[str, list[str] | str]
 
 
+def _redact_secret(text: str, secret: str | None) -> str:
+    """Return ``text`` with ``secret`` removed when present."""
+
+    if not secret or secret not in text:
+        return text
+    return text.replace(secret, "***")
+
+
 def _build_suggestion(
     left: RepoInfo,
     right: RepoInfo,
@@ -246,9 +254,13 @@ def main(argv: Sequence[str] | None = None) -> None:
     if args.json:
         sanitized_suggestions = [
             {
-                "repos": suggestion.get("repos", []),
-                "summary": suggestion.get("summary", ""),
-                "details": suggestion.get("details", ""),
+                "repos": suggestion["repos"],
+                "summary": _redact_secret(
+                    suggestion["summary"], args.token_place_key
+                ),
+                "details": _redact_secret(
+                    suggestion["details"], args.token_place_key
+                ),
             }
             for suggestion in suggestions
         ]
@@ -256,10 +268,12 @@ def main(argv: Sequence[str] | None = None) -> None:
         return
 
     for suggestion in suggestions:
+        summary = _redact_secret(suggestion["summary"], args.token_place_key)
+        details = _redact_secret(suggestion["details"], args.token_place_key)
         repos_line = ", ".join(suggestion["repos"])  # type: ignore[index]
-        print(f"- {suggestion['summary']}")
+        print(f"- {summary}")
         print(f"  repos: {repos_line}")
-        print(f"  quest: {suggestion['details']}")
+        print(f"  quest: {details}")
         print()
 
 

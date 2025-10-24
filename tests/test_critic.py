@@ -1,5 +1,6 @@
 import importlib
 import json
+import random
 import sys
 from pathlib import Path
 
@@ -76,6 +77,55 @@ def test_analyze_orthogonality_appends_config_ledger(
     payload = json.loads(lines[-1])
     assert payload["metric"] == "orthogonality"
     assert "orthogonality_score" in payload
+
+
+def test_analyze_orthogonality_sampling_embeds_metadata(
+    critic_module, monkeypatch, tmp_path
+):
+    critic_module.ANALYTICS_ROOT = tmp_path / "analytics"
+
+    def fake_fetch(repo: str, pr_number: int):
+        return critic_module.PullRequestSnapshot(merged=False, mergeable_state="clean")
+
+    monkeypatch.setattr(critic_module, "_fetch_pull_request", fake_fetch)
+    critic_module.set_repository("octo/demo")
+
+    diffs = [
+        "diff --git a/a.txt b/a.txt\n+alpha\n",
+        "diff --git a/a.txt b/a.txt\n+bravo\n",
+        "diff --git a/a.txt b/a.txt\n+charlie\n",
+        "diff --git a/a.txt b/a.txt\n+delta\n",
+        "diff --git a/a.txt b/a.txt\n+echo\n",
+    ]
+    prs = [101, 102, 103, 104, 105]
+
+    sample = 3
+    seed = 7
+    result = critic_module.analyze_orthogonality(
+        diffs,
+        prs,
+        sample=sample,
+        seed=seed,
+    )
+
+    assert result["available_tasks"] == len(diffs)
+    assert result["total_tasks"] == sample
+    assert result["sample_size_requested"] == sample
+    assert result["sample_size_applied"] == sample
+    assert result["sample_seed"] == seed
+
+    expected_indices = sorted(random.Random(seed).sample(range(len(diffs)), sample))
+    expected_prs = [prs[index] for index in expected_indices]
+    assert result["merged_prs"] == expected_prs
+
+    log_dir = critic_module.ANALYTICS_ROOT / "orthogonality"
+    files = list(log_dir.glob("*.jsonl"))
+    assert files, "orthogonality log should include sampled entry"
+    latest_entry = files[0].read_text(encoding="utf-8").strip().splitlines()[-1]
+    payload = json.loads(latest_entry)
+    assert payload["sample_size_requested"] == sample
+    assert payload["sample_size_applied"] == sample
+    assert payload["sample_seed"] == seed
 
 
 def test_track_prompt_saturation_updates_log(critic_module, tmp_path):
@@ -218,6 +268,42 @@ def test_cli_commands(critic_module, monkeypatch, tmp_path, capsys):
     sat_json = json.loads(capsys.readouterr().out)
     assert sat_json["repo"] == "octo/demo"
     assert sat_json["prompt"] == "implement.md"
+
+    capsys.readouterr()
+    base_sample_args = [
+        "analyze-orthogonality",
+        "--diff-file",
+        str(diff_a),
+        "--diff-file",
+        str(diff_b),
+        "--pr",
+        "1",
+        "--pr",
+        "2",
+        "--repo",
+        "octo/demo",
+        "--sample",
+        "1",
+        "--seed",
+        "99",
+    ]
+
+    exit_code = critic_module.main([*base_sample_args, "--json"])
+    assert exit_code == 0
+    sample_json = json.loads(capsys.readouterr().out)
+    assert sample_json["available_tasks"] == 2
+    assert sample_json["total_tasks"] == 1
+    assert sample_json["sample_size_requested"] == 1
+    assert sample_json["sample_size_applied"] == 1
+    assert sample_json["sample_seed"] == 99
+    expected_index = random.Random(99).sample(range(2), 1)[0]
+    expected_pr = [1, 2][expected_index]
+    assert sample_json["merged_prs"] == [expected_pr]
+
+    exit_code = critic_module.main(base_sample_args)
+    assert exit_code == 0
+    sample_text = capsys.readouterr().out
+    assert "Sample:" in sample_text
 
 
 def test_load_history_handles_missing_and_invalid_lines(critic_module, tmp_path):

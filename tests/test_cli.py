@@ -24,10 +24,28 @@ def test_cli_analyze_orthogonality_delegates_to_critic(
     proxy = type("CriticProxy", (), {"main": staticmethod(fake_main)})()
     monkeypatch.setattr(cli, "critic", proxy, raising=False)
 
-    exit_code = cli.main(["analyze-orthogonality", "--diff-file", "a.diff"])
+    exit_code = cli.main(
+        [
+            "analyze-orthogonality",
+            "--diff-file",
+            "a.diff",
+            "--sample",
+            "2",
+            "--seed",
+            "9",
+        ]
+    )
 
     assert exit_code == 0
-    assert captured["argv"] == ["analyze-orthogonality", "--diff-file", "a.diff"]
+    assert captured["argv"] == [
+        "analyze-orthogonality",
+        "--diff-file",
+        "a.diff",
+        "--sample",
+        "2",
+        "--seed",
+        "9",
+    ]
 
 
 def test_cli_analyze_saturation_normalizes_bool_exit(

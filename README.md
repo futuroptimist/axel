@@ -103,6 +103,10 @@ Each run also appends a history entry under
 checkouts, with coverage in
 `tests/test_critic.py::test_analyze_orthogonality_appends_config_ledger` and
 `tests/test_critic.py::test_track_prompt_saturation_appends_config_ledger`.
+Deterministic sampling keeps large diff sets manageable: pass `--sample` and
+`--seed` to `axel analyze-orthogonality` to analyze a reproducible subset,
+covered by `tests/test_critic.py::test_analyze_orthogonality_sampling_embeds_metadata`
+and `tests/test_critic.py::test_cli_commands`.
 
 1. Add a repo with `python -m axel.repo_manager add <url>` (use `https://...`).
    Alternatively, edit `repos.txt`.

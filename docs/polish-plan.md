@@ -73,6 +73,9 @@ default, explicit telemetry opt-ins), and lands with the required checks (`flake
      analytics`. Ensure the filtered set flows through repo discovery, task
      aggregation, and analytics providers so downstream consumers observe the identical
      subset.
+     Analytics commands now surface sampling metadata for reproducible subsets (see
+     `tests/test_critic.py::test_analyze_orthogonality_sampling_embeds_metadata` and
+     `tests/test_critic.py::test_cli_commands`).
    - Annotate human-readable and JSON outputs with sampling decisions, and embed
      sampling metadata in persisted analytics records for auditing. Expose sampling
      knobs to analytics persistence and telemetry payloads.

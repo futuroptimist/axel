@@ -6,6 +6,7 @@ import argparse
 import json
 import math
 import os
+import random
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -60,6 +61,16 @@ def _append_jsonl(path: Path, payload: dict[str, Any]) -> None:
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(payload, default=str))
         handle.write("\n")
+
+
+def _sample_indices(total: int, sample: int | None, seed: int | None) -> list[int]:
+    """Return deterministic indices applying optional sampling."""
+
+    indices = list(range(total))
+    if sample is None or sample <= 0 or sample >= total:
+        return indices
+    rng = random.Random(seed)
+    return sorted(rng.sample(indices, sample))
 
 
 def _config_analytics_root() -> Path:
@@ -145,15 +156,27 @@ def _clip_score(value: float) -> float:
 
 
 def analyze_orthogonality(
-    task_versions: list[str], merged_prs: list[int]
+    task_versions: list[str],
+    merged_prs: list[int],
+    *,
+    sample: int | None = None,
+    seed: int | None = None,
 ) -> dict[str, Any]:
     """Compute the orthogonality score for a group of Codex task versions."""
 
     timestamp = _now_iso()
     repo = _CURRENT_REPO or os.getenv("AXEL_GITHUB_REPO")
-    total_tasks = len(task_versions)
-    avg_similarity = _average_pairwise_similarity(task_versions)
-    conflict_rate = _conflict_rate(repo, merged_prs, total_tasks)
+    available_tasks = len(task_versions)
+
+    indices = _sample_indices(available_tasks, sample, seed)
+    selected_versions = [task_versions[index] for index in indices]
+    selected_prs = [
+        merged_prs[index] for index in indices if 0 <= index < len(merged_prs)
+    ]
+
+    total_tasks = len(selected_versions)
+    avg_similarity = _average_pairwise_similarity(selected_versions)
+    conflict_rate = _conflict_rate(repo, selected_prs, total_tasks)
     merge_conflict_penalty = 0.1 * conflict_rate
     orthogonality = _clip_score(1.0 - (avg_similarity + merge_conflict_penalty))
     result = {
@@ -162,9 +185,18 @@ def analyze_orthogonality(
         "avg_pairwise_similarity": avg_similarity,
         "merge_conflict_penalty": merge_conflict_penalty,
         "merge_conflict_rate": conflict_rate,
-        "merged_prs": merged_prs,
+        "merged_prs": selected_prs,
         "total_tasks": total_tasks,
+        "available_tasks": available_tasks,
     }
+    if sample is not None and sample > 0:
+        result["sample_size_requested"] = sample
+        result["sample_size_applied"] = total_tasks
+        result["sample_seed"] = seed
+    else:
+        result["sample_size_requested"] = None
+        result["sample_size_applied"] = total_tasks
+        result["sample_seed"] = seed
     date_key = timestamp.split("T", 1)[0]
     log_path = ANALYTICS_ROOT / "orthogonality" / f"{date_key}.jsonl"
     _append_jsonl(log_path, result)
@@ -338,6 +370,7 @@ def track_prompt_saturation(repo: str, prompt_doc: str) -> dict[str, Any]:
 def _format_orthogonality_output(result: dict[str, Any]) -> str:
     conflicts = result.get("merge_conflict_rate", 0.0)
     total = result.get("total_tasks", 0)
+    available = result.get("available_tasks", total)
     merged = len(result.get("merged_prs", []) or [])
     orthogonality = result.get("orthogonality_score", 0.0)
     avg_similarity = result.get("avg_pairwise_similarity", 0.0)
@@ -347,6 +380,16 @@ def _format_orthogonality_output(result: dict[str, Any]) -> str:
         f"Merge Conflicts: {conflicts * total:.0f}/{total}",
         f"Merged PRs: {merged}",
     ]
+    sample_requested = result.get("sample_size_requested")
+    sample_applied = result.get("sample_size_applied")
+    if sample_requested:
+        seed = result.get("sample_seed")
+        seed_label = seed if seed is not None else "default"
+        sample_line = (
+            f"Sample: {sample_applied}/{available} tasks "
+            f"(requested {sample_requested}, seed {seed_label})"
+        )
+        lines.append(sample_line)
     return "\n".join(lines)
 
 
@@ -396,6 +439,18 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Output orthogonality analytics as JSON",
     )
+    ortho_parser.add_argument(
+        "--sample",
+        type=int,
+        default=None,
+        help="Number of task versions to analyze using deterministic sampling",
+    )
+    ortho_parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Seed used when sampling task versions",
+    )
 
     sat_parser = subparsers.add_parser(
         "analyze-saturation", help="Compute prompt saturation analytics"
@@ -422,7 +477,12 @@ def main(argv: list[str] | None = None) -> int:
         for file_path in args.diff_files:
             data = Path(file_path).read_text(encoding="utf-8")
             task_versions.append(data)
-        result = analyze_orthogonality(task_versions, args.prs or [])
+        result = analyze_orthogonality(
+            task_versions,
+            args.prs or [],
+            sample=args.sample,
+            seed=args.seed,
+        )
         if args.json:
             print(json.dumps(result, indent=2, ensure_ascii=False))
             return 0

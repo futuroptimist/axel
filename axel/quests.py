@@ -85,22 +85,13 @@ _REDACTED_DETAIL = (
 )
 
 
-def _redact_secret(text: str, secret: str | None) -> str:
-    """Return ``text`` with ``secret`` removed when present."""
-
-    if not secret or secret not in text:
-        return text
-    return text.replace(secret, "***")
-
-
 def _sanitize_suggestions_for_output(
     suggestions: Sequence[Suggestion],
-    secret: str | None,
+    hide_sensitive_details: bool,
 ) -> list[Suggestion]:
     """Return sanitized suggestions safe for CLI output."""
 
     sanitized: list[Suggestion] = []
-    secret_provided = bool(secret)
     for suggestion in suggestions:
         repos_value = suggestion.get("repos")
         if isinstance(repos_value, list):
@@ -111,14 +102,14 @@ def _sanitize_suggestions_for_output(
         details_value = suggestion.get("details")
         summary = summary_value if isinstance(summary_value, str) else ""
         details = details_value if isinstance(details_value, str) else ""
-        if secret_provided:
+        if hide_sensitive_details:
             sanitized_details = _REDACTED_DETAIL
         else:
-            sanitized_details = _redact_secret(details, secret)
+            sanitized_details = details
         sanitized.append(
             {
                 "repos": repos,
-                "summary": _redact_secret(summary, secret),
+                "summary": summary,
                 "details": sanitized_details,
             }
         )
@@ -296,7 +287,7 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     sanitized_for_output = _sanitize_suggestions_for_output(
         suggestions,
-        args.token_place_key,
+        bool(args.token_place_key),
     )
     if args.json:
         json_output = json.dumps(

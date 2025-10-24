@@ -62,8 +62,9 @@ default, explicit telemetry opt-ins), and lands with the required checks (`flake
      explains the default-off posture, enumerates outbound fields, and requires
      confirmation unless `--yes` supports automation. Block uploads until consent is
      explicit. Coverage now lives in `tests/test_config.py::test_enable_telemetry_records_consent`,
-     `tests/test_config.py::test_enable_requires_confirmation`, and
-     `tests/test_config.py::test_status_reports_current_state`.
+     `tests/test_config.py::test_enable_requires_confirmation`,
+     `tests/test_config.py::test_status_reports_current_state`, and
+     `tests/test_cli.py::test_cli_config_telemetry_status`.
    - Extend analytics flows to respect telemetry state, retry persistence with
      actionable errors, and surface telemetry state in `--json` output. Cover these
      paths with integration tests.

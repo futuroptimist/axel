@@ -123,7 +123,7 @@ def status_message(config: TelemetryConfig) -> str:
         )
     return (
         "Telemetry is disabled by default. Enable with "
-        "'python -m axel.config telemetry --enable' after reviewing the "
+        "'axel config telemetry --enable' after reviewing the "
         "outbound fields."
     )
 

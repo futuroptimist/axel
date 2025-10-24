@@ -6,10 +6,16 @@ import argparse
 import sys
 from typing import Sequence
 
-from . import critic, repo_manager, task_manager
+from . import config, critic, repo_manager, task_manager
 from .completions import CompletionInstallation, install_completions
 
-COMMANDS = ("repos", "tasks", "analyze-orthogonality", "analyze-saturation")
+COMMANDS = (
+    "repos",
+    "tasks",
+    "analyze-orthogonality",
+    "analyze-saturation",
+    "config",
+)
 
 
 def _normalize_exit_code(result: object) -> int:
@@ -49,7 +55,7 @@ def _build_help_parser() -> argparse.ArgumentParser:
         nargs="?",
         help=(
             "Subcommand to run (repos, tasks, analyze-orthogonality, "
-            "analyze-saturation)"
+            "analyze-saturation, config)"
         ),
     )
     parser.add_argument("args", nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
@@ -177,6 +183,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _normalize_exit_code(repo_manager.main(forwarded))
     if command == "tasks":
         return _normalize_exit_code(task_manager.main(forwarded))
+    if command == "config":
+        return _normalize_exit_code(config.main(forwarded))
     return _normalize_exit_code(critic.main([command, *forwarded]))
 
 

@@ -51,7 +51,11 @@ default, explicit telemetry opt-ins), and lands with the required checks (`flake
 2. **Persistence & telemetry groundwork**
    - Persist analytics runs beneath `~/.config/axel/analytics/<slug>.json`, capturing
      inputs, sampling parameters, metrics, CLI version, timestamps, exit status, and
-     telemetry state. Include schema versioning for forward compatibility.
+     telemetry state. Include schema versioning for forward compatibility. Analytics
+     runs now append to `~/.config/axel/analytics/orthogonality.jsonl` and
+     `saturation.jsonl` for persistent history (see
+     `tests/test_critic.py::test_analyze_orthogonality_appends_config_ledger` and
+     `tests/test_critic.py::test_track_prompt_saturation_appends_config_ledger`).
    - Introduce a `TelemetryConfig` helper storing opt-in flag, consent timestamp,
      consent text hash, last upload attempt, and pending payload identifiers.
    - Ship `axel config telemetry --enable|--disable [--status] [--yes]` with UX copy that

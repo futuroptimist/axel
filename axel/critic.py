@@ -62,6 +62,19 @@ def _append_jsonl(path: Path, payload: dict[str, Any]) -> None:
         handle.write("\n")
 
 
+def _config_analytics_root() -> Path:
+    """Return the configuration directory used for analytics history."""
+
+    return Path.home() / ".config" / "axel" / "analytics"
+
+
+def _append_config_analytics(metric: str, payload: dict[str, Any]) -> None:
+    """Append analytics payloads to the per-metric config ledger."""
+
+    path = _config_analytics_root() / f"{metric}.jsonl"
+    _append_jsonl(path, payload)
+
+
 def _load_history(path: Path) -> pd.DataFrame:
     if not path.exists():
         return pd.DataFrame()
@@ -155,6 +168,7 @@ def analyze_orthogonality(
     date_key = timestamp.split("T", 1)[0]
     log_path = ANALYTICS_ROOT / "orthogonality" / f"{date_key}.jsonl"
     _append_jsonl(log_path, result)
+    _append_config_analytics("orthogonality", result | {"metric": "orthogonality"})
     return result
 
 
@@ -307,6 +321,7 @@ def track_prompt_saturation(repo: str, prompt_doc: str) -> dict[str, Any]:
         "prompt_refresh_recommended": prompt_refresh,
     }
     _append_jsonl(log_path, enriched_entry)
+    _append_config_analytics("saturation", enriched_entry | {"metric": "saturation"})
     return {
         "timestamp": timestamp,
         "repo": repo,

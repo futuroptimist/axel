@@ -49,6 +49,35 @@ def test_analyze_orthogonality_records_log(critic_module, monkeypatch, tmp_path)
     assert "orthogonality_score" in content
 
 
+def test_analyze_orthogonality_appends_config_ledger(
+    critic_module, monkeypatch, tmp_path
+):
+    critic_module.ANALYTICS_ROOT = tmp_path / "analytics"
+
+    def fake_fetch(repo: str, pr_number: int):
+        return critic_module.PullRequestSnapshot(merged=False, mergeable_state="clean")
+
+    monkeypatch.setattr(critic_module, "_fetch_pull_request", fake_fetch)
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    critic_module.set_repository("octo/demo")
+
+    critic_module.analyze_orthogonality(
+        [
+            "diff --git a/a.txt b/a.txt\n+hello\n",
+            "diff --git a/a.txt b/a.txt\n+world\n",
+        ],
+        [1, 2],
+    )
+
+    ledger = tmp_path / ".config" / "axel" / "analytics" / "orthogonality.jsonl"
+    assert ledger.exists()
+    lines = ledger.read_text(encoding="utf-8").strip().splitlines()
+    assert lines, "ledger should include at least one entry"
+    payload = json.loads(lines[-1])
+    assert payload["metric"] == "orthogonality"
+    assert "orthogonality_score" in payload
+
+
 def test_track_prompt_saturation_updates_log(critic_module, tmp_path):
     critic_module.ANALYTICS_ROOT = tmp_path / "analytics"
     history_path = (
@@ -87,6 +116,32 @@ def test_track_prompt_saturation_updates_log(critic_module, tmp_path):
     assert result["prompt_refresh_recommended"] is True
     log_content = history_path.read_text(encoding="utf-8").strip().splitlines()
     assert len(log_content) == 2
+
+
+def test_track_prompt_saturation_appends_config_ledger(
+    critic_module, monkeypatch, tmp_path
+):
+    critic_module.ANALYTICS_ROOT = tmp_path / "analytics"
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    critic_module.set_latest_run_metrics(
+        {
+            "fitness_delta": 0.1,
+            "merged": 1,
+            "closed": 0,
+            "orthogonality_scores": [0.2, 0.4],
+        }
+    )
+
+    critic_module.track_prompt_saturation("octo/demo", "implement.md")
+
+    ledger = tmp_path / ".config" / "axel" / "analytics" / "saturation.jsonl"
+    assert ledger.exists()
+    lines = ledger.read_text(encoding="utf-8").strip().splitlines()
+    assert lines, "ledger should include at least one entry"
+    payload = json.loads(lines[-1])
+    assert payload["metric"] == "saturation"
+    assert payload["repo"] == "octo/demo"
+    assert payload["prompt"] == "implement.md"
 
 
 def test_cli_commands(critic_module, monkeypatch, tmp_path, capsys):

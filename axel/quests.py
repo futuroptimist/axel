@@ -244,7 +244,15 @@ def main(argv: Sequence[str] | None = None) -> None:
         return
 
     if args.json:
-        print(json.dumps(suggestions, indent=2, ensure_ascii=False))
+        sanitized_suggestions = [
+            {
+                "repos": suggestion.get("repos", []),
+                "summary": suggestion.get("summary", ""),
+                "details": suggestion.get("details", ""),
+            }
+            for suggestion in suggestions
+        ]
+        print(json.dumps(sanitized_suggestions, indent=2, ensure_ascii=False))
         return
 
     for suggestion in suggestions:

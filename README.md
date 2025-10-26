@@ -160,6 +160,8 @@ which keeps quest enrichment aligned with the configured relay or server (see
 can forward the same settings via `token_place_base_url` and `token_place_api_key` to
 `axel.quests.suggest_cross_repo_quests`, covered by
 `tests/test_quests.py::test_suggest_cross_repo_quests_forwards_token_place_config`. This
+CLI also offers `--json` for machine-readable output (see
+`tests/test_quests.py::test_cli_prints_json_suggestions`). This
 module powers the "suggest quests" promise described in the roadmap and is covered by
 `tests/test_quests.py::test_suggest_cross_repo_quests_links_repos` and
 `tests/test_quests.py::test_cli_prints_suggestions`.
@@ -230,7 +232,8 @@ Generate cross-repo quests with `python -m axel.quests --limit 3`. The helper re
 pairings that highlight how multiple repositories can collaborate on a shared goal. This
 module powers the "suggest quests" promise described in the roadmap and is covered by
 `tests/test_quests.py::test_suggest_cross_repo_quests_links_repos` and
-`tests/test_quests.py::test_cli_prints_suggestions`.
+`tests/test_quests.py::test_cli_prints_suggestions`. Automation can consume quest output via
+`--json` (see `tests/test_quests.py::test_cli_prints_json_suggestions`).
 Quests that involve token.place automatically reference `gabriel` to reinforce the
 security layer described in `issues/0003-gabriel-security-layer.md`; see
 `tests/test_quests.py::test_suggest_cross_repo_quests_mentions_gabriel_for_sensitive_pairs`.

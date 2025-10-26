@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -224,6 +225,50 @@ def test_cli_prints_suggestions(tmp_path: Path) -> None:
     assert "axel" in output
     assert "gabriel" in output
     assert "quest" in output
+
+
+def test_cli_prints_json_suggestions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    repo_file = tmp_path / "repos.txt"
+    repo_file.write_text(
+        "https://github.com/futuroptimist/token.place\n"
+        "https://github.com/futuroptimist/dspace\n"
+    )
+
+    import axel.quests as quests
+    import axel.token_place as token_place
+
+    monkeypatch.setattr(
+        token_place,
+        "list_models",
+        lambda base_url=None, api_key=None, timeout=token_place.DEFAULT_TIMEOUT: [
+            "llama-3-8b-instruct",
+        ],
+    )
+
+    quests.main(
+        [
+            "--path",
+            str(repo_file),
+            "--limit",
+            "1",
+            "--json",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert isinstance(payload, list)
+    assert len(payload) == 1
+    suggestion = payload[0]
+    assert sorted(suggestion["repos"]) == sorted(
+        [
+            "futuroptimist/token.place",
+            "futuroptimist/dspace",
+        ]
+    )
+    assert suggestion["summary"].endswith("via llama-3-8b-instruct")
 
 
 def test_cli_forwards_token_place_configuration(

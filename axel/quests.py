@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from dataclasses import dataclass
 from itertools import combinations
 from pathlib import Path
@@ -210,6 +211,11 @@ def main(argv: Sequence[str] | None = None) -> None:
         help="Maximum number of quests to print",
     )
     parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output quests as JSON",
+    )
+    parser.add_argument(
         "--token-place-url",
         dest="token_place_url",
         default=None,
@@ -231,7 +237,14 @@ def main(argv: Sequence[str] | None = None) -> None:
         token_place_api_key=args.token_place_key,
     )
     if not suggestions:
+        if args.json:
+            print("[]")
+            return
         print("No quests available")
+        return
+
+    if args.json:
+        print(json.dumps(suggestions, indent=2, ensure_ascii=False))
         return
 
     for suggestion in suggestions:

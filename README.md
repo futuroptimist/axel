@@ -100,7 +100,9 @@ automation (see `tests/test_critic.py::test_cli_commands`). When diff
 sets grow large, `axel analyze-orthogonality --sample <n> --seed <id>`
 processes a deterministic subset so reviews stay quick; this sampling
 flow is exercised in
-`tests/test_critic.py::test_main_analyze_orthogonality_sampling`.
+`tests/test_critic.py::test_main_analyze_orthogonality_sampling` and
+`tests/test_critic.py::test_main_analyze_orthogonality_sampling_text_output`,
+which also verifies the CLI surfaces sampling metadata in its output.
 Each run also appends a history entry under
 `~/.config/axel/analytics/orthogonality.jsonl` or
 `~/.config/axel/analytics/saturation.jsonl` so analytics persist across

@@ -198,6 +198,115 @@ def test_main_analyze_orthogonality_sampling(
     assert latest["sampling"]["sampled_task_count"] == 2
 
 
+def test_main_analyze_orthogonality_sampling_text_output(
+    critic_module, monkeypatch, tmp_path, capsys
+) -> None:
+    """Plain-text CLI output should surface sampling metadata."""
+
+    critic_module.ANALYTICS_ROOT = tmp_path / "analytics"
+
+    def fake_fetch(repo: str, pr_number: int):
+        return critic_module.PullRequestSnapshot(merged=False, mergeable_state="clean")
+
+    monkeypatch.setattr(critic_module, "_fetch_pull_request", fake_fetch)
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+    diffs = []
+    contents = [
+        "diff --git a/a.txt b/a.txt\n+alpha\n",
+        "diff --git a/b.txt b/b.txt\n+beta\n",
+        "diff --git a/c.txt b/c.txt\n+gamma\n",
+    ]
+    for index, content in enumerate(contents, start=1):
+        path = tmp_path / f"diff{index}.txt"
+        path.write_text(content, encoding="utf-8")
+        diffs.append(path)
+
+    exit_code = critic_module.main(
+        [
+            "analyze-orthogonality",
+            "--diff-file",
+            str(diffs[0]),
+            "--diff-file",
+            str(diffs[1]),
+            "--diff-file",
+            str(diffs[2]),
+            "--repo",
+            "octo/demo",
+            "--pr",
+            "101",
+            "--pr",
+            "102",
+            "--pr",
+            "103",
+            "--sample",
+            "2",
+            "--seed",
+            "11",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "Sampling:" in captured.out
+    assert "2 of 3 tasks" in captured.out
+    assert "seed=11" in captured.out
+
+
+def test_main_analyze_orthogonality_sampling_text_output_full_dataset(
+    critic_module, monkeypatch, tmp_path, capsys
+) -> None:
+    """When sampling covers all tasks, the CLI should flag the full dataset usage."""
+
+    critic_module.ANALYTICS_ROOT = tmp_path / "analytics"
+
+    def fake_fetch(repo: str, pr_number: int):
+        return critic_module.PullRequestSnapshot(merged=False, mergeable_state="clean")
+
+    monkeypatch.setattr(critic_module, "_fetch_pull_request", fake_fetch)
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+    diffs: list[Path] = []
+    for index, content in enumerate(
+        (
+            "diff --git a/a.txt b/a.txt\n+alpha\n",
+            "diff --git a/b.txt b/b.txt\n+beta\n",
+            "diff --git a/c.txt b/c.txt\n+gamma\n",
+        ),
+        start=1,
+    ):
+        path = tmp_path / f"diff{index}.txt"
+        path.write_text(content, encoding="utf-8")
+        diffs.append(path)
+
+    exit_code = critic_module.main(
+        [
+            "analyze-orthogonality",
+            "--diff-file",
+            str(diffs[0]),
+            "--diff-file",
+            str(diffs[1]),
+            "--diff-file",
+            str(diffs[2]),
+            "--repo",
+            "octo/demo",
+            "--pr",
+            "101",
+            "--pr",
+            "102",
+            "--sample",
+            "5",
+            "--seed",
+            "7",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "full dataset used" in captured.out
+    assert "seed=7" in captured.out
+
+
 def test_apply_sampling_handles_non_positive_requests(critic_module) -> None:
     entries = ["one", "two", "three"]
     assert critic_module._apply_sampling(entries, sample=0, seed=5) == []
@@ -206,6 +315,11 @@ def test_apply_sampling_handles_non_positive_requests(critic_module) -> None:
 def test_apply_sampling_returns_all_when_large_sample(critic_module) -> None:
     entries = ["alpha", "beta"]
     assert critic_module._apply_sampling(entries, sample=10, seed=42) == entries
+
+
+def test_apply_sampling_returns_all_when_sample_none(critic_module) -> None:
+    entries = ["left", "right"]
+    assert critic_module._apply_sampling(entries, sample=None, seed=99) == entries
 
 
 def test_track_prompt_saturation_appends_config_ledger(

@@ -390,6 +390,25 @@ def _format_orthogonality_output(result: dict[str, Any]) -> str:
         f"Merge Conflicts: {conflicts * total:.0f}/{total}",
         f"Merged PRs: {merged}",
     ]
+    sampling = result.get("sampling")
+    if isinstance(sampling, dict):
+        requested = sampling.get("requested")
+        seed = sampling.get("seed")
+        original = sampling.get("original_task_count")
+        sampled = sampling.get("sampled_task_count")
+        applied = sampling.get("applied")
+
+        if original is not None and sampled is not None and requested is not None:
+            seed_label = seed if seed is not None else "n/a"
+            if applied:
+                message = f"Sampling: {sampled} of {original} tasks (seed={seed_label})"
+            else:
+                message = (
+                    f"Sampling: requested {requested} of {original} tasks "
+                    f"(seed={seed_label})"
+                )
+                message += " — full dataset used"
+            lines.append(message)
     return "\n".join(lines)
 
 

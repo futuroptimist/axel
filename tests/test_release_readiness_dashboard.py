@@ -69,3 +69,46 @@ def test_release_dashboard_marks_community_complete() -> None:
         if "good first issue" in path.read_text(encoding="utf-8").lower()
     ]
     assert len(tagged) >= 3
+
+
+def test_release_notes_cover_v0_sections() -> None:
+    """Release notes should outline v0.1.0 highlights and onboarding guidance."""
+
+    root = Path(__file__).resolve().parents[1]
+    release_notes = (root / "docs" / "RELEASE_NOTES.md").read_text(encoding="utf-8")
+    assert "## v0.1.0" in release_notes
+
+    lines = release_notes.splitlines()
+    headings = {
+        "### What's New": None,
+        "### Try it in 60s": None,
+        "### Roadmap next": None,
+    }
+
+    for index, line in enumerate(lines):
+        if line.strip() in headings:
+            headings[line.strip()] = index
+
+    for heading, position in headings.items():
+        assert position is not None, f"Missing heading: {heading}"
+        next_index = next(
+            (
+                idx
+                for idx in range(position + 1, len(lines))
+                if lines[idx].startswith("## ") or lines[idx].startswith("### ")
+            ),
+            len(lines),
+        )
+        section_lines = lines[position + 1 : next_index]
+        assert any(
+            line.strip().startswith("-") for line in section_lines
+        ), f"Heading {heading} should include at least one bullet"
+
+    dashboard = (root / "docs" / "RELEASE-READINESS-DASHBOARD.md").read_text(
+        encoding="utf-8"
+    )
+    expected_line = (
+        '- [x] Draft v0.1.0 release notes covering "What\'s new", '
+        '"Try it in 60s", and "Roadmap next"'
+    )
+    assert expected_line in dashboard

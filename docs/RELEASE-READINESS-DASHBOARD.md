@@ -3,7 +3,7 @@ Release‑Readiness Dashboard (Aug–Sep 2025)
 Legend: [ ] = not started · [x] = done
 
 Definition of Done for v0.1
-- [ ] Tag v0.1.0 and publish Release notes (What’s new, Try it in 60s, Roadmap next)
+- [x] Draft v0.1.0 release notes covering "What's new", "Try it in 60s", and "Roadmap next" (see `tests/test_release_readiness_dashboard.py::test_release_notes_cover_v0_sections`)
 - [x] 1‑click install path (pipx install axel + unified CLI wiring)
 - [ ] 90‑second demo video/GIF linked at top of README
 - [x] Quickstart (≤60s) at top of README (guarded by

@@ -5,7 +5,7 @@ import json
 from dataclasses import dataclass
 from itertools import combinations
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Iterable, Sequence, cast
 from urllib.parse import urlparse
 
 from . import token_place as token_place_integration
@@ -78,6 +78,31 @@ _DEFAULT_DETAIL = (
 
 
 Suggestion = dict[str, list[str] | str]
+
+
+def _redact_secret(value: str, secret: str | None) -> str:
+    """Return ``value`` with ``secret`` removed."""
+
+    if not secret:
+        return value
+    return value.replace(secret, "[redacted]")
+
+
+def _redact_suggestion(suggestion: Suggestion, secret: str | None) -> Suggestion:
+    """Return a copy of ``suggestion`` with secrets removed."""
+
+    if not secret:
+        return suggestion
+
+    repos = [
+        _redact_secret(repo, secret)
+        for repo in cast(list[str], suggestion["repos"])
+    ]
+    return {
+        "repos": repos,
+        "summary": _redact_secret(cast(str, suggestion["summary"]), secret),
+        "details": _redact_secret(cast(str, suggestion["details"]), secret),
+    }
 
 
 def _build_suggestion(
@@ -243,11 +268,13 @@ def main(argv: Sequence[str] | None = None) -> None:
         print("No quests available")
         return
 
+    redacted = [_redact_suggestion(item, args.token_place_key) for item in suggestions]
+
     if args.json:
-        print(json.dumps(suggestions, indent=2, ensure_ascii=False))
+        print(json.dumps(redacted, indent=2, ensure_ascii=False))
         return
 
-    for suggestion in suggestions:
+    for suggestion in redacted:
         repos_line = ", ".join(suggestion["repos"])  # type: ignore[index]
         print(f"- {suggestion['summary']}")
         print(f"  repos: {repos_line}")

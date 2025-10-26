@@ -4,6 +4,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from typing import Sequence
 
 import pytest
 
@@ -311,6 +312,61 @@ def test_cli_forwards_token_place_configuration(
     )
 
     assert captured == [("https://token.place/api/v1", "secret")]
+
+
+def test_cli_redacts_token_place_key_from_output(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    import axel.quests as quests
+
+    repo_file = tmp_path / "repos.txt"
+    repo_file.write_text(
+        "https://github.com/example/alpha\n"
+        "https://github.com/example/beta\n",
+        encoding="utf-8",
+    )
+
+    def fake_suggestions(
+        repos: Sequence[str],
+        *,
+        limit: int,
+        token_place_base_url: str | None = None,
+        token_place_api_key: str | None = None,
+    ) -> list[dict[str, list[str] | str]]:
+        assert repos  # ensure CLI forwards repository list
+        assert token_place_api_key == "secret"
+        return [
+            {
+                "repos": ["example/alpha", "example/beta"],
+                "summary": "Connect using secret",  # redaction target
+                "details": "Share secret for access",  # redaction target
+            }
+        ]
+
+    monkeypatch.setattr(quests, "suggest_cross_repo_quests", fake_suggestions)
+
+    quests.main(
+        [
+            "--path",
+            str(repo_file),
+            "--limit",
+            "1",
+            "--json",
+            "--token-place-key",
+            "secret",
+        ]
+    )
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload == [
+        {
+            "repos": ["example/alpha", "example/beta"],
+            "summary": "Connect using [redacted]",
+            "details": "Share [redacted] for access",
+        }
+    ]
 
 
 def test_suggest_cross_repo_quests_handles_incomplete_urls() -> None:

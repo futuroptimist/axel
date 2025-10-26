@@ -34,14 +34,24 @@ def load_repos(path: Path | None = None) -> List[str]:
     Trailing slashes are stripped to keep entries canonical and duplicates are
     removed case-insensitively while preserving the first occurrence's case.
     The resulting list is sorted alphabetically, ignoring case. When the target
-    file is missing and ``AXEL_AUTO_FETCH_REPOS`` is set to a truthy value
-    (``1``, ``true``, ``yes`` or ``on``), the GitHub API is queried via
-    :func:`fetch_repos` to populate the list automatically.
+    file is missing Axel now auto-fetches repositories if a GitHub token is
+    available via ``GH_TOKEN`` or ``GITHUB_TOKEN``. Setting
+    ``AXEL_AUTO_FETCH_REPOS`` to a truthy value (``1``, ``true``, ``yes`` or
+    ``on``) forces fetching, while ``0``, ``false``, ``no`` or ``off`` disable
+    the automatic request. Fetching is performed through
+    :func:`fetch_repos`, with failures falling back to an empty list without
+    creating the file.
     """
     path = _resolve_path(path)
     if not path.exists():
         flag = os.getenv(_AUTO_FETCH_ENV, "").strip().lower()
-        if flag in {"1", "true", "yes", "on"}:
+        positive = {"1", "true", "yes", "on"}
+        negative = {"0", "false", "no", "off"}
+        gh_token = (os.getenv("GH_TOKEN", "") or "").strip()
+        github_token = (os.getenv("GITHUB_TOKEN", "") or "").strip()
+        should_fetch = flag in positive
+        disabled = flag in negative
+        if should_fetch or (not disabled and (gh_token or github_token)):
             try:
                 return fetch_repos(path=path)
             except (RuntimeError, requests.RequestException):

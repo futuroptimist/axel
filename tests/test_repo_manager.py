@@ -287,6 +287,60 @@ def test_load_repos_missing_file(tmp_path: Path):
     assert load_repos(path=file) == []
 
 
+def test_load_repos_auto_fetches_with_github_token(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Missing repo files trigger an automatic fetch when GitHub tokens exist."""
+
+    collected: dict[str, Path | None] = {"path": None}
+
+    def fake_fetch_repos(*, path: Path | None = None, **_: object) -> list[str]:
+        collected["path"] = path
+        assert path is not None
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("https://example.com/axel\n", encoding="utf-8")
+        return ["https://example.com/axel"]
+
+    repo_file = tmp_path / "repos.txt"
+
+    monkeypatch.delenv("AXEL_AUTO_FETCH_REPOS", raising=False)
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.setenv("GH_TOKEN", "gh-placeholder")
+    monkeypatch.setattr("axel.repo_manager.fetch_repos", fake_fetch_repos)
+
+    from axel import repo_manager as rm
+
+    repos = rm.load_repos(path=repo_file)
+
+    assert repos == ["https://example.com/axel"]
+    assert collected["path"] == repo_file
+
+
+def test_load_repos_auto_fetch_can_be_disabled(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Explicitly disabling auto-fetch bypasses GitHub token detection."""
+
+    called: dict[str, bool] = {"fetch": False}
+
+    def fake_fetch_repos(*, path: Path | None = None, **_: object) -> list[str]:
+        called["fetch"] = True
+        raise AssertionError("fetch_repos should not be called when disabled")
+
+    repo_file = tmp_path / "repos.txt"
+
+    monkeypatch.setenv("AXEL_AUTO_FETCH_REPOS", "0")
+    monkeypatch.setenv("GH_TOKEN", "gh-placeholder")
+    monkeypatch.setattr("axel.repo_manager.fetch_repos", fake_fetch_repos)
+
+    from axel import repo_manager as rm
+
+    repos = rm.load_repos(path=repo_file)
+
+    assert repos == []
+    assert not called["fetch"]
+
+
 def test_load_repos_auto_fetches_when_enabled(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

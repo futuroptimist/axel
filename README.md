@@ -130,10 +130,15 @@ which now assert the metadata is recorded with each entry.
    The fetch command also deduplicates URLs case-insensitively before writing
    the file so repeated entries from the API are collapsed (see
    `tests/test_repo_manager.py::test_fetch_repo_urls_deduplicates_case_insensitive`).
-   When ``AXEL_AUTO_FETCH_REPOS=1`` (or ``true``/``yes``) is set, Axel will
-   automatically call the fetch command the first time the configured repo list
-   is missing so new checkouts start with live data. Failures fall back to an
-   empty list without creating a file; see
+   When the repo list is missing and a GitHub token is available, Axel now
+   auto-fetches the data on the first call to keep fresh state without extra
+   flags (see
+   `tests/test_repo_manager.py::test_load_repos_auto_fetches_with_github_token`).
+   Set ``AXEL_AUTO_FETCH_REPOS=0`` (or ``false``/``no``/``off``) to disable the
+   implicit fetch (see
+   `tests/test_repo_manager.py::test_load_repos_auto_fetch_can_be_disabled`) or
+   ``1``/``true``/``yes``/``on`` to force it regardless of token availability.
+   Failures fall back to an empty list without creating a file; see
    `tests/test_repo_manager.py::test_load_repos_auto_fetches_when_enabled` and
    `tests/test_repo_manager.py::test_load_repos_auto_fetch_handles_errors`.
 5. Run `pre-commit run --all-files` before committing to check formatting and tests.

@@ -83,9 +83,26 @@ Suggestion = dict[str, list[str] | str]
 def _redact_secret(value: str, secret: str | None) -> str:
     """Return ``value`` with ``secret`` removed."""
 
-    if not secret:
+    if not secret or not value:
         return value
     return value.replace(secret, "[redacted]")
+
+
+def _redact_value(obj: object, secret: str | None) -> object:
+    """Return ``obj`` with ``secret`` removed from any string values."""
+
+    if not secret:
+        return obj
+
+    if isinstance(obj, str):
+        return _redact_secret(obj, secret)
+    if isinstance(obj, list):
+        return [_redact_value(item, secret) for item in obj]
+    if isinstance(obj, tuple):
+        return tuple(_redact_value(item, secret) for item in obj)
+    if isinstance(obj, dict):
+        return {key: _redact_value(value, secret) for key, value in obj.items()}
+    return obj
 
 
 def _redact_suggestion(suggestion: Suggestion, secret: str | None) -> Suggestion:
@@ -94,15 +111,11 @@ def _redact_suggestion(suggestion: Suggestion, secret: str | None) -> Suggestion
     if not secret:
         return suggestion
 
-    repos = [
-        _redact_secret(repo, secret)
-        for repo in cast(list[str], suggestion["repos"])
-    ]
-    return {
-        "repos": repos,
-        "summary": _redact_secret(cast(str, suggestion["summary"]), secret),
-        "details": _redact_secret(cast(str, suggestion["details"]), secret),
-    }
+    sanitized = cast(Suggestion, _redact_value(dict(suggestion), secret))
+    sanitized["repos"] = cast(list[str], sanitized["repos"])
+    sanitized["summary"] = cast(str, sanitized["summary"])
+    sanitized["details"] = cast(str, sanitized["details"])
+    return sanitized
 
 
 def _build_suggestion(

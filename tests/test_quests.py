@@ -369,6 +369,79 @@ def test_cli_redacts_token_place_key_from_output(
     ]
 
 
+def test_cli_text_output_masks_token_place_key(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    import axel.quests as quests
+
+    repo_file = tmp_path / "repos.txt"
+    repo_file.write_text(
+        "https://github.com/example/alpha\n"
+        "https://github.com/example/beta\n",
+        encoding="utf-8",
+    )
+
+    def fake_suggestions(
+        repos: Sequence[str],
+        *,
+        limit: int,
+        token_place_base_url: str | None = None,
+        token_place_api_key: str | None = None,
+    ) -> list[dict[str, list[str] | str]]:
+        assert token_place_api_key == "secret"
+        return [
+            {
+                "repos": ["example/alpha", "example/beta"],
+                "summary": "Connect using secret",  # redaction target
+                "details": "Share secret for access",  # redaction target
+            }
+        ]
+
+    monkeypatch.setattr(quests, "suggest_cross_repo_quests", fake_suggestions)
+
+    quests.main(
+        [
+            "--path",
+            str(repo_file),
+            "--limit",
+            "1",
+            "--token-place-key",
+            "secret",
+        ]
+    )
+
+    output = capsys.readouterr().out
+    assert "secret" not in output
+    assert "[redacted]" in output
+
+
+def test_redact_suggestion_does_not_mutate_original() -> None:
+    import axel.quests as quests
+
+    suggestion = {
+        "repos": ["example/alpha", "example/beta"],
+        "summary": "Connect using secret",
+        "details": "Share secret for access",
+    }
+
+    redacted = quests._redact_suggestion(suggestion, "secret")
+
+    assert suggestion["summary"] == "Connect using secret"
+    assert redacted["summary"] == "Connect using [redacted]"
+    assert redacted is not suggestion
+
+
+def test_redaction_helpers_cover_optional_branches() -> None:
+    import axel.quests as quests
+
+    assert quests._redact_secret("value", None) == "value"
+    assert quests._redact_value(["value"], None) == ["value"]
+    assert quests._redact_value(("secret",), "secret") == ("[redacted]",)
+    assert quests._redact_value(42, "secret") == 42
+
+
 def test_suggest_cross_repo_quests_handles_incomplete_urls() -> None:
     from axel.quests import suggest_cross_repo_quests
 
@@ -448,6 +521,19 @@ def test_cli_handles_no_suggestions(tmp_path: Path) -> None:
     )
 
     assert "no quests available" in result.stdout.lower()
+
+
+def test_cli_json_handles_no_suggestions(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    repo_file = tmp_path / "repos.txt"
+    repo_file.write_text("https://github.com/futuroptimist/axel\n")
+
+    from axel.quests import main
+
+    main(["--path", str(repo_file), "--json"])
+
+    assert capsys.readouterr().out.strip() == "[]"
 
 
 def test_main_prints_quests(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

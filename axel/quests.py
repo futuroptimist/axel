@@ -268,11 +268,15 @@ def main(argv: Sequence[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     repos = load_repos(path=args.path)
+    resolved_token_place_key = token_place_integration._resolve_api_key(
+        args.token_place_key
+    )
+
     suggestions = suggest_cross_repo_quests(
         repos,
         limit=args.limit,
         token_place_base_url=args.token_place_url,
-        token_place_api_key=args.token_place_key,
+        token_place_api_key=resolved_token_place_key,
     )
     if not suggestions:
         if args.json:
@@ -283,7 +287,8 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     if args.json:
         payload = [
-            _redact_suggestion(item, args.token_place_key) for item in suggestions
+            _redact_suggestion(item, resolved_token_place_key)
+            for item in suggestions
         ]
         print(json.dumps(payload, indent=2, ensure_ascii=False))
         return
@@ -293,9 +298,11 @@ def main(argv: Sequence[str] | None = None) -> None:
         summary = cast(str, suggestion["summary"])
         details = cast(str, suggestion["details"])
 
-        sanitized_summary = _redact_secret(summary, args.token_place_key)
-        sanitized_details = _redact_secret(details, args.token_place_key)
-        sanitized_repos = [_redact_secret(repo, args.token_place_key) for repo in repos]
+        sanitized_summary = _redact_secret(summary, resolved_token_place_key)
+        sanitized_details = _redact_secret(details, resolved_token_place_key)
+        sanitized_repos = [
+            _redact_secret(repo, resolved_token_place_key) for repo in repos
+        ]
 
         repos_line = ", ".join(sanitized_repos)
         print(f"- {sanitized_summary}")

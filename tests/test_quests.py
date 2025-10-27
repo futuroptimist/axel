@@ -369,6 +369,60 @@ def test_cli_redacts_token_place_key_from_output(
     ]
 
 
+def test_cli_resolves_env_token_place_key_for_redaction(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    import axel.quests as quests
+
+    repo_file = tmp_path / "repos.txt"
+    repo_file.write_text(
+        "https://github.com/example/alpha\n"
+        "https://github.com/example/beta\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setenv("TOKEN_PLACE_API_KEY", " secret ")
+
+    def fake_suggestions(
+        repos: Sequence[str],
+        *,
+        limit: int,
+        token_place_base_url: str | None = None,
+        token_place_api_key: str | None = None,
+    ) -> list[dict[str, list[str] | str]]:
+        assert token_place_api_key == "secret"
+        return [
+            {
+                "repos": ["example/alpha", "example/beta"],
+                "summary": "Connect using secret",
+                "details": "Share secret for access",
+            }
+        ]
+
+    monkeypatch.setattr(quests, "suggest_cross_repo_quests", fake_suggestions)
+
+    quests.main(
+        [
+            "--path",
+            str(repo_file),
+            "--limit",
+            "1",
+            "--json",
+        ]
+    )
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload == [
+        {
+            "repos": ["example/alpha", "example/beta"],
+            "summary": "Connect using [redacted]",
+            "details": "Share [redacted] for access",
+        }
+    ]
+
+
 def test_cli_text_output_masks_token_place_key(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

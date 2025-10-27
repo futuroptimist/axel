@@ -105,13 +105,32 @@ def _redact_value(obj: object, secret: str | None) -> object:
     return obj
 
 
+_SCRUB_KEYWORDS = ("api_key", "apikey", "key", "secret", "token", "password")
+
+
+def _scrub_sensitive_fields(obj: object) -> object:
+    """Recursively remove values for field names that imply sensitive content."""
+
+    if isinstance(obj, dict):
+        scrubbed: dict[object, object] = {}
+        for key, value in obj.items():
+            if isinstance(key, str) and any(keyword in key.lower() for keyword in _SCRUB_KEYWORDS):
+                scrubbed[key] = "[redacted]"
+            else:
+                scrubbed[key] = _scrub_sensitive_fields(value)
+        return scrubbed
+    if isinstance(obj, list):
+        return [_scrub_sensitive_fields(item) for item in obj]
+    if isinstance(obj, tuple):
+        return tuple(_scrub_sensitive_fields(item) for item in obj)
+    return obj
+
+
 def _redact_suggestion(suggestion: Suggestion, secret: str | None) -> Suggestion:
     """Return a copy of ``suggestion`` with secrets removed."""
 
-    if not secret:
-        return suggestion
-
-    sanitized = cast(Suggestion, _redact_value(dict(suggestion), secret))
+    sanitized = cast(Suggestion, _scrub_sensitive_fields(dict(suggestion)))
+    sanitized = cast(Suggestion, _redact_value(sanitized, secret))
     sanitized["repos"] = cast(list[str], sanitized["repos"])
     sanitized["summary"] = cast(str, sanitized["summary"])
     sanitized["details"] = cast(str, sanitized["details"])
@@ -294,20 +313,15 @@ def main(argv: Sequence[str] | None = None) -> None:
         return
 
     for suggestion in suggestions:
-        repos = cast(list[str], suggestion["repos"])
-        summary = cast(str, suggestion["summary"])
-        details = cast(str, suggestion["details"])
+        sanitized = _redact_suggestion(suggestion, resolved_token_place_key)
+        repos = cast(list[str], sanitized["repos"])
+        summary = cast(str, sanitized["summary"])
+        details = cast(str, sanitized["details"])
 
-        sanitized_summary = _redact_secret(summary, resolved_token_place_key)
-        sanitized_details = _redact_secret(details, resolved_token_place_key)
-        sanitized_repos = [
-            _redact_secret(repo, resolved_token_place_key) for repo in repos
-        ]
-
-        repos_line = ", ".join(sanitized_repos)
-        print(f"- {sanitized_summary}")
+        repos_line = ", ".join(repos)
+        print(f"- {summary}")
         print(f"  repos: {repos_line}")
-        print(f"  quest: {sanitized_details}")
+        print(f"  quest: {details}")
         print()
 
 

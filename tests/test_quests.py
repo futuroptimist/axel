@@ -487,6 +487,26 @@ def test_redact_suggestion_does_not_mutate_original() -> None:
     assert redacted is not suggestion
 
 
+def test_redact_suggestion_scrubs_sensitive_field_names() -> None:
+    import axel.quests as quests
+
+    suggestion = {
+        "repos": ["example/alpha", "example/beta"],
+        "summary": "Keep things secure",
+        "details": "Token appears in narrative",
+        "api_key": "should hide",
+        "nested": {"token": "nested secret"},
+    }
+
+    sanitized = quests._redact_suggestion(suggestion, None)
+
+    assert sanitized["summary"] == "Keep things secure"
+    assert sanitized["details"] == "Token appears in narrative"
+    assert sanitized["api_key"] == "[redacted]"
+    assert isinstance(sanitized["nested"], dict)
+    assert sanitized["nested"]["token"] == "[redacted]"
+
+
 def test_redaction_helpers_cover_optional_branches() -> None:
     import axel.quests as quests
 
@@ -494,6 +514,11 @@ def test_redaction_helpers_cover_optional_branches() -> None:
     assert quests._redact_value(["value"], None) == ["value"]
     assert quests._redact_value(("secret",), "secret") == ("[redacted]",)
     assert quests._redact_value(42, "secret") == 42
+    assert quests._scrub_sensitive_fields({"api_key": "value"}) == {
+        "api_key": "[redacted]"
+    }
+    assert quests._scrub_sensitive_fields(["value"]) == ["value"]
+    assert quests._scrub_sensitive_fields(("value",)) == ("value",)
 
 
 def test_suggest_cross_repo_quests_handles_incomplete_urls() -> None:

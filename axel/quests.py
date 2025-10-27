@@ -97,7 +97,9 @@ def _build_suggestion(
     repos = [primary.slug, secondary.slug]
     summary = f"Link {primary.slug} ↔ {secondary.slug}"
     if featured_model:
-        summary += f" via {featured_model}"
+        summary_model = token_place_integration.format_model_for_cli(featured_model)
+        if summary_model:
+            summary += f" via {summary_model}"
     suggestion: Suggestion = {
         "repos": repos,
         "summary": summary,
@@ -249,7 +251,9 @@ def main(argv: Sequence[str] | None = None) -> None:
         print(f"  quest: {suggestion['details']}")
         model = suggestion.get("token_place_model")  # type: ignore[assignment]
         if model:
-            print(f"  token.place model: {model}")
+            display_model = token_place_integration.format_model_for_cli(model)
+            if display_model:
+                print(f"  token.place model: {display_model}")
         print()
 
 

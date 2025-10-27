@@ -303,6 +303,38 @@ def test_cli_prints_token_place_model_when_available(
     assert err == ""
 
 
+def test_cli_redacts_suspicious_token_place_model(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: CaptureFixture[str]
+) -> None:
+    import axel.quests as quests
+    import axel.token_place as token_place
+
+    repo_file = tmp_path / "repos.txt"
+    repo_file.write_text(
+        "https://github.com/futuroptimist/token.place\n"
+        "https://github.com/futuroptimist/dspace\n",
+        encoding="utf-8",
+    )
+
+    suspicious_model = "sk-secret+/XYZ123"
+
+    monkeypatch.setattr(
+        token_place,
+        "list_models",
+        lambda base_url=None, api_key=None, timeout=token_place.DEFAULT_TIMEOUT: [
+            suspicious_model
+        ],
+    )
+
+    quests.main(["--path", str(repo_file), "--limit", "1"])
+
+    out, err = capsys.readouterr()
+    assert "token.place model" in out
+    assert suspicious_model not in out
+    assert "sk-s…Z123" in out
+    assert err == ""
+
+
 def test_cli_forwards_token_place_configuration(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

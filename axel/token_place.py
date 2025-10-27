@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import sys
 from dataclasses import dataclass
 from functools import lru_cache
@@ -25,6 +26,8 @@ _ROTATED_KEY_FIELDS: dict[str, tuple[str, ...]] = {
     "relay": ("relay", "relay_key", "relayToken", "relay_token"),
     "server": ("server", "server_key", "serverToken", "server_token"),
 }
+
+_SAFE_MODEL_PATTERN = re.compile(r"^[A-Za-z0-9_.:/-]+$")
 
 
 class TokenPlaceError(RuntimeError):
@@ -122,6 +125,30 @@ def _extract_rotated_keys(payload: object) -> dict[str, str]:
                         secrets[canonical] = cleaned
                         break
     return secrets
+
+
+def format_model_for_cli(model: str) -> str:
+    """Return a CLI-safe representation of ``model``."""
+
+    if not model:
+        return ""
+
+    trimmed = model.strip()
+    if _SAFE_MODEL_PATTERN.fullmatch(trimmed):
+        lowered = trimmed.lower()
+        suspicious_prefixes = ("sk-", "rk-", "pk-", "secret", "token")
+        if not any(lowered.startswith(prefix) for prefix in suspicious_prefixes):
+            return trimmed
+
+    if not trimmed:
+        return ""
+
+    if len(trimmed) <= 8:
+        return "[redacted]"
+
+    prefix = trimmed[:4]
+    suffix = trimmed[-4:]
+    return f"{prefix}…{suffix}"
 
 
 def list_models(
@@ -243,9 +270,10 @@ def quest_detail(
         models = []
 
     featured = _select_featured_model(models)
-    if featured:
+    display_model = format_model_for_cli(featured or "") if featured else ""
+    if display_model:
         return (
-            f"{primary_slug} can broker token.place auth via {featured} "
+            f"{primary_slug} can broker token.place auth via {display_model} "
             f"while gabriel audits secrets so {secondary_slug} ships safely."
         )
     return (
@@ -494,6 +522,7 @@ __all__ = [
     "rotate_api_keys",
     "quest_detail",
     "get_featured_model",
+    "format_model_for_cli",
     "ClientIntegration",
     "plan_client_integrations",
     "main",

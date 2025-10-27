@@ -196,6 +196,29 @@ def test_get_featured_model_handles_errors(monkeypatch: pytest.MonkeyPatch) -> N
     assert token_place.get_featured_model() is None
 
 
+def test_format_model_for_cli_allows_safe_identifiers() -> None:
+    """Model identifiers with safe characters are unchanged."""
+
+    assert (
+        token_place.format_model_for_cli("llama-3-8b-instruct:alignment")
+        == "llama-3-8b-instruct:alignment"
+    )
+    assert (
+        token_place.format_model_for_cli("meta-llama/Meta-Llama-3-8B-Instruct")
+        == "meta-llama/Meta-Llama-3-8B-Instruct"
+    )
+
+
+def test_format_model_for_cli_redacts_and_trims_suspicious_identifiers() -> None:
+    """Suspicious values are redacted or trimmed when printed."""
+
+    assert token_place.format_model_for_cli("") == ""
+    assert token_place.format_model_for_cli("sk-secret+/XYZ123") == "sk-s…Z123"
+    assert token_place.format_model_for_cli("  sk-secret  ") == "sk-s…cret"
+    assert token_place.format_model_for_cli("   ") == ""
+    assert token_place.format_model_for_cli("secret!") == "[redacted]"
+
+
 def test_main_prints_models(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

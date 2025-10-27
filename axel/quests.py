@@ -281,17 +281,26 @@ def main(argv: Sequence[str] | None = None) -> None:
         print("No quests available")
         return
 
-    redacted = [_redact_suggestion(item, args.token_place_key) for item in suggestions]
-
     if args.json:
-        print(json.dumps(redacted, indent=2, ensure_ascii=False))
+        payload = [
+            _redact_suggestion(item, args.token_place_key) for item in suggestions
+        ]
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
         return
 
-    for suggestion in redacted:
-        repos_line = ", ".join(suggestion["repos"])  # type: ignore[index]
-        print(f"- {suggestion['summary']}")
+    for suggestion in suggestions:
+        repos = cast(list[str], suggestion["repos"])
+        summary = cast(str, suggestion["summary"])
+        details = cast(str, suggestion["details"])
+
+        sanitized_summary = _redact_secret(summary, args.token_place_key)
+        sanitized_details = _redact_secret(details, args.token_place_key)
+        sanitized_repos = [_redact_secret(repo, args.token_place_key) for repo in repos]
+
+        repos_line = ", ".join(sanitized_repos)
+        print(f"- {sanitized_summary}")
         print(f"  repos: {repos_line}")
-        print(f"  quest: {suggestion['details']}")
+        print(f"  quest: {sanitized_details}")
         print()
 
 

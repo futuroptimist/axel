@@ -113,11 +113,24 @@ _axel_completions() {
                 esac
             done
 
+            local repos_is_known_subcommand=0
+            for candidate in ${repos_sub}; do
+                if [[ ${repos_subcommand} == "${candidate}" ]]; then
+                    repos_is_known_subcommand=1
+                    break
+                fi
+            done
+            if [[ ${repos_is_known_subcommand} -eq 0 ]]; then
+                repos_subcommand=""
+            fi
+
             if [[ -z ${repos_subcommand} ]]; then
                 if [[ ${cur} == -* ]]; then
-                    COMPREPLY=( $(compgen -W "${repos_common_opts}" -- "${cur}") )
+                    local repos_words="${repos_common_opts}"
+                    COMPREPLY=( $(compgen -W "${repos_words}" -- "${cur}") )
                 else
-                    COMPREPLY=( $(compgen -W "${repos_sub} ${repos_common_opts}" -- "${cur}") )
+                    local repos_words="${repos_sub} ${repos_common_opts}"
+                    COMPREPLY=( $(compgen -W "${repos_words}" -- "${cur}") )
                 fi
             else
                 case "${repos_subcommand}" in
@@ -165,11 +178,24 @@ _axel_completions() {
                 esac
             done
 
+            local tasks_is_known_subcommand=0
+            for candidate in ${tasks_sub}; do
+                if [[ ${tasks_subcommand} == "${candidate}" ]]; then
+                    tasks_is_known_subcommand=1
+                    break
+                fi
+            done
+            if [[ ${tasks_is_known_subcommand} -eq 0 ]]; then
+                tasks_subcommand=""
+            fi
+
             if [[ -z ${tasks_subcommand} ]]; then
                 if [[ ${cur} == -* ]]; then
-                    COMPREPLY=( $(compgen -W "${tasks_common_opts}" -- "${cur}") )
+                    local tasks_words="${tasks_common_opts}"
+                    COMPREPLY=( $(compgen -W "${tasks_words}" -- "${cur}") )
                 else
-                    COMPREPLY=( $(compgen -W "${tasks_sub} ${tasks_common_opts}" -- "${cur}") )
+                    local tasks_words="${tasks_sub} ${tasks_common_opts}"
+                    COMPREPLY=( $(compgen -W "${tasks_words}" -- "${cur}") )
                 fi
             elif [[ "${tasks_subcommand}" == 'list' ]]; then
                 local tasks_list_opts='--sample --seed --path --json --help -h'

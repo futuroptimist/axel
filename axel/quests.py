@@ -252,8 +252,10 @@ def main(argv: Sequence[str] | None = None) -> None:
         model = suggestion.get("token_place_model")  # type: ignore[assignment]
         if model:
             display_model = token_place_integration.format_model_for_cli(model)
-            if display_model:
+            if display_model and display_model != "[redacted]":
                 print(f"  token.place model: {display_model}")
+            elif display_model == "[redacted]":
+                print("  token.place model: [redacted]")
         print()
 
 

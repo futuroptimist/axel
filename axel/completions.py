@@ -89,20 +89,127 @@ _axel_completions() {
 
     case "${command}" in
         repos)
-            local repos_opts='add list remove fetch --path --token '\
-                '--visibility --json --help -h'
-            COMPREPLY=( $(compgen -W "${repos_opts}" -- "${cur}") )
+            local repos_sub='add list remove fetch'
+            local repos_common_opts='--path --json --help -h'
+            local repos_subcommand=""
+            local repos_index=2
+
+            while [[ ${repos_index} -lt ${COMP_CWORD} ]]; do
+                local word="${COMP_WORDS[${repos_index}]}"
+                case "${word}" in
+                    --path|--token|--visibility|--sample|--seed)
+                        ((repos_index++))
+                        if [[ ${repos_index} -lt ${COMP_CWORD} ]]; then
+                            ((repos_index++))
+                        fi
+                        ;;
+                    -*)
+                        ((repos_index++))
+                        ;;
+                    *)
+                        repos_subcommand="${word}"
+                        break
+                        ;;
+                esac
+            done
+
+            local repos_is_known_subcommand=0
+            for candidate in ${repos_sub}; do
+                if [[ ${repos_subcommand} == "${candidate}" ]]; then
+                    repos_is_known_subcommand=1
+                    break
+                fi
+            done
+            if [[ ${repos_is_known_subcommand} -eq 0 ]]; then
+                repos_subcommand=""
+            fi
+
+            if [[ -z ${repos_subcommand} ]]; then
+                if [[ ${cur} == -* ]]; then
+                    local repos_words="${repos_common_opts}"
+                    COMPREPLY=( $(compgen -W "${repos_words}" -- "${cur}") )
+                else
+                    local repos_words="${repos_sub} ${repos_common_opts}"
+                    COMPREPLY=( $(compgen -W "${repos_words}" -- "${cur}") )
+                fi
+            else
+                case "${repos_subcommand}" in
+                    list)
+                        local repos_list_opts='--sample --seed --path --json --help -h'
+                        COMPREPLY=( $(compgen -W "${repos_list_opts}" -- "${cur}") )
+                        ;;
+                    fetch)
+                        local repos_fetch_opts='--token --visibility --path --json '\
+                            '--help -h'
+                        COMPREPLY=( $(compgen -W "${repos_fetch_opts}" -- "${cur}") )
+                        ;;
+                    add|remove)
+                        local repos_modify_opts='--path --json --help -h'
+                        COMPREPLY=( $(compgen -W "${repos_modify_opts}" -- "${cur}") )
+                        ;;
+                    *)
+                        COMPREPLY=( $(compgen -W "${repos_common_opts}" -- "${cur}") )
+                        ;;
+                esac
+            fi
             ;;
         tasks)
-            local tasks_opts='add list complete remove clear --path --json --help -h'
-            COMPREPLY=( $(compgen -W "${tasks_opts}" -- "${cur}") )
+            local tasks_sub='add list complete remove clear'
+            local tasks_common_opts='--path --json --help -h'
+            local tasks_subcommand=""
+            local tasks_index=2
+
+            while [[ ${tasks_index} -lt ${COMP_CWORD} ]]; do
+                local word="${COMP_WORDS[${tasks_index}]}"
+                case "${word}" in
+                    --path|--sample|--seed)
+                        ((tasks_index++))
+                        if [[ ${tasks_index} -lt ${COMP_CWORD} ]]; then
+                            ((tasks_index++))
+                        fi
+                        ;;
+                    -*)
+                        ((tasks_index++))
+                        ;;
+                    *)
+                        tasks_subcommand="${word}"
+                        break
+                        ;;
+                esac
+            done
+
+            local tasks_is_known_subcommand=0
+            for candidate in ${tasks_sub}; do
+                if [[ ${tasks_subcommand} == "${candidate}" ]]; then
+                    tasks_is_known_subcommand=1
+                    break
+                fi
+            done
+            if [[ ${tasks_is_known_subcommand} -eq 0 ]]; then
+                tasks_subcommand=""
+            fi
+
+            if [[ -z ${tasks_subcommand} ]]; then
+                if [[ ${cur} == -* ]]; then
+                    local tasks_words="${tasks_common_opts}"
+                    COMPREPLY=( $(compgen -W "${tasks_words}" -- "${cur}") )
+                else
+                    local tasks_words="${tasks_sub} ${tasks_common_opts}"
+                    COMPREPLY=( $(compgen -W "${tasks_words}" -- "${cur}") )
+                fi
+            elif [[ "${tasks_subcommand}" == 'list' ]]; then
+                local tasks_list_opts='--sample --seed --path --json --help -h'
+                COMPREPLY=( $(compgen -W "${tasks_list_opts}" -- "${cur}") )
+            else
+                COMPREPLY=( $(compgen -W "${tasks_common_opts}" -- "${cur}") )
+            fi
             ;;
         analyze-orthogonality)
-            local ortho_opts='--diff-file --repo --pr --help -h'
+            local ortho_opts='--diff-file --repo --pr --json --sample --seed --help -h'
             COMPREPLY=( $(compgen -W "${ortho_opts}" -- "${cur}") )
             ;;
         analyze-saturation)
-            local sat_opts='--repo --prompt --metrics --help -h'
+            local sat_opts='--repo --prompt --metrics --json --help -h'
             COMPREPLY=( $(compgen -W "${sat_opts}" -- "${cur}") )
             ;;
         config)
@@ -146,10 +253,18 @@ complete -c axel -n '__fish_seen_subcommand_from repos' \
     -a 'add list remove fetch'
 complete -c axel -n '__fish_seen_subcommand_from repos' \
     -l json -d 'Output JSON'
+complete -c axel -n '__fish_seen_subcommand_from repos list' \
+    -l sample -d 'Return a deterministic subset of repositories' -r
+complete -c axel -n '__fish_seen_subcommand_from repos list' \
+    -l seed -d 'Seed used when sampling repositories' -r
 complete -c axel -n '__fish_seen_subcommand_from tasks' \
     -a 'add list complete remove clear'
 complete -c axel -n '__fish_seen_subcommand_from tasks' \
     -l json -d 'Output JSON'
+complete -c axel -n '__fish_seen_subcommand_from tasks list' \
+    -l sample -d 'Return a deterministic subset of tasks' -r
+complete -c axel -n '__fish_seen_subcommand_from tasks list' \
+    -l seed -d 'Seed used when sampling tasks' -r
 complete -c axel -n '__fish_seen_subcommand_from config' \
     -a 'telemetry' -d 'Manage telemetry opt-in'
 complete -c axel -n '__fish_seen_subcommand_from config telemetry' \
@@ -170,12 +285,20 @@ complete -c axel -n '__fish_seen_subcommand_from analyze-orthogonality' \
     -l diff-file -d 'Diff file' -r
 complete -c axel -n '__fish_seen_subcommand_from analyze-orthogonality' \
     -l pr -d 'Pull request' -r
+complete -c axel -n '__fish_seen_subcommand_from analyze-orthogonality' \
+    -l json -d 'Output orthogonality analytics as JSON'
+complete -c axel -n '__fish_seen_subcommand_from analyze-orthogonality' \
+    -l sample -d 'Analyze a deterministic subset of diff files' -r
+complete -c axel -n '__fish_seen_subcommand_from analyze-orthogonality' \
+    -l seed -d 'Seed used when sampling diff files' -r
 complete -c axel -n '__fish_seen_subcommand_from analyze-saturation' \
     -l repo -d 'Repository slug' -r
 complete -c axel -n '__fish_seen_subcommand_from analyze-saturation' \
     -l prompt -d 'Prompt name' -r
 complete -c axel -n '__fish_seen_subcommand_from analyze-saturation' \
     -l metrics -d 'Metrics file' -r
+complete -c axel -n '__fish_seen_subcommand_from analyze-saturation' \
+    -l json -d 'Output saturation analytics as JSON'
 """
 
 

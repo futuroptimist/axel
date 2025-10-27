@@ -241,6 +241,12 @@ module powers the "suggest quests" promise described in the roadmap and is cover
 Quests that involve token.place automatically reference `gabriel` to reinforce the
 security layer described in `issues/0003-gabriel-security-layer.md`; see
 `tests/test_quests.py::test_suggest_cross_repo_quests_mentions_gabriel_for_sensitive_pairs`.
+When token.place metadata is available, each suggestion also exposes the
+featured model through a new `token_place_model` field so automations do not need
+to parse the human-readable copy. Coverage spans
+`tests/test_quests.py::test_suggest_cross_repo_quests_exposes_featured_model_metadata`
+and
+`tests/test_quests.py::test_suggest_cross_repo_quests_sets_model_to_none_when_unavailable`.
 The roadmap entry for this integration stays checked via
 `tests/test_readme.py::test_readme_marks_llm_quests_complete`.
 

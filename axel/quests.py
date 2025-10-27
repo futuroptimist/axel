@@ -76,7 +76,7 @@ _DEFAULT_DETAIL = (
 )
 
 
-Suggestion = dict[str, list[str] | str]
+Suggestion = dict[str, list[str] | str | None]
 
 
 def _build_suggestion(
@@ -98,7 +98,12 @@ def _build_suggestion(
     summary = f"Link {primary.slug} ↔ {secondary.slug}"
     if featured_model:
         summary += f" via {featured_model}"
-    suggestion: Suggestion = {"repos": repos, "summary": summary, "details": detail}
+    suggestion: Suggestion = {
+        "repos": repos,
+        "summary": summary,
+        "details": detail,
+        "token_place_model": featured_model,
+    }
     return suggestion, score
 
 
@@ -163,11 +168,14 @@ def suggest_cross_repo_quests(
 
     Suggestions are deterministic, highlight at least two repositories, and
     prefer pairs that match known keywords such as ``token`` or ``gabriel``.
-    When fewer than two repositories are provided or ``limit`` is not positive,
-    an empty list is returned. ``token_place_base_url`` and
-    ``token_place_api_key`` forward optional configuration to
-    :func:`axel.token_place.quest_detail`, allowing callers to point at custom
-    token.place deployments when enriching quest details.
+    When token.place metadata is available the resulting dictionaries include a
+    ``token_place_model`` field exposing the featured model surfaced in the
+    summary/detail text (``None`` when unavailable). When fewer than two
+    repositories are provided or ``limit`` is not positive, an empty list is
+    returned. ``token_place_base_url`` and ``token_place_api_key`` forward
+    optional configuration to :func:`axel.token_place.quest_detail`, allowing
+    callers to point at custom token.place deployments when enriching quest
+    details.
     """
 
     if limit <= 0:
@@ -239,6 +247,9 @@ def main(argv: Sequence[str] | None = None) -> None:
         print(f"- {suggestion['summary']}")
         print(f"  repos: {repos_line}")
         print(f"  quest: {suggestion['details']}")
+        model = suggestion.get("token_place_model")  # type: ignore[assignment]
+        if model:
+            print(f"  token.place model: {model}")
         print()
 
 

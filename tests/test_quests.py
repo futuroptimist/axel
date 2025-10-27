@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from pytest import CaptureFixture
 
 
 @pytest.fixture(autouse=True)
@@ -182,6 +183,52 @@ def test_suggest_cross_repo_quests_includes_featured_model_in_summary(
     assert "via llama-3-8b-instruct:alignment" in summary
 
 
+def test_suggest_cross_repo_quests_exposes_featured_model_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import axel.token_place as token_place
+    from axel.quests import suggest_cross_repo_quests
+
+    monkeypatch.setattr(
+        token_place,
+        "list_models",
+        lambda base_url=None, api_key=None, timeout=token_place.DEFAULT_TIMEOUT: [
+            "llama-3-8b-instruct",
+            "llama-3-8b-instruct:alignment",
+        ],
+    )
+
+    repos = [
+        "https://github.com/futuroptimist/token.place",
+        "https://github.com/futuroptimist/dspace",
+    ]
+
+    suggestions = suggest_cross_repo_quests(repos, limit=1)
+
+    assert suggestions[0]["token_place_model"] == "llama-3-8b-instruct:alignment"
+
+
+def test_suggest_cross_repo_quests_sets_model_to_none_when_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import axel.token_place as token_place
+    from axel.quests import suggest_cross_repo_quests
+
+    def boom(**_: object) -> list[str]:  # pragma: no cover - helper
+        raise token_place.TokenPlaceError("offline")
+
+    monkeypatch.setattr(token_place, "list_models", boom)
+
+    repos = [
+        "https://github.com/futuroptimist/token.place",
+        "https://github.com/futuroptimist/axel",
+    ]
+
+    suggestions = suggest_cross_repo_quests(repos, limit=1)
+
+    assert suggestions[0]["token_place_model"] is None
+
+
 @pytest.mark.parametrize(
     "repos",
     [
@@ -224,6 +271,36 @@ def test_cli_prints_suggestions(tmp_path: Path) -> None:
     assert "axel" in output
     assert "gabriel" in output
     assert "quest" in output
+
+
+def test_cli_prints_token_place_model_when_available(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: CaptureFixture[str]
+) -> None:
+    import axel.quests as quests
+    import axel.token_place as token_place
+
+    repo_file = tmp_path / "repos.txt"
+    repo_file.write_text(
+        "https://github.com/futuroptimist/token.place\n"
+        "https://github.com/futuroptimist/dspace\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        token_place,
+        "list_models",
+        lambda base_url=None, api_key=None, timeout=token_place.DEFAULT_TIMEOUT: [
+            "llama-3-8b-instruct",
+            "llama-3-8b-instruct:alignment",
+        ],
+    )
+
+    quests.main(["--path", str(repo_file), "--limit", "1"])
+
+    out, err = capsys.readouterr()
+    assert "token.place model" in out
+    assert "llama-3-8b-instruct:alignment" in out
+    assert err == ""
 
 
 def test_cli_forwards_token_place_configuration(

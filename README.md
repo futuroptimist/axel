@@ -111,6 +111,9 @@ Coverage lives in
 `tests/test_critic.py::test_analyze_orthogonality_appends_config_ledger` and
 `tests/test_critic.py::test_track_prompt_saturation_appends_config_ledger`,
 which now assert the metadata is recorded with each entry.
+JSON output for these analytics commands now mirrors that telemetry
+state so automations can confirm whether uploads are permitted; see
+`tests/test_critic.py::test_cli_commands`.
 
 1. Add a repo with `python -m axel.repo_manager add <url>` (use `https://...`).
    Alternatively, edit `repos.txt`.

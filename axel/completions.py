@@ -89,11 +89,37 @@ _axel_completions() {
 
     case "${command}" in
         repos)
-            if [[ ${COMP_CWORD} -eq 2 ]]; then
-                local repos_sub='add list remove fetch'
-                COMPREPLY=( $(compgen -W "${repos_sub}" -- "${cur}") )
+            local repos_sub='add list remove fetch'
+            local repos_common_opts='--path --json --help -h'
+            local repos_subcommand=""
+            local repos_index=2
+
+            while [[ ${repos_index} -lt ${COMP_CWORD} ]]; do
+                local word="${COMP_WORDS[${repos_index}]}"
+                case "${word}" in
+                    --path|--token|--visibility|--sample|--seed)
+                        ((repos_index++))
+                        if [[ ${repos_index} -lt ${COMP_CWORD} ]]; then
+                            ((repos_index++))
+                        fi
+                        ;;
+                    -*)
+                        ((repos_index++))
+                        ;;
+                    *)
+                        repos_subcommand="${word}"
+                        break
+                        ;;
+                esac
+            done
+
+            if [[ -z ${repos_subcommand} ]]; then
+                if [[ ${cur} == -* ]]; then
+                    COMPREPLY=( $(compgen -W "${repos_common_opts}" -- "${cur}") )
+                else
+                    COMPREPLY=( $(compgen -W "${repos_sub} ${repos_common_opts}" -- "${cur}") )
+                fi
             else
-                local repos_subcommand="${COMP_WORDS[2]}"
                 case "${repos_subcommand}" in
                     list)
                         local repos_list_opts='--sample --seed --path --json --help -h'
@@ -109,25 +135,47 @@ _axel_completions() {
                         COMPREPLY=( $(compgen -W "${repos_modify_opts}" -- "${cur}") )
                         ;;
                     *)
-                        local repos_common_opts='--path --json --help -h'
                         COMPREPLY=( $(compgen -W "${repos_common_opts}" -- "${cur}") )
                         ;;
                 esac
             fi
             ;;
         tasks)
-            if [[ ${COMP_CWORD} -eq 2 ]]; then
-                local tasks_sub='add list complete remove clear'
-                COMPREPLY=( $(compgen -W "${tasks_sub}" -- "${cur}") )
-            else
-                local tasks_subcommand="${COMP_WORDS[2]}"
-                if [[ "${tasks_subcommand}" == 'list' ]]; then
-                    local tasks_list_opts='--sample --seed --path --json --help -h'
-                    COMPREPLY=( $(compgen -W "${tasks_list_opts}" -- "${cur}") )
-                else
-                    local tasks_common_opts='--path --json --help -h'
+            local tasks_sub='add list complete remove clear'
+            local tasks_common_opts='--path --json --help -h'
+            local tasks_subcommand=""
+            local tasks_index=2
+
+            while [[ ${tasks_index} -lt ${COMP_CWORD} ]]; do
+                local word="${COMP_WORDS[${tasks_index}]}"
+                case "${word}" in
+                    --path|--sample|--seed)
+                        ((tasks_index++))
+                        if [[ ${tasks_index} -lt ${COMP_CWORD} ]]; then
+                            ((tasks_index++))
+                        fi
+                        ;;
+                    -*)
+                        ((tasks_index++))
+                        ;;
+                    *)
+                        tasks_subcommand="${word}"
+                        break
+                        ;;
+                esac
+            done
+
+            if [[ -z ${tasks_subcommand} ]]; then
+                if [[ ${cur} == -* ]]; then
                     COMPREPLY=( $(compgen -W "${tasks_common_opts}" -- "${cur}") )
+                else
+                    COMPREPLY=( $(compgen -W "${tasks_sub} ${tasks_common_opts}" -- "${cur}") )
                 fi
+            elif [[ "${tasks_subcommand}" == 'list' ]]; then
+                local tasks_list_opts='--sample --seed --path --json --help -h'
+                COMPREPLY=( $(compgen -W "${tasks_list_opts}" -- "${cur}") )
+            else
+                COMPREPLY=( $(compgen -W "${tasks_common_opts}" -- "${cur}") )
             fi
             ;;
         analyze-orthogonality)

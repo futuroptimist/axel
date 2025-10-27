@@ -217,7 +217,11 @@ gabriel security layer milestone remains marked complete.
     `tests/test_token_place.py::test_main_clients_prints_plan`.
 18. Install shell completions with `axel --install-completions --shell bash` (pass `--path` to control the
     output location). The command writes a reusable completion script and prints sourcing instructions.
-    Automated coverage lives in `tests/test_cli.py::test_cli_install_completions_command`,
+    Completions now surface the sampling and JSON flags used throughout the CLI so the shortcuts
+    mentioned above stay discoverable at the prompt; see
+    `tests/test_cli.py::test_install_completions_bash_includes_sampling_flags` and
+    `tests/test_cli.py::test_install_completions_fish_includes_sampling_flags` alongside
+    `tests/test_cli.py::test_cli_install_completions_command`,
     `tests/test_cli.py::test_install_completions_writes_script`, and
     `tests/test_cli.py::test_install_completions_infers_shell`.
 19. Manage analytics telemetry opt-in with `axel config telemetry --status` (or

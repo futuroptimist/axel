@@ -317,6 +317,30 @@ def test_install_completions_writes_script(tmp_path: Path) -> None:
     assert "complete -F _axel_completions axel" in content
 
 
+def test_install_completions_bash_includes_sampling_flags(tmp_path: Path) -> None:
+    """Bash completions should surface sampling and JSON flags."""
+
+    destination = tmp_path / "axel.bash"
+    install_completions(shell="bash", path=destination)
+
+    content = destination.read_text(encoding="utf-8")
+
+    ortho_start = content.index("analyze-orthogonality)")
+    ortho_block = content[ortho_start : content.index(";;", ortho_start)]
+    assert "--json" in ortho_block
+    assert "--sample" in ortho_block
+    assert "--seed" in ortho_block
+
+    sat_start = content.index("analyze-saturation)")
+    sat_block = content[sat_start : content.index(";;", sat_start)]
+    assert "--json" in sat_block
+
+    tasks_start = content.index("tasks)")
+    tasks_block = content[tasks_start : content.index(";;", tasks_start)]
+    assert "--sample" in tasks_block
+    assert "--seed" in tasks_block
+
+
 def test_install_completions_accepts_shell_suffix(tmp_path: Path) -> None:
     """Shell names with suffixes should normalize to the supported shell."""
 
@@ -439,6 +463,18 @@ def test_cli_install_completions_fish_default(
     assert exit_code == 0
     assert expected.exists()
     assert "Fish loads files" in captured.out
+
+
+def test_install_completions_fish_includes_sampling_flags(tmp_path: Path) -> None:
+    """Fish completions should advertise sampling and JSON flags."""
+
+    destination = tmp_path / "axel.fish"
+    install_completions(shell="fish", path=destination)
+
+    content = destination.read_text(encoding="utf-8")
+    assert "-l sample" in content
+    assert "-l seed" in content
+    assert "-l json" in content
 
 
 def test_cli_install_completions_help_flag(capsys: pytest.CaptureFixture[str]) -> None:

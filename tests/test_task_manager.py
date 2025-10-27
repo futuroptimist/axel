@@ -109,7 +109,7 @@ def test_cli_add(tmp_path: Path) -> None:
     assert data == [
         {"id": 1, "description": "write code", "completed": False},
     ]
-    assert "1 [ ] write code" in result.stdout
+    assert "1. [ ] write code" in result.stdout
 
 
 def test_main_list_supports_json_output(
@@ -154,7 +154,7 @@ def test_main_add_accepts_path_after_subcommand(
     assert load_tasks(path=file) == [
         {"id": 1, "description": "write docs", "completed": False},
     ]
-    assert "1 [ ] write docs" in capsys.readouterr().out
+    assert "1. [ ] write docs" in capsys.readouterr().out
 
 
 def test_main_add_uses_default_task_file(
@@ -285,7 +285,7 @@ def test_cli_complete(tmp_path: Path) -> None:
     assert data == [
         {"id": 1, "description": "write docs", "completed": True},
     ]
-    assert "1 [x] write docs" in result.stdout
+    assert "1. [x] write docs" in result.stdout
 
 
 def test_cli_remove(tmp_path: Path) -> None:
@@ -312,7 +312,7 @@ def test_cli_remove(tmp_path: Path) -> None:
     assert data == [
         {"id": 2, "description": "write code", "completed": False},
     ]
-    assert "2 [ ] write code" in result.stdout
+    assert "2. [ ] write code" in result.stdout
 
 
 def test_main_remove(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -325,7 +325,7 @@ def test_main_remove(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None
     assert load_tasks(path=file) == [
         {"id": 2, "description": "write code", "completed": False},
     ]
-    assert "2 [ ] write code" in capsys.readouterr().out
+    assert "2. [ ] write code" in capsys.readouterr().out
 
 
 def test_env_default_var(monkeypatch, tmp_path: Path) -> None:
@@ -482,9 +482,13 @@ def test_main_list_supports_sampling(
         ]
     )
 
-    output = capsys.readouterr().out.strip().splitlines()
-    assert len(output) == 2
-    printed_ids = [int(line.split()[0]) for line in output]
+    output = [
+        line for line in capsys.readouterr().out.strip().splitlines() if line.strip()
+    ]
+    assert output[0] == "Tasks:"
+    task_lines = output[1:]
+    assert len(task_lines) == 2
+    printed_ids = [int(line.split(".", 1)[0]) for line in task_lines]
     assert printed_ids == [task["id"] for task in expected]
 
 
@@ -511,11 +515,11 @@ def test_main_branches(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> No
     import axel.task_manager as tm
 
     tm.main(["--path", str(file), "add", "write docs"])
-    assert "1 [ ] write docs" in capsys.readouterr().out
+    assert "1. [ ] write docs" in capsys.readouterr().out
     tm.main(["--path", str(file), "complete", "1"])
-    assert "1 [x] write docs" in capsys.readouterr().out
+    assert "1. [x] write docs" in capsys.readouterr().out
     tm.main(["--path", str(file), "list"])
-    assert "1 [x] write docs" in capsys.readouterr().out
+    assert "1. [x] write docs" in capsys.readouterr().out
     tm.main(["--path", str(file), "clear"])
     assert tm.list_tasks(path=file) == []
 
@@ -532,7 +536,7 @@ def test_main_list_handles_missing_completed_field(
 
     tm.main(["--path", str(file), "list"])
     output = capsys.readouterr().out
-    assert "1 [ ] legacy task" in output
+    assert "1. [ ] legacy task" in output
 
 
 def test_clear_tasks(tmp_path: Path) -> None:

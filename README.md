@@ -90,7 +90,9 @@ Once installed via pipx you can call `axel repos ...` and `axel tasks ...`
 to reuse the existing module CLIs without remembering their dotted paths.
 The wrapper forwards arguments to `axel.repo_manager` and `axel.task_manager`,
 with coverage in `tests/test_cli.py::test_cli_repos_list` and
-`tests/test_cli.py::test_cli_tasks_round_trip`.
+`tests/test_cli.py::test_cli_tasks_round_trip`. The CLI's human-readable output
+is pinned by `tests/test_cli.py::test_cli_repos_list_golden` and
+`tests/test_cli.py::test_cli_tasks_list_golden` so formatting stays predictable.
 Analytics helpers are exposed through the same entry point using
 `axel analyze-orthogonality` and `axel analyze-saturation`, covered by
 `tests/test_cli.py::test_cli_analyze_orthogonality_delegates_to_critic` and
@@ -373,8 +375,9 @@ git diff --cached | python scripts/scan-secrets.py
 This helper flags suspicious lines containing keywords like "token", "secret",
 "password", or "api key" in the diff before they reach the commit history.
 Automated coverage includes
-`tests/test_scan_secrets.py::test_detects_api_key_with_space` so secrets with
-spaced "api key" markers are caught during review.
+`test_detects_keywords` plus the parameterized API detection check in the leak-scan
+test suite, while `test_ignores_context_lines` ensures unchanged context doesn't
+produce false positives.
 
 The repos in `repos.txt` come from various projects like
 [`dspace`](https://github.com/democratizedspace/dspace) and

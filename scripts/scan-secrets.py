@@ -15,10 +15,13 @@ def main() -> int:
     data = sys.stdin.read()
     hits = []
     for i, line in enumerate(data.splitlines(), 1):
-        if "scan-secrets.py" in line or "Potential secret" in line:
+        if not line.startswith("+") or line.startswith("+++"):
             continue
-        if PATTERN.search(line):
-            hits.append(f"Potential secret at line {i}: {line.strip()}")
+        content = line[1:]
+        if "Potential secret" in content:
+            continue
+        if PATTERN.search(content):
+            hits.append(f"Potential secret at line {i}: {content.strip()}")
     if hits:
         print("\n".join(hits), file=sys.stderr)
         return 1

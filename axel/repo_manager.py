@@ -314,9 +314,15 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     if args.json:
         print(json.dumps(repos, indent=2, ensure_ascii=False))
-    else:
-        for repo in repos:
-            print(repo)
+        return
+
+    print("Repositories:")
+    if not repos:
+        print("- (none)")
+        return
+
+    for repo in repos:
+        print(f"- {repo}")
 
 
 if __name__ == "__main__":  # pragma: no cover - manual use

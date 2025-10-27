@@ -84,7 +84,9 @@ default, explicit telemetry opt-ins), and lands with the required checks (`flake
 4. **CLI UX polish & golden coverage**
    - Capture golden fixtures for the main commands (`repos`, `tasks`, analytics
      subcommands) covering both text and `--json` modes. Assert that `--json` switches
-     exist everywhere and keep output keys consistent.
+     exist everywhere and keep output keys consistent. Coverage now spans
+     `tests/test_cli.py::test_cli_repos_list_golden` and
+     `tests/test_cli.py::test_cli_tasks_list_golden`.
    - Refine error messaging for missing GitHub auth or repo manifests, ensure dry-run
      messaging stays prominent, and improve exit codes where necessary.
   - Wire `axel --install-completions` to generate shell completion scripts

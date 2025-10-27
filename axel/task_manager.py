@@ -223,12 +223,17 @@ def main(argv: Sequence[str] | None = None) -> None:
         print(json.dumps(tasks, indent=2, ensure_ascii=False))
         return
 
+    print("Tasks:")
+    if not tasks:
+        print("- (none)")
+        return
+
     for task in tasks:
         completed = bool(task.get("completed"))
         status = "[x]" if completed else "[ ]"
         task_id = task.get("id", "?")
         description = task.get("description", "")
-        print(f"{task_id} {status} {description}")
+        print(f"{task_id}. {status} {description}")
 
 
 if __name__ == "__main__":  # pragma: no cover - manual use

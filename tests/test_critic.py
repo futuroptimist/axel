@@ -373,6 +373,13 @@ def test_cli_commands(critic_module, monkeypatch, tmp_path, capsys):
         )
 
     monkeypatch.setattr(critic_module, "_fetch_pull_request", fake_fetch)
+    monkeypatch.setattr(
+        critic_module,
+        "load_telemetry_config",
+        lambda: SimpleNamespace(
+            opt_in=True, consent_timestamp="2025-01-01T00:00:00+00:00"
+        ),
+    )
 
     diff_a = tmp_path / "diff_a.patch"
     diff_b = tmp_path / "diff_b.patch"
@@ -403,6 +410,8 @@ def test_cli_commands(critic_module, monkeypatch, tmp_path, capsys):
     json_output = json.loads(capsys.readouterr().out)
     assert json_output["total_tasks"] == 2
     assert json_output["merged_prs"] == [1, 2]
+    assert json_output["telemetry_opt_in"] is True
+    assert json_output["telemetry_consent_timestamp"] == "2025-01-01T00:00:00+00:00"
 
     metrics_file = tmp_path / "metrics.json"
     metrics_file.write_text(
@@ -437,6 +446,8 @@ def test_cli_commands(critic_module, monkeypatch, tmp_path, capsys):
     sat_json = json.loads(capsys.readouterr().out)
     assert sat_json["repo"] == "octo/demo"
     assert sat_json["prompt"] == "implement.md"
+    assert sat_json["telemetry_opt_in"] is True
+    assert sat_json["telemetry_consent_timestamp"] == "2025-01-01T00:00:00+00:00"
 
 
 def test_load_history_handles_missing_and_invalid_lines(critic_module, tmp_path):

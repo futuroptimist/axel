@@ -206,6 +206,7 @@ def analyze_orthogonality(
     }
     if sampling:
         result["sampling"] = dict(sampling)
+    result.update(_cli_metadata())
     date_key = timestamp.split("T", 1)[0]
     log_path = ANALYTICS_ROOT / "orthogonality" / f"{date_key}.jsonl"
     _append_jsonl(log_path, result)
@@ -365,7 +366,7 @@ def track_prompt_saturation(repo: str, prompt_doc: str) -> dict[str, Any]:
     _append_jsonl(log_path, enriched_entry)
     config_payload = enriched_entry | {"metric": "saturation"} | _cli_metadata()
     _append_config_analytics("saturation", config_payload)
-    return {
+    result = {
         "timestamp": timestamp,
         "repo": repo,
         "prompt": prompt_name,
@@ -376,6 +377,8 @@ def track_prompt_saturation(repo: str, prompt_doc: str) -> dict[str, Any]:
         "prompt_refresh_recommended": prompt_refresh,
         "recommendation": recommendation,
     }
+    result.update(_cli_metadata())
+    return result
 
 
 def _format_orthogonality_output(result: dict[str, Any]) -> str:

@@ -9,6 +9,14 @@ import pytest  # noqa: E402
 import axel.cli as cli  # noqa: E402
 from axel.completions import CompletionInstallation, install_completions  # noqa: E402
 
+GOLDEN_DIR = Path(__file__).resolve().parent / "fixtures" / "golden"
+
+
+def _read_golden(name: str) -> str:
+    """Return the contents of the named golden fixture."""
+
+    return (GOLDEN_DIR / name).read_text()
+
 
 def test_cli_analyze_orthogonality_delegates_to_critic(
     monkeypatch: pytest.MonkeyPatch,
@@ -74,7 +82,8 @@ def test_cli_repos_list(capsys: pytest.CaptureFixture[str], tmp_path: Path) -> N
 
     captured = capsys.readouterr()
     assert exit_code == 0
-    assert "https://github.com/example/alpha" in captured.out
+    assert "Repositories:" in captured.out
+    assert "- https://github.com/example/alpha" in captured.out
 
 
 def test_cli_repos_forwards_flags(
@@ -89,7 +98,8 @@ def test_cli_repos_forwards_flags(
 
     captured = capsys.readouterr()
     assert exit_code == 0
-    assert "https://github.com/example/beta" in captured.out
+    assert "Repositories:" in captured.out
+    assert "- https://github.com/example/beta" in captured.out
 
 
 def test_cli_tasks_round_trip(
@@ -116,7 +126,8 @@ def test_cli_tasks_round_trip(
     assert add_code == 0
     assert list_code == 0
     assert "write docs" in add_output
-    assert "[ ] write docs" in list_output
+    assert "Tasks:" in list_output
+    assert "1. [ ] write docs" in list_output
 
 
 def test_cli_tasks_forwards_flags(
@@ -144,7 +155,8 @@ def test_cli_tasks_forwards_flags(
     assert exit_code == 0
     assert list_code == 0
     assert "finish docs" in add_output
-    assert "[ ] finish docs" in list_output
+    assert "Tasks:" in list_output
+    assert "1. [ ] finish docs" in list_output
 
 
 def test_cli_repos_list_json(
@@ -198,6 +210,52 @@ def test_cli_tasks_list_json(
     assert json.loads(output) == [
         {"id": 1, "description": "write docs", "completed": False}
     ]
+
+
+def test_cli_repos_list_golden(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """CLI text output for repos should match the documented golden fixture."""
+
+    repo_file = tmp_path / "repos.txt"
+    repo_file.write_text("https://github.com/example/alpha\n")
+
+    exit_code = cli.main(["repos", "list", "--path", str(repo_file)])
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert output == _read_golden("cli_repos_list.txt")
+
+
+def test_cli_tasks_list_golden(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """CLI text output for tasks should match the documented golden fixture."""
+
+    tasks_file = tmp_path / "tasks.json"
+    cli.main(
+        [
+            "tasks",
+            "add",
+            "write docs",
+            "--path",
+            str(tasks_file),
+        ]
+    )
+    capsys.readouterr()
+
+    exit_code = cli.main(
+        [
+            "tasks",
+            "list",
+            "--path",
+            str(tasks_file),
+        ]
+    )
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert output == _read_golden("cli_tasks_list.txt")
 
 
 def test_cli_config_telemetry_status(
@@ -260,14 +318,18 @@ def test_cli_tasks_list_sample(
         ]
     )
 
-    output_lines = capsys.readouterr().out.strip().splitlines()
+    output_lines = [
+        line for line in capsys.readouterr().out.strip().splitlines() if line.strip()
+    ]
     assert exit_code == 0
-    assert len(output_lines) == 1
+    assert output_lines[0] == "Tasks:"
+    task_entries = output_lines[1:]
+    assert len(task_entries) == 1
 
     import axel.task_manager as tm
 
     expected = tm._apply_sampling(tm.load_tasks(path=tasks_file), sample=1, seed=3)
-    printed_id = int(output_lines[0].split()[0])
+    printed_id = int(task_entries[0].split(".", 1)[0])
     assert printed_id == expected[0]["id"]
 
 

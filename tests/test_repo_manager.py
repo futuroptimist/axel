@@ -64,11 +64,14 @@ def test_main_list_supports_sampling(
         ]
     )
 
-    captured = capsys.readouterr().out.splitlines()
-    output = [line.strip() for line in captured if line.strip()]
+    captured = [
+        line.strip() for line in capsys.readouterr().out.splitlines() if line.strip()
+    ]
+    assert captured[0] == "Repositories:"
+    output = captured[1:]
     assert output == [
-        "https://github.com/example/alpha",
-        "https://github.com/example/charlie",
+        "- https://github.com/example/alpha",
+        "- https://github.com/example/charlie",
     ]
 
 
@@ -594,12 +597,12 @@ def test_cli_add_and_list_direct(tmp_path: Path, capsys) -> None:
 
     file = tmp_path / "repos.txt"
     rm.main(["--path", str(file), "add", "https://example.com/repo"])  # add
-    output = capsys.readouterr().out.strip()
-    assert output == "https://example.com/repo"
+    output = capsys.readouterr().out.strip().splitlines()
+    assert output == ["Repositories:", "- https://example.com/repo"]
 
     rm.main(["--path", str(file), "list"])  # list
-    output = capsys.readouterr().out.strip()
-    assert output == "https://example.com/repo"
+    output = capsys.readouterr().out.strip().splitlines()
+    assert output == ["Repositories:", "- https://example.com/repo"]
 
 
 def test_cli_default_lists(tmp_path: Path, capsys) -> None:
@@ -609,7 +612,8 @@ def test_cli_default_lists(tmp_path: Path, capsys) -> None:
     file = tmp_path / "repos.txt"
     add_repo("https://example.com/repo", path=file)
     rm.main(["--path", str(file)])
-    assert capsys.readouterr().out.strip() == "https://example.com/repo"
+    output = capsys.readouterr().out.strip().splitlines()
+    assert output == ["Repositories:", "- https://example.com/repo"]
 
 
 def test_cli_remove_direct(tmp_path: Path, capsys) -> None:
@@ -619,7 +623,8 @@ def test_cli_remove_direct(tmp_path: Path, capsys) -> None:
     file = tmp_path / "repos.txt"
     add_repo("https://example.com/repo", path=file)
     rm.main(["--path", str(file), "remove", "https://example.com/repo"])  # remove
-    assert capsys.readouterr().out.strip() == ""
+    output = capsys.readouterr().out.strip().splitlines()
+    assert output == ["Repositories:", "- (none)"]
     assert not file.read_text()
 
 
@@ -630,10 +635,12 @@ def test_cli_honors_env_var(monkeypatch, tmp_path: Path, capsys) -> None:
     from axel import repo_manager as rm
 
     rm.main(["add", "https://example.com/env-cli"])
-    assert capsys.readouterr().out.strip() == "https://example.com/env-cli"
+    output = capsys.readouterr().out.strip().splitlines()
+    assert output == ["Repositories:", "- https://example.com/env-cli"]
 
     rm.main(["list"])
-    assert capsys.readouterr().out.strip() == "https://example.com/env-cli"
+    output = capsys.readouterr().out.strip().splitlines()
+    assert output == ["Repositories:", "- https://example.com/env-cli"]
 
 
 def test_load_repos_defaults(monkeypatch, tmp_path: Path) -> None:
@@ -725,8 +732,9 @@ def test_cli_fetch(monkeypatch, tmp_path: Path, capsys) -> None:
     rm.main(["--path", str(repo_file), "fetch"])
     output = capsys.readouterr().out.strip().splitlines()
     assert output == [
-        "https://github.com/u/a",
-        "https://github.com/u/b",
+        "Repositories:",
+        "- https://github.com/u/a",
+        "- https://github.com/u/b",
     ]
     assert repo_file.read_text() == "https://github.com/u/a\nhttps://github.com/u/b\n"
 
@@ -763,8 +771,9 @@ def test_cli_fetch_accepts_token_flag(monkeypatch, tmp_path: Path, capsys) -> No
     rm.main(["--path", str(repo_file), "fetch", "--token", "token"])
     output = capsys.readouterr().out.strip().splitlines()
     assert output == [
-        "https://github.com/u/a",
-        "https://github.com/u/b",
+        "Repositories:",
+        "- https://github.com/u/a",
+        "- https://github.com/u/b",
     ]
     assert repo_file.read_text() == "https://github.com/u/a\nhttps://github.com/u/b\n"
 

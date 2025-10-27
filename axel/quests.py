@@ -134,6 +134,9 @@ def _redact_suggestion(suggestion: Suggestion, secret: str | None) -> Suggestion
     sanitized["repos"] = cast(list[str], sanitized["repos"])
     sanitized["summary"] = cast(str, sanitized["summary"])
     sanitized["details"] = cast(str, sanitized["details"])
+    if secret:
+        sanitized["summary"] = "[redacted]"
+        sanitized["details"] = "[redacted]"
     return sanitized
 
 

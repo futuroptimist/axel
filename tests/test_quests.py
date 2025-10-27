@@ -363,8 +363,8 @@ def test_cli_redacts_token_place_key_from_output(
     assert payload == [
         {
             "repos": ["example/alpha", "example/beta"],
-            "summary": "Connect using [redacted]",
-            "details": "Share [redacted] for access",
+            "summary": "[redacted]",
+            "details": "[redacted]",
         }
     ]
 
@@ -417,8 +417,8 @@ def test_cli_resolves_env_token_place_key_for_redaction(
     assert payload == [
         {
             "repos": ["example/alpha", "example/beta"],
-            "summary": "Connect using [redacted]",
-            "details": "Share [redacted] for access",
+            "summary": "[redacted]",
+            "details": "[redacted]",
         }
     ]
 
@@ -483,7 +483,7 @@ def test_redact_suggestion_does_not_mutate_original() -> None:
     redacted = quests._redact_suggestion(suggestion, "secret")
 
     assert suggestion["summary"] == "Connect using secret"
-    assert redacted["summary"] == "Connect using [redacted]"
+    assert redacted["summary"] == "[redacted]"
     assert redacted is not suggestion
 
 

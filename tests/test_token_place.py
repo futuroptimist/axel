@@ -213,8 +213,8 @@ def test_format_model_for_cli_redacts_and_trims_suspicious_identifiers() -> None
     """Suspicious values are redacted or trimmed when printed."""
 
     assert token_place.format_model_for_cli("") == ""
-    assert token_place.format_model_for_cli("sk-secret+/XYZ123") == "sk-s…Z123"
-    assert token_place.format_model_for_cli("  sk-secret  ") == "sk-s…cret"
+    assert token_place.format_model_for_cli("sk-secret+/XYZ123") == "[redacted]"
+    assert token_place.format_model_for_cli("  sk-secret  ") == "[redacted]"
     assert token_place.format_model_for_cli("   ") == ""
     assert token_place.format_model_for_cli("secret!") == "[redacted]"
 

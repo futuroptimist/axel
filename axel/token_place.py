@@ -139,6 +139,7 @@ def format_model_for_cli(model: str) -> str:
         suspicious_prefixes = ("sk-", "rk-", "pk-", "secret", "token")
         if not any(lowered.startswith(prefix) for prefix in suspicious_prefixes):
             return trimmed
+        return "[redacted]"
 
     if not trimmed:
         return ""
@@ -146,9 +147,7 @@ def format_model_for_cli(model: str) -> str:
     if len(trimmed) <= 8:
         return "[redacted]"
 
-    prefix = trimmed[:4]
-    suffix = trimmed[-4:]
-    return f"{prefix}…{suffix}"
+    return "[redacted]"
 
 
 def list_models(

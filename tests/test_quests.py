@@ -331,7 +331,7 @@ def test_cli_redacts_suspicious_token_place_model(
     out, err = capsys.readouterr()
     assert "token.place model" in out
     assert suspicious_model not in out
-    assert "sk-s…Z123" in out
+    assert "[redacted]" in out
     assert err == ""
 
 

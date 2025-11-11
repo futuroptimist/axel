@@ -150,7 +150,7 @@ For your RTX 4090 (24GB VRAM), these models work well:
 ### Aider - AI Pair Programming
 
 ```powershell
-pip install aider-chat
+uv pip install aider-chat
 ```
 
 Configure for Ollama:
@@ -201,9 +201,9 @@ Longer context = more VRAM usage, but better understanding of large files.
 
 2. Set up Python environment:
    ```powershell
-   python -m venv .venv
+   uv venv .venv
    .venv\Scripts\activate
-   pip install -e . -r requirements.txt
+   uv pip install -e . -r requirements.txt
    ```
 
 3. Test the LLM on a simple task:

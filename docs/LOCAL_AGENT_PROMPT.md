@@ -1,272 +1,229 @@
-# Local LLM Setup Guide for Windows 11 + RTX 4090
+# Axel — Local Agent Prompt (Web UI Edition): **OpenHands + LM Studio**
 
-This guide walks you through setting up a local LLM on your Windows 11 development machine with an RTX 4090 GPU for working on Axel and other Python projects.
+This is the web‑first path for running Axel’s local agent with a **browser UI** (no IDE dependency). It uses:
 
-## Why Run LLMs Locally?
+- **OpenHands** for the agent workspace (chat + terminal + browser + change review).
+- **LM Studio** to serve a **local, OpenAI‑compatible** LLM endpoint.
+- A **repo‑local microagent** so Axel’s guidance is always loaded in context.
 
-- **Privacy**: Your code and prompts stay on your machine
-- **Cost**: No API fees after initial setup
-- **Speed**: GPU inference can be faster than API calls with network latency
-- **Offline**: Work without internet connectivity
-- **Experimentation**: Try different models and configurations freely
+This replaces the older “VS Code + extension / Cursor” emphasis. Those editor options are still listed near the end, but the **primary** workflow is a self‑hosted web app.
 
-## Hardware Requirements
+---
 
-- **GPU**: RTX 4090 (24GB VRAM) - excellent for running 30B+ parameter models
-- **RAM**: 32GB+ system RAM recommended
-- **Storage**: 100GB+ free space for models
-- **OS**: Windows 11 with latest updates
+## TL;DR (4090‑ready)
 
-## Step 1: Install Prerequisites
+1. Install **LM Studio**, download **Devstral Small 2505**, set context ≥ **32k**, start the **OpenAI‑compatible** server on port `1234`.  
+2. Start **OpenHands** and open `http://localhost:3000`.  
+3. In OpenHands → **Settings → LLM**, set `Base URL = http://host.docker.internal:1234/v1`, `Custom Model = openai/mistralai/devstral-small-2505`, `API Key = local-llm`.  
+4. In your repo, add an **Axel microagent** at `.openhands/microagents/axel.md` (paste Axel’s rules there).  
+5. (Optional) Add `.openhands/setup.sh` and `.openhands/pre-commit.sh` to install deps and gate commits/tests.
 
-### 1.1 Install CUDA Toolkit
+**Why Devstral Small 2505?** OpenHands’ official “Local LLMs” guide recommends **LM Studio + Devstral Small 2505** (≥16 GB VRAM) and shows the exact GUI settings and base URL; a 4090 (24 GB) is comfortably within spec. :contentReference[oaicite:0]{index=0}
 
-1. Download CUDA Toolkit 12.x from [NVIDIA's website](https://developer.nvidia.com/cuda-downloads)
-2. Run the installer and select "Express Installation"
-3. Verify installation:
-   ```powershell
-   nvcc --version
-   ```
+---
 
-### 1.2 Install Python
+## What you get
 
-1. Download Python 3.11+ from [python.org](https://www.python.org/downloads/)
-2. During installation, check "Add Python to PATH"
-3. Verify:
-   ```powershell
-   python --version
-   ```
+- **Web UI**: chat panel + **Changes** tab, **Terminal** tab, **Browser** tab. Easy to review diffs and terminal output as the agent works. :contentReference[oaicite:1]{index=1}
+- **Git provider integration** (GitHub/GitLab/Bitbucket) managed in Settings. :contentReference[oaicite:2]{index=2}
+- **Repo‑level customization** via `.openhands/` (microagents, setup scripts, pre‑commit). :contentReference[oaicite:3]{index=3}
+- **Local LLM** using LM Studio’s **OpenAI‑compatible** server (`/v1/chat/completions`, `/v1/responses`, etc.). :contentReference[oaicite:4]{index=4}
 
-### 1.3 Install Git
+---
 
-1. Download Git for Windows from [git-scm.com](https://git-scm.com/download/win)
-2. Use default installation options
-3. Verify:
-   ```powershell
-   git --version
-   ```
+## Install & Run
 
-## Step 2: Choose Your LLM Backend
+### 1) LM Studio (local model server)
 
-You have three popular options for running local LLMs on Windows:
+**Install LM Studio** and open it.
 
-### Option A: Ollama (Recommended for Beginners)
+**Download the model**:
+- Use the “Discover” tab. Search for **Devstral Small 2505** (Mistral AI). Download it.  
+- Set **Context Length ≥ 32768**; enable **Flash Attention**; then **Load Model**.  
+- Turn on the local **OpenAI‑compatible server** and note the **Model API Identifier** (e.g., `mistralai/Devstral-Small-2505`). :contentReference[oaicite:5]{index=5}
 
-**Pros**: Easiest setup, good model management, active development
-**Cons**: Fewer configuration options
+**LM Studio server endpoint** (defaults):
+- Base URL will look like `http://localhost:1234/v1` (OpenAI‑compatible).  
+- LM Studio documents the OpenAI‑compat endpoints and tool/function calling support. :contentReference[oaicite:6]{index=6}
 
-1. Download Ollama for Windows from [ollama.com](https://ollama.com/download)
-2. Run the installer
-3. Open PowerShell and pull a coding model:
-   ```powershell
-   ollama pull qwen2.5-coder:32b
-   ```
-4. Test it:
-   ```powershell
-   ollama run qwen2.5-coder:32b "Write a Python function to reverse a string"
-   ```
+> Tip: For heavy agent runs, keep the model pinned and avoid auto‑eviction while OpenHands is active.
 
-### Option B: LM Studio
+### 2) OpenHands (web UI)
 
-**Pros**: User-friendly GUI, easy model discovery, built-in chat interface
-**Cons**: Less scriptable than CLI tools
+You can run OpenHands via Docker or via the CLI. The GUI serves at **`http://localhost:3000`**.
 
-1. Download LM Studio from [lmstudio.ai](https://lmstudio.ai/)
-2. Install and launch the application
-3. Browse models in the UI (look for `TheBloke/deepseek-coder-33B-instruct-GGUF` or similar)
-4. Download a quantized model (Q4_K_M is a good balance)
-5. Load the model and start the local server (Settings → Local Server)
+**Docker (recommended)**
 
-### Option C: vLLM with WSL2
+```bash
+docker pull docker.openhands.dev/openhands/runtime:0.62-nikolaik
 
-**Pros**: Best performance, most flexible, production-grade
-**Cons**: More complex setup
-
-1. Install WSL2:
-   ```powershell
-   wsl --install -d Ubuntu-22.04
-   ```
-2. Inside WSL2, install vLLM:
-   ```bash
-   pip install vllm
-   ```
-3. Run a model:
-   ```bash
-   python -m vllm.entrypoints.openai.api_server \
-     --model deepseek-ai/deepseek-coder-33b-instruct \
-     --gpu-memory-utilization 0.9
-   ```
-
-## Step 3: Recommended Models for Coding
-
-For your RTX 4090 (24GB VRAM), these models work well:
-
-| Model | Size | Best For | VRAM Usage |
-|-------|------|----------|------------|
-| **Qwen2.5-Coder-32B** | 32B | Python, general coding | ~20GB (Q4) |
-| DeepSeek-Coder-33B | 33B | Multi-language code | ~20GB (Q4) |
-| CodeLlama-34B | 34B | Code completion | ~21GB (Q4) |
-| Phind-CodeLlama-34B | 34B | Detailed explanations | ~21GB (Q4) |
-| Qwen2.5-Coder-14B | 14B | Fast responses | ~9GB (Q4) |
-
-**Note**: Sizes shown are for 4-bit quantized models. Q4_K_M or Q4_0 quantization offers the best balance of quality and VRAM usage.
-
-## Step 4: Integrate with Your IDE
-
-### VS Code + Continue
-
-1. Install the Continue extension from VS Code marketplace
-2. Open Continue settings (Ctrl+Shift+P → "Continue: Open Config")
-3. Configure for Ollama:
-   ```json
-   {
-     "models": [{
-       "title": "Qwen2.5 Coder",
-       "provider": "ollama",
-       "model": "qwen2.5-coder:32b"
-     }],
-     "tabAutocompleteModel": {
-       "title": "Qwen2.5 Coder",
-       "provider": "ollama",
-       "model": "qwen2.5-coder:32b"
-     }
-   }
-   ```
-
-### VS Code + Cline (formerly Claude Dev)
-
-1. Install Cline extension
-2. Configure API settings to use Ollama endpoint: `http://localhost:11434`
-3. Select your model from the dropdown
-
-### Cursor IDE
-
-1. Open Settings → Models
-2. Add custom model pointing to `http://localhost:11434/v1`
-3. Enter your model name (e.g., `qwen2.5-coder:32b`)
-
-## Step 5: CLI Tools for Axel Development
-
-### Aider - AI Pair Programming
-
-```powershell
-uv pip install aider-chat
+docker run -it --rm --pull=always \
+  -e SANDBOX_RUNTIME_CONTAINER_IMAGE=docker.openhands.dev/openhands/runtime:0.62-nikolaik \
+  -e LOG_ALL_EVENTS=true \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v ~/.openhands:/.openhands \
+  -p 3000:3000 \
+  --add-host host.docker.internal:host-gateway \
+  --name openhands-app \
+  docker.openhands.dev/openhands/openhands:0.62
 ```
 
-Configure for Ollama:
-```powershell
-$env:OLLAMA_API_BASE="http://localhost:11434"
-aider --model ollama/qwen2.5-coder:32b
+Then open **`http://localhost:3000`**. :contentReference[oaicite:7]{index=7}
+
+> **Networking note:** `host.docker.internal` allows the containerized OpenHands app to reach the LM Studio server running on your host at `http://host.docker.internal:1234/v1`. :contentReference[oaicite:8]{index=8}
+
+---
+
+## Wire OpenHands to LM Studio
+
+In the OpenHands UI:
+
+1. Go to **Settings → LLM** and click **see advanced settings**.  
+2. Set:
+   - **Custom Model**: `openai/mistralai/devstral-small-2505`  
+     *(prefix the LM Studio model ID with `openai/` as per the guide).*  
+   - **Base URL**: `http://host.docker.internal:1234/v1`  
+   - **API Key**: `local-llm` *(any placeholder is fine)*  
+3. Save. Start a new conversation. :contentReference[oaicite:9]{index=9}
+
+---
+
+## Add Axel as a repo‑local microagent
+
+OpenHands loads **microagents** from your repository. Use them to inject Axel’s local prompt/rules and keep them versioned with your code. :contentReference[oaicite:10]{index=10}
+
+**Create:** `.openhands/microagents/axel.md`
+
+```markdown
+---
+name: Axel
+type: repo
+triggers:
+  - "axel"
+  - "local agent"
+visibility: private
+---
+
+# Axel – Local Agent Guidelines
+
+Describe Axel’s house rules here. Keep it concise and actionable:
+- Repository conventions (branch naming, commit style).
+- Test + lint commands.
+- Framework/toolchain versions.
+- “Don’t break” constraints & safety rails.
+- Review checklist Axel must follow before pushing commits/PRs.
+
+(You can paste or adapt the prior LOCAL_AGENT_PROMPT content here.)
 ```
 
-Use with Axel:
-```powershell
-cd path\to\axel
-aider --model ollama/qwen2.5-coder:32b
+> **Always‑on guidance:** Microagents of `type: repo` are included in context for new conversations within this repo. :contentReference[oaicite:11]{index=11}
+
+---
+
+## Optional: repo setup & commit gates
+
+**Bootstrap on start:** `.openhands/setup.sh` runs at session start. Good for installing dev deps and seeding test data. :contentReference[oaicite:12]{index=12}
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Python
+uv pip install -U -r requirements.txt
+
+# Node
+if [ -f package-lock.json ] || [ -f pnpm-lock.yaml ] || [ -f bun.lockb ]; then
+  (command -v pnpm >/dev/null && pnpm i) || (command -v bun >/dev/null && bun i) || npm ci
+fi
+
+# Repo-wide environment
+export NODE_OPTIONS=--max-old-space-size=4096
 ```
 
-## Step 6: Performance Tuning
+**Pre‑commit gate:** `.openhands/pre-commit.sh` installs as a git hook; instruct the agent to run it before committing. :contentReference[oaicite:13]{index=13}
 
-### Optimize GPU Settings
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-```powershell
-# Set CUDA environment variables
-$env:CUDA_VISIBLE_DEVICES="0"
-$env:PYTORCH_CUDA_ALLOC_CONF="max_split_size_mb:512"
+# Fast checks
+ruff check . || true
+black --check . || true
+npm run -s lint || true
+npm -s test -- --watch=false || true
+
+# Block on critical failures if you want:
+# exit 1
 ```
 
-### Monitor GPU Usage
+> Note: Current behavior may require explicitly telling the agent to run the pre‑commit script before making a commit/PR. :contentReference[oaicite:14]{index=14}
 
-```powershell
-# Install nvidia-smi monitoring
-nvidia-smi -l 1  # Refresh every second
-```
+---
 
-### Adjust Model Context Length
+## Recommended local model (BiS) for a 4090
 
-For Ollama:
-```powershell
-ollama run qwen2.5-coder:32b --ctx 8192
-```
+- **Primary (BiS)**: **Devstral Small 2505** via LM Studio. This is the model the OpenHands team recommends for local agent workflows, with documented LM Studio settings and context‑length guidance. It’s tuned on real GitHub issues for agent‑style coding tasks and runs well on ≥16 GB VRAM (4090 has 24 GB). :contentReference[oaicite:15]{index=15}
 
-Longer context = more VRAM usage, but better understanding of large files.
+**Alternatives** (also available in LM Studio’s catalog):
+- **Qwen2.5‑Coder (14B/32B) Instruct** – strong open‑source code models with published results across code benchmarks; you can try 14B for speed and 32B for quality (with aggressive quantization). :contentReference[oaicite:16]{index=16}
+- **DeepSeek‑Coder‑V2‑Lite (16B MoE)** – good code performance at modest active parameters; useful when you want a “bigger brain” feel with acceptable latency locally. :contentReference[oaicite:17]{index=17}
 
-## Step 7: Test with Axel
+> Practical tip: Whatever you run, set the model’s **context length ≥ 32k**; OpenHands’ system prompt and task history are large, and small contexts can break agent behavior. :contentReference[oaicite:18]{index=18}
 
-1. Clone Axel:
-   ```powershell
-   git clone https://github.com/futuroptimist/axel
-   cd axel
-   ```
+---
 
-2. Set up Python environment:
-   ```powershell
-   uv venv .venv
-   .venv\Scripts\activate
-   uv pip install -e . -r requirements.txt
-   ```
+## Using the web UI
 
-3. Test the LLM on a simple task:
-   ```powershell
-   # Using Aider
-   aider --model ollama/qwen2.5-coder:32b axel\repo_manager.py
-   ```
+- Start a conversation, describe the task, and let the agent plan.  
+- Watch the **Changes** tab to inspect diffs before committing.  
+- Use the **Terminal** tab for logs or quick checks; the agent can run commands.  
+- The **Browser** tab lets it research docs as needed. :contentReference[oaicite:19]{index=19}
 
-   Then ask: "Explain the main purpose of this module"
+**Connect Git providers** under **Settings → Integrations** to allow the agent to branch/commit/open PRs. :contentReference[oaicite:20]{index=20}
+
+---
 
 ## Troubleshooting
 
-### GPU Not Detected
+- **OpenHands can’t reach LM Studio**  
+  Ensure your OpenHands container uses `--add-host host.docker.internal:host-gateway`, and set **Base URL** to `http://host.docker.internal:1234/v1`. Verify LM Studio’s server is on port `1234`. :contentReference[oaicite:21]{index=21}
 
-- Verify NVIDIA drivers are up to date
-- Restart Ollama/LM Studio after driver updates
-- Check: `nvidia-smi` shows your GPU
+- **Context too small / agent loops**  
+  Increase model **Context Length** to 32k+ in LM Studio; reload the model. :contentReference[oaicite:22]{index=22}
 
-### Out of Memory Errors
+- **PRs skip your pre‑commit**  
+  Ask the agent to run `.openhands/pre-commit.sh` before committing, or add a microagent note that enforces this step. :contentReference[oaicite:23]{index=23}
 
-- Try a smaller quantized model (Q4 instead of Q5)
-- Reduce context window size
-- Close other GPU-intensive applications
-- Use a smaller model (14B instead of 32B)
+- **Single‑user expectation**  
+  The OSS GUI is designed for **single‑user local** runs (no built‑in multi‑tenant auth). If you expose it remotely, put it behind auth/VPN. :contentReference[oaicite:24]{index=24}
 
-### Slow Performance
+---
 
-- Ensure you're using GPU, not CPU (check with `nvidia-smi`)
-- Try different quantization levels (Q4_K_M often fastest)
-- Reduce context window size
-- Check Windows power settings (set to "High Performance")
+## Why web‑first?
 
-### Model Download Issues
+This flow gives you a **self‑hosted, IDE‑agnostic** agent workspace. It’s also resilient when editor agents are rate‑limited or temporarily down (e.g., recent Copilot Agent action failures discussed in the GitHub community). :contentReference[oaicite:25]{index=25}
 
-- Use a VPN if downloads are blocked
-- Download manually from HuggingFace and import to Ollama
-- Check disk space (models can be 20GB+)
+---
 
-## Best Practices for Axel Development
+## Optional: Editor‑based alternatives
 
-1. **Use smaller context windows** when editing small files to speed up responses
-2. **Keep model loaded** between sessions to avoid startup time
-3. **Use specific prompts** referencing the codebase structure:
-   - "In the `axel/` package..."
-   - "Looking at tests/test_repo_manager.py..."
-4. **Test incrementally** - use the LLM to suggest changes, then run tests locally
-5. **Commit frequently** - LLMs work better with clean git history
+- **VS Code + Cline** (open‑source): an in‑editor coding agent with planning, terminal usage, file edits, and MCP integration. Good when you prefer to stay in VS Code. :contentReference[oaicite:26]{index=26}  
+- **Cursor** (proprietary): popular editor with agentic features; keep it as a secondary option to this web UI workflow.
 
-## Next Steps
+---
 
-- Experiment with different models to find your favorite
-- Set up custom system prompts for Python/testing
-- Integrate with GitHub Copilot for hybrid approach
-- Try fine-tuning on Axel's codebase (advanced)
+## Appendix: Full commands & references
 
-## Resources
+**LM Studio: OpenAI‑compatible endpoint** (examples and base URL setting)  
+See LM Studio’s “OpenAI Compatibility Endpoints.” :contentReference[oaicite:27]{index=27}
 
-- [Ollama Documentation](https://github.com/ollama/ollama)
-- [LM Studio Discord](https://discord.gg/lmstudio)
-- [Continue Documentation](https://continue.dev/docs)
-- [Aider Documentation](https://aider.chat/)
-- [HuggingFace Models](https://huggingface.co/models?pipeline_tag=text-generation)
+**OpenHands + LM Studio quickstart** (model choice, context settings, base URL, Docker run)  
+OpenHands “Local LLMs” guide (LM Studio + Devstral Small 2505). :contentReference[oaicite:28]{index=28}
 
-## Contributing
+**OpenHands GUI features** (chat/changes/terminal/browser)  
+OpenHands “Key Features.” :contentReference[oaicite:29]{index=29}
 
-Found a better model or configuration? Open a PR to update this guide!
+**Repo customization & microagents**  
+OpenHands “Repository Customization” and “Microagents Overview.” :contentReference[oaicite:30]{index=30}
+
+---

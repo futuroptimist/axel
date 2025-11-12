@@ -41,21 +41,44 @@ References: [OpenHands: Local LLMs](https://docs.openhands.dev/openhands/usage/l
 
 ### 1) LM Studio (local model server)
 
-**Install LM Studio** and open it.
+#### Windows 11 Setup
 
-**Download the model**:
-- Discover **Devstral Small 2505** (Mistral AI) and download it.
-- Load with these **baseline settings for a 4090**:
-  - **Context Length:** **32,768** tokens (set ≥32k; Devstral supports up to **131,072**).  
-  - **Flash Attention:** **On**  
-  - **GPU Offload:** **Max** (all layers for your quant)  
-  - **Offload KV Cache to GPU:** **On** (disable only if you push very large contexts and hit VRAM ceilings)  
-  - **Keep Model in Memory:** **On**  
-  - **Try mmap():** **On**  
-  - **Evaluation Batch Size:** leave default unless you see throttling  
-  - **RoPE Base/Scale:** **Auto**
+**Step 1: Install LM Studio**
+1. Download LM Studio from [lmstudio.ai](https://lmstudio.ai/)
+2. Run the installer (`.exe` file)
+3. Follow the installation wizard to complete setup
+4. Launch LM Studio
 
-**Start the local server** (OpenAI-compatible): use LM Studio’s UI (Developer → **Start Server**) or CLI; the default base URL is:
+**Step 2: Download the Devstral Small 2505 Model**
+1. In LM Studio, navigate to the **Discover** tab (search/magnifying glass icon)
+2. Search for **"Devstral Small 2505"** by Mistral AI
+3. Select the model from the results
+4. Choose a quantization level appropriate for your GPU:
+   - For RTX 4090 (24GB VRAM): Q5_K_M or Q6_K recommended
+   - For lower VRAM: Q4_K_M
+5. Click **Download** and wait for completion
+
+**Step 3: Load and Configure the Model**
+1. Go to the **Chat** tab (💬 icon)
+2. Click **Select a model to load** at the top
+3. Choose your downloaded **Devstral Small 2505** model
+4. Click the **gear icon** (⚙️) next to the model name to configure settings
+5. Apply these **baseline settings for a 4090**:
+   - **Context Length:** **32,768** tokens (CRITICAL: set to exactly **32768** or higher; Devstral supports up to **131,072**)
+   - **Flash Attention:** **On**
+   - **GPU Offload:** **Max** (move all layers to GPU for your quantization)
+   - **Offload KV Cache to GPU:** **On** (disable only if you hit VRAM limits with very large contexts)
+   - **Keep Model in Memory:** **On**
+   - **Try mmap():** **On**
+   - **Evaluation Batch Size:** leave default unless you see throttling
+   - **RoPE Base/Scale:** **Auto**
+6. Click **Load Model** to apply settings
+
+**Step 4: Start the OpenAI-Compatible Server**
+1. In LM Studio, go to the **Developer** tab (</> icon)
+2. Click **Start Server**
+3. Verify the server is running at: `http://localhost:1234/v1`
+4. Leave this running in the background
 
 ```
 http://localhost:1234/v1
@@ -63,9 +86,16 @@ http://localhost:1234/v1
 
 References: [LM Studio OpenAI-compat endpoints](https://lmstudio.ai/docs/developer/openai-compat), [LM Studio developer docs](https://lmstudio.ai/docs/developer), [Devstral context length](https://huggingface.co/lmstudio-community/Devstral-Small-2505-GGUF)
 
-> Tip: For long agent runs, keep the model pinned and avoid auto-eviction while OpenHands is active.
+> **Important:** For long agent runs, keep the model pinned and avoid auto-eviction while OpenHands is active. The **32,768 token context** is critical for proper agent operation—smaller contexts can cause the agent to lose track of its plan.
 
 ### 2) OpenHands (web UI)
+
+#### Prerequisites for Windows 11
+- **Docker Desktop** must be installed and running
+- Ensure Docker Desktop is configured to use WSL 2 backend (Settings → General → Use WSL 2 based engine)
+- Verify Docker is working: open PowerShell and run `docker --version`
+
+#### Launch OpenHands with Docker
 
 You can run OpenHands via Docker or via the CLI. The GUI serves inside the container on **port 3000**.
 
@@ -91,38 +121,53 @@ Then open:
 http://localhost:3000
 ```
 
-**Change the host port (if 3000 is busy)**
+**Windows 11 with Custom Port 3333 (Recommended)**
 
-- **Bash / Linux / WSL:**
-
-```bash
-docker run -it --rm \
-  -p 3333:3000 \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v "$HOME/.openhands":"/.openhands" \
-  --name openhands \
-  docker.openhands.dev/openhands/openhands:latest
-```
-
-- **PowerShell (Windows):**
+If port 3000 is busy or you prefer a custom port, use this **PowerShell** command:
 
 ```powershell
 docker run -it --rm `
+  -e SANDBOX_RUNTIME_CONTAINER_IMAGE=docker.openhands.dev/openhands/runtime:0.62-nikolaik `
+  -e LOG_ALL_EVENTS=true `
+  -v /var/run/docker.sock:/var/run/docker.sock `
+  -v "$env:USERPROFILE\.openhands:/.openhands" `
   -p 3333:3000 `
-  -v "//var/run/docker.sock:/var/run/docker.sock" `
-  -v "${env:USERPROFILE}\.openhands:/.openhands" `
-  --name openhands `
-  docker.openhands.dev/openhands/openhands:latest
+  --add-host host.docker.internal:host-gateway `
+  --name openhands-app `
+  docker.openhands.dev/openhands/openhands:0.62
 ```
 
-Now open:
+**Important PowerShell syntax notes:**
+- Use backtick (`` ` ``) for line continuation (NOT backslash `\`)
+- Use `$env:USERPROFILE` to access the user profile directory (equivalent to `~` in Bash)
+- Ensure all lines except the last end with a backtick
+- Run in PowerShell (not CMD)
+
+Then open in your browser:
 
 ```
 http://localhost:3333
 ```
 
-> **Networking note:** On Docker Desktop, `host.docker.internal` lets the container reach services on your host (LM Studio at `http://host.docker.internal:1234/v1`).  
-References: [Docker Desktop networking](https://docs.docker.com/desktop/features/networking/), [How-tos](https://docs.docker.com/desktop/features/networking/networking-how-tos/)
+**Alternative: Bash / Linux / WSL with Custom Port:**
+
+```bash
+docker run -it --rm \
+  -e SANDBOX_RUNTIME_CONTAINER_IMAGE=docker.openhands.dev/openhands/runtime:0.62-nikolaik \
+  -e LOG_ALL_EVENTS=true \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v "$HOME/.openhands":"/.openhands" \
+  -p 3333:3000 \
+  --add-host host.docker.internal:host-gateway \
+  --name openhands-app \
+  docker.openhands.dev/openhands/openhands:0.62
+```
+
+> **Networking note:** On Docker Desktop (Windows/Mac), `host.docker.internal` lets the container reach services on your host machine (e.g., LM Studio at `http://host.docker.internal:1234/v1`). The `--add-host host.docker.internal:host-gateway` flag ensures this works correctly.
+>
+> **Port mapping:** `-p 3333:3000` maps port 3000 inside the container to port 3333 on your host. Access the UI at `http://localhost:3333`.
+
+References: [Docker Desktop networking](https://docs.docker.com/desktop/features/networking/), [How-tos](https://docs.docker.com/desktop/features/networking/networking-how-tos/), [OpenHands Local LLMs guide](https://docs.openhands.dev/openhands/usage/llms/local-llms)
 
 ---
 
@@ -139,6 +184,58 @@ In the OpenHands UI:
 3. **Save**, then start a new conversation.
 
 Reference: [OpenHands: Local LLMs](https://docs.openhands.dev/openhands/usage/llms/local-llms)
+
+---
+
+## Connect GitHub to OpenHands
+
+To enable OpenHands to interact with your GitHub repositories (clone, create branches, open PRs, etc.), you need to configure GitHub integration.
+
+### Step 1: Create a GitHub Personal Access Token (PAT)
+
+1. Go to GitHub → **Settings** → **Developer settings** → **Personal access tokens** → **Tokens (classic)**
+   - Direct link: [https://github.com/settings/tokens](https://github.com/settings/tokens)
+2. Click **Generate new token** → **Generate new token (classic)**
+3. Give it a descriptive name (e.g., "OpenHands Local Agent")
+4. Set expiration as needed (e.g., 90 days, or "No expiration" for convenience)
+5. Select the following **scopes** (permissions):
+   - ✅ **repo** (Full control of private repositories) - Required for repository access
+   - ✅ **workflow** (Update GitHub Action workflows) - Optional, needed for CI/CD operations
+   - ✅ **read:org** (Read org and team membership) - Optional, for organization repositories
+6. Click **Generate token** at the bottom
+7. **IMPORTANT:** Copy the token immediately (it won't be shown again)
+
+### Step 2: Configure GitHub in OpenHands
+
+1. In the OpenHands web UI, click the **Settings** icon (⚙️) in the top-right corner
+2. Navigate to **Settings** → **GitHub**
+3. Paste your Personal Access Token in the **GitHub Token** field
+4. Click **Save** or **Connect**
+5. Verify the connection is successful (you should see a green checkmark or success message)
+
+### Step 3: Select a Repository
+
+1. In the OpenHands main interface, you can now select a GitHub repository to work on
+2. OpenHands will clone the repository and allow the agent to make changes
+3. The agent can create branches, commit changes, and open pull requests on your behalf
+
+### Security Best Practices
+
+- **Never share your GitHub token** with anyone or commit it to a repository
+- Use tokens with minimal required permissions for your use case
+- Set token expiration dates and rotate them regularly
+- Consider using fine-grained personal access tokens (beta) for more granular control
+- Store tokens securely (e.g., in a password manager)
+- Revoke tokens immediately if compromised: [https://github.com/settings/tokens](https://github.com/settings/tokens)
+
+### Troubleshooting GitHub Integration
+
+- **"Authentication failed"**: Regenerate your token and ensure you've selected the correct scopes
+- **"Repository not found"**: Verify the token has access to the repository (check organization settings if applicable)
+- **"Permission denied"**: Ensure the token has the `repo` scope enabled
+- **Token expired**: Generate a new token and update it in OpenHands settings
+
+Reference: [OpenHands: GitHub Setup](https://docs.openhands.dev/openhands/usage/settings/integrations-settings#github-setup)
 
 ---
 

@@ -12,25 +12,25 @@ This replaces the older “VS Code + extension / Cursor” emphasis. Those edito
 
 ## TL;DR (4090-ready)
 
-1. Install **LM Studio**, download **Devstral Small 2505**, set context ≥ **32k**, start the **OpenAI-compatible** server on port `1234`.  
-2. Start **OpenHands** and open `http://localhost:3000` (or remap to another host port; see below).  
-3. In OpenHands → **Settings → LLM**, set  
-   `Base URL = http://host.docker.internal:1234/v1`,  
-   `Custom Model = openai/mistralai/devstral-small-2505`,  
-   `API Key = local-llm`.  
-4. In your repo, add an **Axel microagent** at `.openhands/microagents/axel.md` (paste Axel’s rules there).  
+1. Install **LM Studio**, download **Devstral Small 2505**, set context ≥ **32k**, start the **OpenAI-compatible** server on port `1234`.
+2. Start **OpenHands** and open `http://localhost:3000` (or remap to another host port; see below).
+3. In OpenHands → **Settings → LLM**, set
+   `Base URL = http://host.docker.internal:1234/v1`,
+   `Custom Model = openai/mistralai/devstral-small-2505`,
+   `API Key = local-llm`.
+4. In your repo, add an **Axel microagent** at `.openhands/microagents/axel.md` (paste Axel’s rules there).
 5. (Optional) Add `.openhands/setup.sh` and `.openhands/pre-commit.sh` to install deps and gate commits/tests.
 
-**Why Devstral Small 2505?** OpenHands’ **Local LLMs** guide recommends **LM Studio + Devstral Small 2505** for agent-style coding and shows the exact GUI/base-URL wiring. A 4090 (24 GB) is comfortably within spec.  
+**Why Devstral Small 2505?** OpenHands’ **Local LLMs** guide recommends **LM Studio + Devstral Small 2505** for agent-style coding and shows the exact GUI/base-URL wiring. A 4090 (24 GB) is comfortably within spec.
 References: [OpenHands: Local LLMs (LM Studio + Devstral)](https://docs.openhands.dev/openhands/usage/llms/local-llms), [LM Studio OpenAI-compatible server (port 1234)](https://lmstudio.ai/docs/developer/openai-compat), [Devstral model card (131,072-token context)](https://huggingface.co/lmstudio-community/Devstral-Small-2505-GGUF)
 
 ---
 
 ## What you get
 
-- **Web UI**: chat panel + **Changes** tab, **Terminal** tab, **Browser** tab.  
-- **Git provider integration** (GitHub/GitLab/Bitbucket) in Settings.  
-- **Repo-level customization** via `.openhands/` (microagents, setup scripts, pre-commit).  
+- **Web UI**: chat panel + **Changes** tab, **Terminal** tab, **Browser** tab.
+- **Git provider integration** (GitHub/GitLab/Bitbucket) in Settings.
+- **Repo-level customization** via `.openhands/` (microagents, setup scripts, pre-commit).
 - **Local LLM** through LM Studio’s OpenAI-compatible server (`/v1/*`).
 
 References: [OpenHands: Local LLMs](https://docs.openhands.dev/openhands/usage/llms/local-llms)
@@ -175,12 +175,12 @@ References: [Docker Desktop networking](https://docs.docker.com/desktop/features
 
 In the OpenHands UI:
 
-1. Go to **Settings → LLM** and click **see advanced settings**.  
+1. Go to **Settings → LLM** and click **see advanced settings**.
 2. Set:
-   - **Custom Model**: `openai/mistralai/devstral-small-2505`  
-     *(prefix the LM Studio model ID with `openai/` as shown in the guide).*  
-   - **Base URL**: `http://host.docker.internal:1234/v1`  
-   - **API Key**: `local-llm` *(any placeholder is fine)*  
+   - **Custom Model**: `openai/mistralai/devstral-small-2505`
+     *(prefix the LM Studio model ID with `openai/` as shown in the guide).*
+   - **Base URL**: `http://host.docker.internal:1234/v1`
+   - **API Key**: `local-llm` *(any placeholder is fine)*
 3. **Save**, then start a new conversation.
 
 Reference: [OpenHands: Local LLMs](https://docs.openhands.dev/openhands/usage/llms/local-llms)
@@ -267,7 +267,7 @@ Describe Axel’s house rules here. Keep it concise and actionable:
 (You can paste or adapt the prior LOCAL_AGENT_PROMPT content here.)
 ```
 
-> **Always-on guidance:** Microagents of `type: repo` are included in context for new conversations within this repo.  
+> **Always-on guidance:** Microagents of `type: repo` are included in context for new conversations within this repo.
 Reference: [OpenHands: Microagents & repo customization](https://docs.openhands.dev/openhands/usage/repository-customization)
 
 ---
@@ -308,7 +308,7 @@ npm -s test -- --watch=false || true
 # exit 1
 ```
 
-> Note: Depending on version, you may need to explicitly tell the agent to run the pre-commit script before committing/PRs.  
+> Note: Depending on version, you may need to explicitly tell the agent to run the pre-commit script before committing/PRs.
 Reference: [OpenHands: Repository customization](https://docs.openhands.dev/openhands/usage/repository-customization)
 
 ---
@@ -329,9 +329,9 @@ References: [OpenHands: Local LLMs](https://docs.openhands.dev/openhands/usage/l
 
 ## Using the web UI
 
-- Start a conversation, describe the task, and let the agent plan.  
-- Watch the **Changes** tab to inspect diffs before committing.  
-- Use the **Terminal** tab for logs or quick checks; the agent can run commands.  
+- Start a conversation, describe the task, and let the agent plan.
+- Watch the **Changes** tab to inspect diffs before committing.
+- Use the **Terminal** tab for logs or quick checks; the agent can run commands.
 - The **Browser** tab lets it research docs as needed.
 
 References: [OpenHands: Local LLMs](https://docs.openhands.dev/openhands/usage/llms/local-llms)
@@ -340,21 +340,21 @@ References: [OpenHands: Local LLMs](https://docs.openhands.dev/openhands/usage/l
 
 ## Troubleshooting
 
-- **OpenHands can’t reach LM Studio**  
-  Use `host.docker.internal` in the Base URL and ensure LM Studio’s server is on port `1234`. On Linux servers (no Docker Desktop), replace with the host IP or a user-defined bridge network.  
+- **OpenHands can’t reach LM Studio**
+  Use `host.docker.internal` in the Base URL and ensure LM Studio’s server is on port `1234`. On Linux servers (no Docker Desktop), replace with the host IP or a user-defined bridge network.
   References: [Docker Desktop networking](https://docs.docker.com/desktop/features/networking/)
 
-- **Change UI port (host)**  
-  Remap with `-p NEW_PORT:3000` (examples above). If you find a version where the UI ignores mapping, upgrade to a current image; older issues around port changes have been fixed.  
+- **Change UI port (host)**
+  Remap with `-p NEW_PORT:3000` (examples above). If you find a version where the UI ignores mapping, upgrade to a current image; older issues around port changes have been fixed.
   Reference: [historical discussion](https://github.com/All-Hands-AI/OpenHands/issues/3288)
 
-- **Context too small / agent loops**  
+- **Context too small / agent loops**
   Increase model **Context Length** to **32k+** in LM Studio; reload the model.
 
-- **PRs skip your pre-commit**  
+- **PRs skip your pre-commit**
   Ask the agent to run `.openhands/pre-commit.sh` before committing, or enforce in your microagent instructions.
 
-- **Single-user expectation**  
+- **Single-user expectation**
   The OSS GUI targets **single-user local** runs (no built-in multi-tenant auth). If you expose it, put it behind auth/VPN.
 
 ---
@@ -367,23 +367,23 @@ This flow gives you a **self-hosted, IDE-agnostic** agent workspace—and it kee
 
 ## Optional: Editor-based alternatives
 
-- **VS Code + Cline** (open-source): an in-editor coding agent with planning, terminal usage, file edits, and MCP integration.  
+- **VS Code + Cline** (open-source): an in-editor coding agent with planning, terminal usage, file edits, and MCP integration.
 - **Cursor** (proprietary): popular editor with agentic features; keep it as a secondary option to this web UI workflow.
 
 ---
 
 ## Appendix: Full commands & references
 
-**LM Studio: OpenAI-compatible endpoint** (examples and base URL setting)  
-- <https://lmstudio.ai/docs/developer/openai-compat>  
+**LM Studio: OpenAI-compatible endpoint** (examples and base URL setting)
+- <https://lmstudio.ai/docs/developer/openai-compat>
 - <https://lmstudio.ai/docs/developer>
 
-**OpenHands + LM Studio quickstart** (model choice, context settings, base URL, Docker run)  
+**OpenHands + LM Studio quickstart** (model choice, context settings, base URL, Docker run)
 - <https://docs.openhands.dev/openhands/usage/llms/local-llms>
 
-**Docker Desktop networking & host reachability**  
-- <https://docs.docker.com/desktop/features/networking/>  
+**Docker Desktop networking & host reachability**
+- <https://docs.docker.com/desktop/features/networking/>
 - <https://docs.docker.com/desktop/features/networking/networking-how-tos/>
 
-**Devstral model info / context length**  
+**Devstral model info / context length**
 - <https://huggingface.co/lmstudio-community/Devstral-Small-2505-GGUF>

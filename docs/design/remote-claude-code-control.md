@@ -261,7 +261,8 @@ Code retains the execution boundary and local permissions.
 ```mermaid
 flowchart LR
     Flipper[Flipper Zero app\nbuttons and status] <-->|UART| ESP[ESP32-S2 Wi-Fi\nDevelopment Board]
-    ESP -->|authenticated request\ntrusted home Wi-Fi only| Gateway[Dedicated Raspberry Pi\ngateway]
+    ESP -->|authenticated request\nisolated IoT Wi-Fi/VLAN| Firewall[LAN firewall]
+    Firewall -->|gateway port only| Gateway[Dedicated Raspberry Pi\ngateway]
     Gateway -->|narrowly permitted\nTailscale connection| Supervisor[Host-side Claude supervisor]
     Supervisor --> Profile[Fixed repository profile]
     Supervisor --> Session[tmux or supervised\nclaude remote-control]
@@ -278,6 +279,23 @@ backhaul, not the Flipper-to-Pi hop unless a future companion itself joins the
 tailnet. The Flipper is a button panel and status display, not the Claude UI. The
 official iPhone app remains the place for conversation, permissions, diffs, and
 detailed status. Synology remains separate infrastructure, and Sugarkube is untouched.
+
+The dedicated Pi's physical LAN interface is a separate security boundary. Tailscale
+grants do not restrict traffic that the Pi sends directly over Ethernet or Wi-Fi. Put
+the ESP32-S2 and gateway on an isolated IoT VLAN/SSID with inter-VLAN default deny, or
+enforce an equivalent default-deny outbound host firewall on the Pi. Permit only:
+
+- ESP32-S2-to-gateway ingress on the fixed application port;
+- gateway-to-supervisor traffic over the Pi's Tailscale interface on the fixed
+  supervisor port; and
+- explicitly enumerated infrastructure traffic needed for operation, such as DNS,
+  NTP, and package updates, through approved resolvers/proxies and destinations.
+
+Deny direct gateway access to the NAS, Pi-hole administration, other home-LAN
+devices, and the subnet router's advertised LAN prefix. Apply both network
+segmentation and a Pi host firewall when practical, so one control remains if the
+other is misconfigured. Document the concrete interface names, addresses, ports, and
+update path during deployment rather than copying schematic rules from this design.
 
 ## Proposed Flipper action protocol
 
@@ -313,6 +331,9 @@ cryptographic primitive, are:
 
 - Run the gateway as an unprivileged, isolated service with no unrestricted SSH key.
 - Restrict `tag:claude-gateway` through Tailscale grants to only the supervisor port.
+- Default-deny forwarding and LAN egress at the Pi host firewall; allow the fixed
+  Flipper ingress, supervisor traffic on the Tailscale interface, and only documented
+  infrastructure exceptions. Back this with an isolated VLAN/SSID when available.
 - Bind the supervisor only to the Tailscale interface, or to localhost behind
   Tailscale Serve. Serve may publish a tailnet-only administrative/status UI while its
   backend stays on loopback.
@@ -371,8 +392,10 @@ intent rather than a deployable policy:
 ```
 
 There is intentionally no gateway-to-LAN grant and no general inbound grant to the
-Claude host. DNS is limited to port 53. Exit-node use and route approval must be
-separately authorized; confirm the precise current policy controls before deployment.
+Claude host. That missing grant protects tailnet paths only; the VLAN/firewall controls
+above must independently block the gateway's physical-interface path to the LAN. DNS
+is limited to port 53. Exit-node use and route approval must be separately authorized;
+confirm the precise current policy controls before deployment.
 
 Require MFA at the identity provider, device approval, appropriate node-key expiry,
 and immediate revocation of lost devices. Use tagged server auth keys that are one-off
@@ -388,7 +411,7 @@ only after understanding recovery keys and signing-node requirements.
 | Extracted ESP32 credential | Per-device key, nonce/counter, rate limit, immediate rotation. | Attacker can impersonate that board until revocation. |
 | Replayed request | Short challenge, monotonic counter, expiry, idempotency and replay cache. | State loss or clock/counter bugs can weaken rejection. |
 | Malicious LAN client | Authenticated requests, HTTPS where feasible, listener firewall, size/rate limits. | LAN compromise still enables denial of service attempts. |
-| Compromised gateway | Unprivileged isolation, no shell key, narrow tailnet grant, fixed API. | Can request allowed actions until revoked. |
+| Compromised gateway | Unprivileged isolation, no shell key, narrow tailnet grant, fixed API, isolated VLAN/SSID, default-deny host firewall. | Can request allowed actions and use explicitly permitted infrastructure traffic until revoked. |
 | Compromised Claude host | Host hardening, least Claude permissions, credential hygiene, patches. | Repositories, tools, and local credentials may be exposed. |
 | Compromised Tailscale account | IdP MFA, device approval, admin separation, alerting, Tailnet Lock evaluation. | Account control may permit policy/device changes. |
 | Overly broad grants | Default deny, review tests, tags owned only by admins, explicit ports/CIDRs. | Policy mistakes can expose internal services. |
@@ -460,6 +483,8 @@ only after understanding recovery keys and signing-node requirements.
 ### Phase E: local-only Flipper proof of concept
 
 - Use a dedicated Pi, one fixed profile, and only `status` plus one `start_session`.
+- Isolate the Pi and ESP32-S2 on a VLAN/SSID or install a default-deny Pi firewall;
+  prove the Pi cannot reach the NAS, Pi-hole administration, or unrelated LAN hosts.
 - Permit no free-form fields; test invalid signatures and replay rejection.
 - Perform a lost-device credential rotation drill.
 
@@ -490,7 +515,7 @@ Tailscale Funnel is not the default and is excluded from the MVP.
 | DNS recovery | Disabling Pi-hole or Tailscale and override restores the documented resolver path. |
 | Exit node | Observed public IP changes only while selected. |
 | Unauthorized tailnet node | Policy tests and live probe deny protected destinations. |
-| Gateway isolation | Gateway reaches only the supervisor port, not unrelated LAN destinations. |
+| Gateway isolation | Firewall counters/configuration and live probes show fixed ESP32-S2 ingress and Tailscale supervisor access succeed, while direct physical-interface access to the NAS, Pi-hole administration, subnet-routed prefix, and unrelated LAN destinations is denied. |
 | Invalid Flipper input | Malformed, oversized, unsigned, stale, duplicate, and replayed requests fail safely. |
 | No arbitrary control | Schema/protocol tests prove no shell text, path, argument, or prompt field exists. |
 | Lost Flipper | Only its narrow application credential is rotated; Claude/Tailscale credentials remain unchanged. |

@@ -285,7 +285,7 @@ grants do not restrict traffic that the Pi sends directly over Ethernet or Wi-Fi
 the ESP32-S2 and gateway on an isolated IoT VLAN/SSID with inter-VLAN default deny, or
 enforce an equivalent default-deny outbound host firewall on the Pi. Permit only:
 
-- ESP32-S2-to-gateway ingress on the fixed application port;
+- ESP32-S2-to-gateway ingress only to the fixed action endpoint and application port;
 - gateway-to-supervisor traffic over the Pi's Tailscale interface on the fixed
   supervisor port; and
 - explicitly enumerated infrastructure traffic needed for operation, such as DNS,
@@ -296,6 +296,8 @@ devices, and the subnet router's advertised LAN prefix. Apply both network
 segmentation and a Pi host firewall when practical, so one control remains if the
 other is misconfigured. Document the concrete interface names, addresses, ports, and
 update path during deployment rather than copying schematic rules from this design.
+Validate the boundary with negative destination probes sent explicitly over both the
+Pi's Tailscale interface and its physical LAN interface.
 
 ## Proposed Flipper action protocol
 
@@ -322,6 +324,11 @@ cryptographic primitive, are:
   mechanism).
 - Replay rejection, strict request-size limits, rate limits, and idempotency keys for
   start/stop actions.
+- Persist the device identity and credential epoch, monotonic counter state, and
+  consumed idempotency results atomically across service and host restarts. Restores
+  must preserve the newest accepted epoch and state rather than reviving an older
+  snapshot. Missing, corrupt, or rolled-back state fails closed until a local trusted
+  procedure rotates the credential and re-enrolls the device.
 - An audit record of action, device identity, result, and request ID, but no secrets,
   prompt text, or repository contents.
 - Explicit physical confirmation on the Flipper for state-changing actions, a local
@@ -345,6 +352,11 @@ cryptographic primitive, are:
 - Enforce concurrent-session limits and timeouts. If the selected host is stopped or
   unreachable, return a safe error instead of trying another host.
 - Use deterministic session names that are easy to locate in the Claude app.
+- Treat replay and idempotency state as security-critical durable state: commit the
+  device identity/credential epoch, monotonic counter, and consumed result together
+  before reporting success. A restart or backup restore must neither accept an older
+  epoch nor start a duplicate session; unverifiable state disables device actions
+  pending local rotation and re-enrollment.
 
 Before implementation, confirm how supported Claude Code output exposes session URLs
 or IDs. Do not rely on undocumented Anthropic APIs or brittle terminal screen scraping
@@ -378,6 +390,7 @@ intent rather than a deployable policy:
     "tag:claude-host": ["group:admins"]
   },
   "grants": [
+    {"src": ["group:owner-devices"], "dst": ["autogroup:internet"], "ip": ["*"]},
     {"src": ["group:owner-devices"], "dst": ["tag:synology"], "ip": ["tcp:<APPROVED-NAS-PORTS>"]},
     {"src": ["group:owner-devices"], "dst": ["tag:pihole"], "ip": ["tcp:53", "udp:53"]},
     {"src": ["group:owner-devices"], "dst": ["tag:claude-gateway"], "ip": ["tcp:<STATUS-UI-PORT>"]},
@@ -394,8 +407,13 @@ intent rather than a deployable policy:
 There is intentionally no gateway-to-LAN grant and no general inbound grant to the
 Claude host. That missing grant protects tailnet paths only; the VLAN/firewall controls
 above must independently block the gateway's physical-interface path to the LAN. DNS
-is limited to port 53. Exit-node use and route approval must be separately authorized;
-confirm the precise current policy controls before deployment.
+is limited to port 53. In this schematic, `autoApprovers.exitNode` approves which
+identities may **advertise** an exit node; it does not authorize a client to use one.
+The separate owner-device-to-`autogroup:internet` grant represents permission for
+those clients to send traffic through a selected exit node. Both controls must be
+adapted to the current Tailscale schema. Neither control grants access to arbitrary
+services listening on the exit-node device, which require their own destination and
+port grants.
 
 Require MFA at the identity provider, device approval, appropriate node-key expiry,
 and immediate revocation of lost devices. Use tagged server auth keys that are one-off
@@ -409,9 +427,9 @@ only after understanding recovery keys and signing-node requirements.
 | Stolen iPhone | Device passcode/biometrics, MFA, device approval, remote wipe, revoke Tailscale node and Claude sessions. | An unlocked device may act before revocation. |
 | Stolen Flipper or Wi-Fi board | Narrow credential, physical confirmation, allowlist, kill switch, prompt rotation drill. | ESP32 credential is assumed extractable. |
 | Extracted ESP32 credential | Per-device key, nonce/counter, rate limit, immediate rotation. | Attacker can impersonate that board until revocation. |
-| Replayed request | Short challenge, monotonic counter, expiry, idempotency and replay cache. | State loss or clock/counter bugs can weaken rejection. |
+| Replayed request or restored stale state | Short challenge, credential epoch, monotonic counter, expiry, durable idempotency/replay results, and atomic state commits; missing, corrupt, or rolled-back state fails closed and requires local rotation/re-enrollment. | Storage defects can deny service, but must not revive an accepted epoch or duplicate a session start. |
 | Malicious LAN client | Authenticated requests, HTTPS where feasible, listener firewall, size/rate limits. | LAN compromise still enables denial of service attempts. |
-| Compromised gateway | Unprivileged isolation, no shell key, narrow tailnet grant, fixed API, isolated VLAN/SSID, default-deny host firewall. | Can request allowed actions and use explicitly permitted infrastructure traffic until revoked. |
+| Compromised gateway | Unprivileged isolation, no shell key, narrow tailnet grant, fixed API, isolated VLAN/SSID, default-deny host firewall, and negative probes over both Tailscale and the physical LAN interface. | Can request allowed actions and use narrowly enumerated infrastructure traffic until revoked. |
 | Compromised Claude host | Host hardening, least Claude permissions, credential hygiene, patches. | Repositories, tools, and local credentials may be exposed. |
 | Compromised Tailscale account | IdP MFA, device approval, admin separation, alerting, Tailnet Lock evaluation. | Account control may permit policy/device changes. |
 | Overly broad grants | Default deny, review tests, tags owned only by admins, explicit ports/CIDRs. | Policy mistakes can expose internal services. |
@@ -434,8 +452,16 @@ only after understanding recovery keys and signing-node requirements.
 - **Gateway or Claude host:** disable its tagged auth key, expire/remove the node, and
   remove its grants; investigate before reenrollment.
 - **Flipper credential:** disable its device identity at the gateway, issue a new
-  per-device application credential through a local trusted process, reset the
-  counter/replay state safely, and audit recent request IDs.
+  per-device application credential and higher credential epoch through a local
+  trusted re-enrollment process, atomically initialize its counter and idempotency/
+  replay state, and audit recent request IDs. Treat missing, corrupt, or rolled-back
+  state as a revocation event; do not reconstruct counters from requests or reuse the
+  old credential.
+- **Gateway restore:** before accepting requests, verify that restored identity,
+  credential-epoch, monotonic-counter, and consumed-idempotency state is at least as
+  new as the last accepted durable state. If freshness cannot be established, fail
+  closed and perform local credential rotation/re-enrollment; never let a backup
+  revive an earlier epoch or repeat a previously successful session start.
 - **LAN gateway listener:** activate the local kill switch, stop/disable the service,
   and block its port at the Pi firewall.
 - **Serve or Funnel:** inspect current `tailscale serve`/`tailscale funnel` status and
@@ -492,7 +518,11 @@ only after understanding recovery keys and signing-node requirements.
 
 - Add the host-side supervisor, strict grants, rate limits, safe audit log, and service
   isolation.
-- Test backup/restore and inject gateway, host, DNS, and network failures.
+- Store device identity/credential epoch, monotonic counter, and consumed idempotency
+  results in one restart-safe atomic state transition; fail closed on missing, corrupt,
+  or rolled-back state until local rotation/re-enrollment.
+- Test restart and backup/restore without reviving an earlier epoch or duplicating an
+  accepted session start, and inject gateway, host, DNS, and network failures.
 
 ### Deferred remote-Flipper options
 
@@ -515,8 +545,9 @@ Tailscale Funnel is not the default and is excluded from the MVP.
 | DNS recovery | Disabling Pi-hole or Tailscale and override restores the documented resolver path. |
 | Exit node | Observed public IP changes only while selected. |
 | Unauthorized tailnet node | Policy tests and live probe deny protected destinations. |
-| Gateway isolation | Firewall counters/configuration and live probes show fixed ESP32-S2 ingress and Tailscale supervisor access succeed, while direct physical-interface access to the NAS, Pi-hole administration, subnet-routed prefix, and unrelated LAN destinations is denied. |
+| Gateway isolation | Firewall counters/configuration and live positive/negative probes on both the Tailscale interface and physical LAN interface show only fixed ESP32-S2 ingress, the Tailscale supervisor connection, and enumerated infrastructure egress succeed; NAS, Pi-hole administration, subnet-routed prefixes, unrelated LAN destinations, and unauthorized tailnet destinations are denied. |
 | Invalid Flipper input | Malformed, oversized, unsigned, stale, duplicate, and replayed requests fail safely. |
+| Restart/restore replay safety | Restart and stale-backup tests preserve the newest credential epoch, monotonic counter, and consumed idempotency result atomically; duplicate session starts remain deduplicated, while missing, corrupt, or rolled-back state fails closed until local rotation/re-enrollment. |
 | No arbitrary control | Schema/protocol tests prove no shell text, path, argument, or prompt field exists. |
 | Lost Flipper | Only its narrow application credential is rotated; Claude/Tailscale credentials remain unchanged. |
 | Sugarkube separation | Diff, inventory, secrets, and deployment review confirms Sugarkube is untouched. |

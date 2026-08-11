@@ -35,7 +35,8 @@ This launches the token.place server, relay and a mock LLM using one command.
 
 - `axel/` – core Python package with CLI entry points, repo/task managers and analytics helpers.
 - `tests/` – pytest suite mirroring CLI flows, analytics helpers and README expectations.
-- `docs/` – long-form documentation, FAQs and security notes referenced throughout the README.
+- `docs/` – long-form documentation, FAQs and security notes referenced throughout the README;
+  `docs/design/` contains proposed system designs.
 - `analytics/` – orthogonality and saturation workbooks that back the `axel analyze-*` commands.
 - `hardware/` – CAD and STL assets for the token.place hardware experiments.
 - `examples/` – sample repository lists and walkthrough data for local experimentation.
@@ -50,6 +51,8 @@ Update this section when directories move so the README stays authoritative for 
 Axel is currently in **alpha** while workflows and integrations continue to harden.
 Start with the [FAQ](docs/FAQ.md) for common setup questions and read through
 [Known Issues & Footguns](docs/KNOWN_ISSUES.md) before running the CLI across multiple repositories.
+The [remote Claude Code control design](docs/design/remote-claude-code-control.md) describes a
+proposed, security-conscious personal mobile and hardware-control architecture.
 Automated coverage for these references lives in
 `tests/test_readme.py::test_readme_includes_alpha_status_and_supporting_docs`.
 

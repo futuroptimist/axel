@@ -35,7 +35,7 @@ This launches the token.place server, relay and a mock LLM using one command.
 
 - `axel/` – core Python package with CLI entry points, repo/task managers and analytics helpers.
 - `tests/` – pytest suite mirroring CLI flows, analytics helpers and README expectations.
-- `docs/` – long-form documentation, FAQs and security notes referenced throughout the README.
+- `docs/` – long-form documentation, FAQs, security notes, and architecture designs under `docs/design/`.
 - `analytics/` – orthogonality and saturation workbooks that back the `axel analyze-*` commands.
 - `hardware/` – CAD and STL assets for the token.place hardware experiments.
 - `examples/` – sample repository lists and walkthrough data for local experimentation.
@@ -324,6 +324,8 @@ audit how data is handled. We rely on the
 lint, test and documentation practices transparent.
 See [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) for cross-repo security tips.
 For instructions on rotating API tokens see [docs/ROTATING_TOKENS.md](docs/ROTATING_TOKENS.md).
+See the [remote Claude Code control design](docs/design/remote-claude-code-control.md)
+for the proposed iPhone, tailnet, and constrained Flipper architecture.
 For example, run gabriel alongside token.place and dspace to cross-check repository data
 for OSINT insights before sharing.
 

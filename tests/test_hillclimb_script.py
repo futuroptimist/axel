@@ -1,5 +1,8 @@
 import importlib.util
+import subprocess
 from pathlib import Path
+
+import pytest
 
 spec = importlib.util.spec_from_file_location(
     "hillclimb_axel", Path(".axel/hillclimb/scripts/axel.py")
@@ -145,3 +148,104 @@ def test_version_does_not_create_work_dir(monkeypatch, tmp_path, capsys):
     axel_script.main()
     assert "CLI v" in capsys.readouterr().out
     assert not work_dir.exists()
+
+
+@pytest.mark.parametrize("execute", [False, True], ids=["dry-run", "execute"])
+@pytest.mark.parametrize("cutoff", ["write", "add", "commit"])
+def test_hillclimb_mid_run_cutoff_preserves_local_state(
+    monkeypatch, tmp_path, execute, cutoff
+):
+    """Run real local Git mutations, then stop at the next boundary at 09:00."""
+    from argparse import Namespace
+    from datetime import datetime, timezone
+
+    import axel.working_hours as working_hours
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    def git(*args):
+        return subprocess.check_output(
+            ["git", *args], cwd=repo, text=True, stderr=subprocess.STDOUT
+        ).strip()
+
+    git("init", "-b", "main")
+    git("config", "user.name", "Test")
+    git("config", "user.email", "test@example.invalid")
+    git("-c", "commit.gpgsign=false", "commit", "--allow-empty", "-m", "initial")
+    baseline = git("rev-parse", "HEAD")
+    git("config", "commit.gpgsign", "false")
+
+    clock = datetime(2026, 9, 28, 15, 59, 59, tzinfo=timezone.utc)  # 08:59:59 PDT
+
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            assert tz is timezone.utc
+            return clock
+
+    def cross_into_working_hours():
+        nonlocal clock
+        clock = datetime(2026, 9, 28, 16, 0, 0, tzinfo=timezone.utc)  # 09:00 PDT
+
+    monkeypatch.setattr(working_hours, "datetime", Clock)
+    monkeypatch.setattr(axel_script, "load_dotenv", lambda: None)
+    monkeypatch.setenv("GITHUB_TOKEN", "unused-test-value")
+    # Supply an already prepared local repo instead of contacting GitHub.
+    monkeypatch.setattr(axel_script, "ensure_clone", lambda *args: repo)
+    monkeypatch.setattr(axel_script, "WORK_DIR", tmp_path / "work")
+    monkeypatch.setattr(axel_script, "make_branch_name", lambda *args: "hc/test-cutoff")
+    repo_list = tmp_path / "repos.yml"
+    repo_list.write_text("repos:\n  - slug: example/project\n")
+    monkeypatch.setattr(axel_script, "REPOS", repo_list)
+    cards = tmp_path / "cards"
+    cards.mkdir()
+    (cards / "test.yml").write_text("key: test\ntitle: Test cutoff\n")
+    monkeypatch.setattr(axel_script, "CARDS_DIR", cards)
+    monkeypatch.setattr(
+        axel_script.requests, "post", lambda *a, **kw: pytest.fail("unexpected POST")
+    )
+
+    original_sh = axel_script.sh
+    completed_commands = []
+
+    def run_command(cmd, *args, **kwargs):
+        # Keep the real mutation guard and subprocess execution in the path.
+        result = original_sh(cmd, *args, **kwargs)
+        completed_commands.append(cmd)
+        if (cutoff == "add" and cmd.startswith("git add ")) or (
+            cutoff == "commit" and cmd.startswith("git commit ")
+        ):
+            cross_into_working_hours()
+        return result
+
+    original_write = axel_script.write
+
+    def write_task(path, content):
+        original_write(path, content)
+        if cutoff == "write":
+            cross_into_working_hours()
+
+    monkeypatch.setattr(axel_script, "sh", run_command)
+    monkeypatch.setattr(axel_script, "write", write_task)
+    with pytest.raises(SystemExit, match="blocked during working hours"):
+        axel_script.cmd_hillclimb(Namespace(execute=execute, card="test", runs=2))
+
+    # No cleanup checkout/deletion, push, or second attempt may run after cutoff.
+    assert git("branch", "--show-current") == "hc/test-cutoff"
+    assert "AXEL TASK: Test cutoff (Run 1)" in (repo / "AXEL_TASK.md").read_text()
+    assert not any(cmd.startswith("git push") for cmd in completed_commands)
+    assert not any(cmd.startswith("git branch -D") for cmd in completed_commands)
+    assert not any(cmd == "git checkout main" for cmd in completed_commands)
+    assert len(completed_commands) == {"write": 1, "add": 2, "commit": 3}[cutoff]
+    if cutoff == "commit":
+        assert git("rev-parse", "HEAD") != baseline
+        assert git("rev-list", "--count", "HEAD") == "2"
+        assert git("status", "--porcelain") == ""
+        assert "AXEL TASK" in git("show", "HEAD:AXEL_TASK.md")
+    else:
+        assert git("rev-parse", "HEAD") == baseline
+        assert (
+            git("status", "--porcelain")
+            == {"write": "?? AXEL_TASK.md", "add": "A  AXEL_TASK.md"}[cutoff]
+        )

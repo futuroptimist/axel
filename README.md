@@ -72,6 +72,7 @@ Automated coverage for these references lives in
 - [x] adopt [`flywheel`](https://github.com/futuroptimist/flywheel) template for new repositories
 - [x] encrypt notes saved under `local/discord/`
 - [x] review permissions for integrated tools (token.place, gabriel) (see docs/THREAT_MODEL.md)
+- [x] configurable, DST-aware working-hours guard for hillclimb mutations (see [Hillclimb](docs/HILLCLIMB.md#working-hours-guard))
 - [x] achieve 100% test coverage
 
 ## installation

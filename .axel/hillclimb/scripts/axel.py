@@ -13,6 +13,10 @@ import yaml
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parents[3]  # repo root
+# Make the package importable when this script is run directly from a checkout.
+sys.path.insert(0, str(ROOT))
+from axel.working_hours import load_working_hours  # noqa: E402
+
 AXEL_DIR = ROOT / ".axel" / "hillclimb"
 WORK_DIR = AXEL_DIR / "work"
 PROMPTS_DIR = AXEL_DIR / "prompts"
@@ -21,7 +25,18 @@ CONFIG = AXEL_DIR / "config.yml"
 REPOS = AXEL_DIR / "repos.yml"
 
 
-def sh(cmd, cwd=None, check=True):
+def require_mutations_allowed():
+    """Reload policy and clock at each boundary, including long-running attempts."""
+    try:
+        policy = load_working_hours(CONFIG)
+    except (OSError, ValueError, yaml.YAMLError) as exc:
+        raise SystemExit(f"Invalid working-hours configuration: {exc}") from exc
+    policy.require_mutations_allowed()
+
+
+def sh(cmd, cwd=None, check=True, *, mutates=True):
+    if mutates:
+        require_mutations_allowed()
     p = subprocess.run(
         cmd,
         cwd=cwd,
@@ -51,6 +66,7 @@ def gh_get(token, url):
 
 
 def gh_post(token, url, payload):
+    require_mutations_allowed()
     r = requests.post(url, headers=gh_headers(token), json=payload, timeout=30)
     if r.status_code >= 300:
         raise RuntimeError(f"GitHub POST {url} -> {r.status_code}: {r.text}")
@@ -77,6 +93,7 @@ def make_branch_name(prefix, repo, card_key, attempt):
 
 
 def write(path, content):
+    require_mutations_allowed()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
 
@@ -88,7 +105,7 @@ def read(p):
 
 def fingerprint_patch(repo_dir):
     try:
-        diff = sh("git diff --staged", cwd=repo_dir)
+        diff = sh("git diff --staged", cwd=repo_dir, mutates=False)
     except RuntimeError:
         return ""
     return hashlib.sha1(diff.encode("utf-8")).hexdigest()
@@ -171,6 +188,8 @@ def open_draft_pr(
 
 
 def cmd_hillclimb(args):
+    # Dry runs also create local commits, so they obey the same blocked hours.
+    require_mutations_allowed()
     load_dotenv()
     token = os.getenv("GITHUB_TOKEN") or os.getenv("GH_TOKEN")
     if not token and args.execute:
@@ -205,6 +224,8 @@ def cmd_hillclimb(args):
         print("No target repos matched; exiting.")
         return
 
+    require_mutations_allowed()
+    WORK_DIR.mkdir(parents=True, exist_ok=True)
     print(f"Selected card: {card['key']}  → targets: {[t['slug'] for t in targets]}")
     for r in targets:
         slug = r["slug"]
@@ -254,9 +275,9 @@ def cmd_hillclimb(args):
 
 
 def cmd_dashboard(_args):
+    require_mutations_allowed()
     # Generate or update a simple release-readiness dashboard doc with markers
     doc = ROOT / "docs" / "RELEASE-READINESS-DASHBOARD.md"
-    doc.parent.mkdir(parents=True, exist_ok=True)
     content = doc.read_text() if doc.exists() else ""
     start = "<!-- BEGIN: AXEL HILLCLIMB -->"
     end = "<!-- END: AXEL HILLCLIMB -->"
@@ -290,7 +311,7 @@ def cmd_dashboard(_args):
         new = f"{pre}{block}{post}"
     else:
         new = block if not content else f"{content}\n\n{block}"
-    doc.write_text(new, encoding="utf-8")
+    write(doc, new)
     print(f"Updated dashboard at {doc.relative_to(ROOT)}")
 
 
@@ -327,7 +348,6 @@ def main():
     if not hasattr(args, "func"):
         parser.print_help()
         sys.exit(2)
-    WORK_DIR.mkdir(parents=True, exist_ok=True)
     args.func(args)
 
 

@@ -32,6 +32,11 @@ the MVP because it creates public ingress and requires a separate threat model.
 
 ## Goals and non-goals
 
+For proposed Slack/Discord notifications and task handoffs, see the separate
+[shared chat operations design](chat-operations-contract.md). It preserves this
+document's host permissions and official Remote Control boundary; it does not grant
+chat-based deployment or unrestricted session control.
+
 ### Goals
 
 - Control or continue a local Claude Code session from an iPhone.

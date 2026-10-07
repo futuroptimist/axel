@@ -91,6 +91,15 @@ are neither the task database nor instructions. Examples use symbolic IDs only.
 | `Approval v1` | `approval_id`, `task_id`, `task_version`, `input_digest`, action/environment/repository scope, `approver_principal_id`, `decision`, `issued_at`, `expires_at`, `nonce`, `policy_version`, and durable consumption/revocation state. A scoped decision, never a reusable bearer credential. |
 | `Delivery v1` | `event_id`, destination ID, rendered revision/digest, `delivery_key`, state, attempt count, next attempt time, provider receipt/message/thread IDs, last safe error, and audience-policy version. Separate from task success. |
 
+`source_event_id` identifies a logical source occurrence, stable across delivery
+retries and reconciliation; raw webhook delivery IDs are separate audit metadata.
+For GitHub, derive it from repository/run/attempt and job ID where applicable; for
+deployments, use the producer's operation ID. `revision` is the source adapter's
+ordered version for that subject, not the code SHA. Define ordering per source and
+reconcile incomparable observations before changing current state. The canonical
+deduplication key is `(source, source_event_id, kind, revision, status)`; producers
+must preserve these fields when retransmitting the same observation.
+
 Event kinds include `deployment.started`, `deployment.completed`,
 `deployment.failed`, `deployment.verification_failed`, `ci.failed`, `ci.recovered`,
 `task.changed`, and `approval.requested`. Deployment completion requires the
@@ -135,6 +144,13 @@ that every member may read every repository. Deny unknown or changed audiences u
 revalidated. A thread inherits the destination's effective policy; it is not a new
 security boundary. Search/summaries must filter by the requester's currently authorized
 source channels, including existing local captures, before producing even a snippet.
+
+New captures must persist immutable provider/workspace or guild/channel/thread/message
+IDs and capture-time audience policy. Existing name-only captures are ineligible for
+chat search or agent export until an owner-controlled migration verifies their original
+IDs and audience against authoritative source records. Never infer provenance from a
+channel name, repository name, or user-supplied link. Missing/deleted source records or
+ambiguous migration fail closed; keep those captures local and excluded from results.
 
 Cross-posting is opt-in per event class and destination pair. A recipient on Slack
 does not automatically have access to private Discord context or vice versa. Render
@@ -193,7 +209,7 @@ at the end of a pause. Owners choose notification cadence and severity threshold
 
 Authenticate and bound input before enqueueing. Acknowledge valid provider events
 promptly after durable acceptance, within the current provider deadline; business work
-runs asynchronously. Use a unique `(source, source_event_id, transition)` constraint
+runs asynchronously. Use the canonical Event v1 deduplication key as a unique constraint
 and one transaction for accepted event, task transition, and outbox intents. Each
 destination has its own delivery key and retry state; Slack failure cannot roll back
 a successful Discord delivery or cause a second task execution.

@@ -1,363 +1,372 @@
-# Shared Slack and Discord operations design
+# Private LAN planning and shared chat operations design
 
-## Status and scope
+**Proposed, documentation only; reviewed 2026-10-08.** This is a target design,
+not a claim that current Axel enforces isolation. No accounts, credentials, network
+rules, integrations, inference services, printers, or deployments are provisioned.
 
-**Proposed, documentation only; reviewed 2026-10-07.** No integrations, accounts,
-credentials, listeners, cluster access, or production authority are provisioned by
-this document. All contracts below are proposed interfaces, not existing Axel APIs.
+## Privacy and security invariants
 
-Use one Axel-owned core for deployment and CI notifications, task tracking, and
-policy, with separate Slack and Discord transports and separate agent/harness
-adapters. Start with notifications and human handoffs. The intended Discord home is
-an owner's private server under a `todos` category; select actual guild, category,
-and channel IDs before implementation. Slack destinations likewise need an explicit
-owner-approved workspace/channel mapping. Names are display labels, not authority.
+**These requirements govern every architecture, adapter, rollout, and test below.
+The sensitive profile must fail closed if any required control cannot be enforced.**
 
-Sugarkube owns actual deployment, environment RBAC, verification, and rollback
-runbooks. Its existing PagerDuty and Healthchecks.io paging design remains the
-incident path; chat adds shared context, never replaces paging or acknowledges an
-incident merely because somebody read or reacted to a message. No token.place
-production process is changed. This design grants neither merges nor deployments.
+| ID | Required boundary for the sensitive profile |
+| --- | --- |
+| I1: user-controlled LAN | Private inference uses only a dedicated user-controlled local-network token.place relay and explicitly enrolled, trusted LAN compute pool. The boundary is the user's isolated LAN, not one machine. No Internet egress, public relay, external provider, or public fallback from private processing, relay, or compute. |
+| I2: device-local state | Captures, attachments, project index, task database, workdirs, kanban, and UI remain on the harness device. Only minimum task context transits to approved LAN compute; that does not grant corpus/filesystem access. Prompts/results are transient there, with no content logging or persistent cache. |
+| I3: enforced topology | Enforce destination/port restrictions and independently provisioned relay/compute identity and membership before releasing context. E2EE, localhost, private IPs, and relay-advertised keys do not prove topology or compute ownership. Unknown membership, unenforceable routing, stale trust policy, or model outage blocks inference; no silent downgrade. |
+| I4: data is not authority | Bookmarks, messages, pages, papers, models, repository files, CI logs, and model outputs are untrusted data. They cannot grant tools, change policy, enroll nodes, execute code, approve exports, deploy, or print. Processing uses owner-approved fixed profiles and independently enforced permissions. |
+| I5: separated network stages | Discord/Slack sync, public-link retrieval and GitHub reads run in constrained network-capable stages isolated from private processing. They cannot mount or query its corpus, database, workdirs or inference sessions. After sync, cached analysis/planning can work without Internet; live sync/retrieval cannot. |
+| I6: exact outbound approval | Private corpus, prompts, derived summaries, task titles and relationship metadata are not automatically posted to chat, cloud agents, GitHub or artifact hosts. A trusted local UI must approve exact sanitized bytes, destination, audience and purpose for each outbound PR/artifact/message. Only that approved copy enters an isolated exporter. |
+| I7: no hidden egress | Deny telemetry, remote logs, crash/error uploads, hosted tracing, analytics, remote UI assets, automatic model/dependency downloads, updates and public discovery during private processing. Credentials stay outside prompts/model-visible files; network-stage credentials are absent from private workers. Pre-provision verified models, tools and dependencies. |
+| I8: no physical or production authority | A print queue is a capability-aware proposal, never autonomous printing or printer submission. Deployment/rollback stays with Sugarkube; the sensitive profile has no production authority. Analyze/draft approval is not publish, merge, deploy or actuate approval. |
+| I9: durable fail-closed policy | Restarts, restores, retries, pauses and lost delivery preserve classifications, approvals, consumed execution/export keys and newest trust-policy state. Unknown state blocks dispatch/export. Working-hours rules and the owner's stop deadline apply before each mutation, including resumed work. |
 
-## Existing behavior and boundaries
+token.place is offline-first federated inference software; public token.place is one
+deployment, not the definition of the software. Arbitrary relay URLs, self-hosting
+and federation remain globally supported. **This restricts one sensitive Axel
+profile**, not token.place's general URL or federation capabilities. Inference may
+span approved LAN nodes without public infrastructure. No private server identifiers,
+messages or topology belong in this public design or its examples.
 
-- [Discord ingestion](../discord-bot.md) and
-  [its implementation](../../axel/discord_bot.py) capture mentioned messages, nearby
-  context, and attachments, with search, summary, digest, and quest commands.
-  This is not a deployment controller or a cross-platform authorization service.
-  Markdown encryption is optional; existing attachments remain plaintext and legacy
-  captures can remain plaintext. Reuse parsing ideas, not an assumption of secure
-  end-to-end storage or cross-channel access control.
-- [Remote Claude Code control](remote-claude-code-control.md) separates official
-  Remote Control, private networking, and a constrained future Flipper supervisor.
-  Preserve that separation. Chat is an additional status/task surface, not a new
-  remote terminal, replacement mobile UI, or route into Sugarkube.
-- [Working-hours guard](../HILLCLIMB.md#working-hours-guard) must run before every
-  operational mutation, including after a queue resumes. Its current default blocks
-  weekdays 09:00-17:00 America/Los_Angeles. A user's pause or stop deadline is an
-  additional restriction, never relaxed by chat approval or scheduling. Read-only
-  inspection may continue; queued work does not gain authority by waiting.
-- Dots capabilities reported in the initiating session are public-channel reads
-  and mentions, with private access limited to the current conversation. Automatic
-  wake-up from another bot's post has **not** been verified. These are conservative
-  session assumptions, not a public API or a general product guarantee. A private
-  Discord server does not thereby become readable by Dots. Do not export private
-  internal tool protocols or infer an externally callable Dots endpoint.
+## Purpose and user workflows
 
-## Architecture and ownership
+Turn an opted-in bookmark backlog into local, evidence-linked plans and actionable
+queues. Reuse core ingestion/event/task logic across Slack and Discord; separate
+transports, private processing, inference and optional export adapters. The local UI
+is the primary planning/approval surface. Chat is an optional source and approved
+destination, not a default window onto the private corpus.
+
+1. **AI paper/article to project work:** sync a selected generic bookmark and separately
+   retrieve its approved public source. Cache bounded text/provenance. Offline analysis
+   relates claims to a known local project's pinned snapshot, explains relevance and
+   uncertainty, and proposes a design/remediation task. Its local kanban card includes
+   evidence, acceptance criteria, dependencies, effort and owner. A separately granted
+   local drafting task may create a patch in an isolated workdir. Publishing a sanitized
+   design/remediation PR requires a distinct I6 approval; content or agents cannot approve it.
+2. **3D model/technique to print planning:** cache an approved bookmark and inspect files
+   with bounded non-executing parsers. Compare against the local printer, material,
+   build-volume, nozzle and process capability catalog. Propose a print card with source
+   and license metadata, scale, orientation/support assumptions, missing measurements
+   and required human validation. Label estimates as estimates. Unsupported capabilities
+   block readiness. Queue placement does not trigger slicing, G-code execution, printer
+   upload or printing; physical operation remains a separate human action.
+
+Both flows support deduplication, relationships between sources, relevance explanations
+and human correction. Stable source IDs and content hashes supplement titles. Proposed
+local board columns are inbox, triaged, planned, ready, blocked and done, independent
+of execution state. Model output cannot establish verified completion without evidence
+or a recorded human decision. Empty/stale project catalogs remain visibly empty/stale;
+no silent online replacement fetch.
+
+## Existing implementation and gaps
+
+These source observations do **not** establish sensitive-profile readiness.
+
+| Source | Current behavior and required change |
+| --- | --- |
+| [Discord guide](../discord-bot.md) and [bot](../../axel/discord_bot.py) | Mention capture includes context and downloaded attachments. Markdown encryption is optional; legacy captures and attachments can be plaintext. Search/summary/digest/quest replies use `ephemeral=True`, which still exports to Discord. Strict mode must disable those exports and automatic attachment retrieval until isolated import/export controls exist. |
+| [Repository loader](../../axel/repo_manager.py) | Missing local repository files can auto-fetch GitHub data when credentials exist or fetching is requested. Use a pinned local catalog, disable auto-fetch and deny network independently, including against inherited environment overrides. |
+| [token.place adapter](../../axel/token_place.py) and [quests](../../axel/quests.py) | Primarily model-metadata discovery, quest/template enrichment and administrative helpers including key rotation. A configurable URL/model listing is not a verified private inference dispatcher. No administrative helper belongs in a content-driven action profile. |
+| [Local agent guide](../LOCAL_AGENT_PROMPT.md) | A local model URL/web UI alone does not disable provider integrations, package downloads, telemetry, assets or tool networking. Additional enforcement/evidence is required. |
+| [token.place architecture](https://github.com/futuroptimist/token.place/blob/a42a58f824f21d5b4c51a22db838116899d49983/docs/ARCHITECTURE.md) | Compute sees plaintext; relay E2EE does not independently verify compute ownership. Its [verified-compute proposal](https://github.com/futuroptimist/token.place/blob/a42a58f824f21d5b4c51a22db838116899d49983/docs/design/verified-compute-trust.md) is proposed, not a shipped guarantee. No private prompt release without enforced membership independent of relay discovery. |
+| [token.place configuration](https://github.com/futuroptimist/token.place/blob/a42a58f824f21d5b4c51a22db838116899d49983/README.md) | General deployments support alternate/fallback relay URLs. Reject external fallbacks on strict-profile client, relay and compute, and independently block escape. Preserve these general capabilities elsewhere. |
+
+[Remote Claude Code control](remote-claude-code-control.md) remains a separate,
+network-capable workflow outside this private profile. Dots public-channel reads and
+mentions, and current-private-conversation-only reads, were reported in the initiating
+session; automatic bot-post wake was unverified. These are session assumptions, not
+a public API. Cloud/Dots handoffs are optional approved exports outside strict
+processing, never default corpus access. Do not publish private tool protocols.
+
+## Architecture and data flow
 
 ```mermaid
 flowchart LR
-    GH[GitHub Actions evidence] --> In[Authenticated source adapters]
-    SK[Sugarkube deployment evidence] --> In
-    In --> Core[Axel contracts and policy]
-    Core --> Store[Durable event ledger and outbox]
-    Store --> Slack[Slack transport]
-    Store --> Discord[Discord transport]
-    Slack --> Gate[Authenticated human requests]
-    Discord --> Gate
-    Gate --> Core
-    Core --> Manual[Manual handoff with evidence links]
-    Core --> Harness[Capability checked harness adapter]
-    Harness --> Host[Explicitly authorized isolated execution host]
-    SK -. independent incident path .-> Paging[PagerDuty and Healthchecks.io]
+    Chat[Approved Discord or Slack sources] --> Sync[Constrained online ingestion]
+    Links[Approved public links and project snapshots] --> Sync
+    Sync --> Quarantine[Bounded quarantine on harness device]
+    Quarantine --> Import[Validated snapshot import]
+    subgraph Private[Private processing: harness device and isolated trusted LAN]
+        Import --> Corpus[Device-local corpus and project index]
+        Corpus --> Core[Local planner, task ledger and kanban UI]
+        Core --> Relay[Dedicated LAN relay]
+        Relay --> Compute[Enrolled trusted LAN compute only]
+        Compute --> Core
+        Core --> Draft[Device-local plans, patches and print proposals]
+        Draft --> Approval[Human reviews exact sanitized export locally]
+    end
+    Approval --> Packet[Approved immutable export packet only]
+    Packet --> Exporter[Isolated online exporter]
+    Exporter --> Dest[Approved PR, artifact or chat destination]
 ```
 
-The core owns schema validation, canonical IDs, policy, task transitions, approvals,
-redaction, audience checks, deduplication, audit, and durable delivery state. Each
-transport owns its provider authentication, input normalization, message rendering,
-thread mapping, and rate-limit handling. Each harness adapter owns supported task
-submission/status/cancellation mechanisms and reports evidence, never policy grants.
-Initially keep these as internal Axel modules and contract fixtures; extract a shared
-package only when a second consumer needs it. Do not duplicate business rules in two
-bots or require a message broker before a transactional local store is sufficient.
+Import/export arrows are controlled data transfers, not routes out of private workers.
+Use separate processes and OS-enforced network, filesystem and credential domains;
+use stronger VM/device separation where necessary. No long-lived bot gets both corpus
+access and Internet credentials. A trusted non-model transfer controller imports
+snapshots and releases approved packets. No shared writable directory lets a network
+stage replace policy, read private output or race an export. Exporter mounts only its
+immutable packet, never the database, workdir, `.git`, home or model session.
 
-Sugarkube later produces a bounded event/evidence record through a separately reviewed
-change; the Axel consumer does not scrape arbitrary cluster logs or run deployments
-to discover their status. The app repository still owns builds and release artifacts.
-Provider authentication proves origin, not that a CI log or artifact is trusted code.
+**Ingestion (I4/I5):** authorize immutable tenant/channel IDs, opted-in items and bounded
+context. Credentials are destination-bound and never forwarded to link targets.
+Public-link retrieval is separately allowlisted: validate scheme, each redirect, DNS
+result and resolved IPv4/IPv6 address; reject private/LAN, loopback, link-local/metadata,
+file URLs and proxy escape in that fetcher. No scripts, macros, active HTML, external
+image loads, archive execution or repository hooks. Bound size, recursion, content
+types, time and decompression. Sandbox parsers; import inert text/metadata and quarantined
+artifacts. Content suggesting another URL cannot authorize its retrieval.
 
-## Proposed contracts
+**Private processing (I1-I4/I7):** corpus, embeddings/indexes, cached projects, board
+and workdirs stay on the harness device. UI uses a selected local interface,
+authentication/CSRF protections and bundled assets. No remote fonts, embeds, unfurls
+or analytics. Fixed local planning/drafting tools have bounded filesystem permissions;
+a harness's usual shell, browser, package manager, Git remote, printer API or arbitrary
+HTTP capability is not automatically available. Local draft tests run in the same
+offline sandbox with provisioned dependencies and no untrusted hooks.
 
-All records have a versioned schema, bounded sizes, UTC timestamps, and stable opaque
-IDs. Validate enums and URLs; reject unknown major versions. Unknown additive metadata
-must not affect routing or authorization. Persist normalized safe fields; raw payloads
-are neither the task database nor instructions. Examples use symbolic IDs only.
+**LAN inference (I1-I3/I7):** an owner-enrolled manifest binds relay identity, approved
+addresses/ports, compute operator identities/keys, admitted nodes, model artifacts and
+policy version. Provision trust independently of discovery; verify selected compute
+before sending context and authenticate responses. Relay admission and client-side
+compute verification are distinct controls. Relays cannot extend the manifest.
+Revocation, key/membership changes and expired cached trust require owner review;
+unknown freshness fails closed. Approved multi-node scheduling is allowed; open
+federation and node self-enrollment are not allowed for this profile.
 
-| Record | Required fields and meaning |
+Default-deny egress applies to worker, relay and every compute node, with explicit
+approved LAN tuples only; restrict ingress/admission too. Verify all active interfaces,
+IPv4/IPv6, DNS, proxies, VPN/tunnels, containers and forwarding. A private subnet wildcard
+is not destination identity. Disable inherited proxies and redirects on prompt or
+credential-bearing calls; reject DNS rebinding and revalidate destinations. No
+Internet-bound DNS/alternate transport may carry private data. Network stages cannot
+serve as reachable proxies or inference fallbacks. Compute runs provisioned local
+models, never an external API. Missing model/relay/compute blocks inference while cached
+search/board work remains usable. Only an already approved, disclosed local alternate
+model/node is permissible; no on-demand download.
+
+Compute receives minimum context, not a corpus mount. Disable prompt/result persistence,
+training capture, remote diagnostics and content-bearing swap/dumps/caches; verify any
+necessary transient storage treatment before use. Apply equivalent relay diagnostic
+controls. Compromised trusted devices remain a residual risk: identity/firewalls do
+not prove correct inference or prevent a trusted operator retaining plaintext. If
+controls cannot be enforced and demonstrated, report
+`blocked: private_profile_unverified`, not a current isolation guarantee.
+
+**Export (I6/I9):** human review covers the sanitized copy's diff, filenames, commit/PR
+text, citations, attachments, destination and audience. Remove private IDs/messages,
+personal notes, unrelated context, hidden metadata, credentials and unintended project
+relationships. Automated redaction assists but cannot approve. Bind approval to packet
+hash, destination, audience, purpose, expiry and task version; seal bytes and recheck
+before transfer/send. Any change needs reapproval. Declassification applies only to
+that copy, not the corpus or later summaries. Exporter cannot request more private
+context; receipts return as validated status data. Even a denial/status notice or task
+title can leak private work: send nothing unapproved, including ephemeral chat replies.
+
+## Shared contracts and local state
+
+Schemas are proposed, versioned, size-bounded and validated. Every record carries
+`profile_id`, classification and policy version. Unknown major versions fail closed;
+additive metadata cannot alter authorization. URLs/excerpts are data, not executable
+locators. Private provenance/relationships remain local.
+
+| Record | Required meaning |
 | --- | --- |
-| `Event v1` | `event_id`, `source`, `source_event_id`, `kind`, `occurred_at`, `observed_at`, `repo_id`, optional `app_id`, explicit `environment` (`none`, `staging`, `prod`), `correlation_id`, optional `causation_id`, `subject_id`, `revision`, `status`, `severity`, bounded `summary`, `evidence_refs`, `classification`, `audience_policy_id`. |
-| `Task v1` | `task_id`, `version`, `origin_event_ids`, `requester_principal_id`, `owner_principal_id`, `repo_id`, explicit environment, `intent`, allowlisted `action_profile_id`, immutable `input_digest`, `required_capabilities`, `harness_id`, `state`, `deadline`, `policy_version`, and `evidence_refs`. No shell string, arbitrary host, path, or environment-variable bag. |
-| `Approval v1` | `approval_id`, `task_id`, `task_version`, `input_digest`, action/environment/repository scope, `approver_principal_id`, `decision`, `issued_at`, `expires_at`, `nonce`, `policy_version`, and durable consumption/revocation state. A scoped decision, never a reusable bearer credential. |
-| `Delivery v1` | `event_id`, destination ID, rendered revision/digest, `delivery_key`, state, attempt count, next attempt time, provider receipt/message/thread IDs, last safe error, and audience-policy version. Separate from task success. |
+| `Source v1` | Source/item ID, immutable tenant/channel/thread/message provenance where applicable, locally stored retrieval URL, content digest, cache version/time, source audience, parser status and retention policy. Each embedded context item needs provenance. |
+| `Event v1` | `event_id`, `source`, `source_event_id`, `kind`, UTC observed/source times, `subject_id`, ordered `revision`, `status`, correlation/causation IDs, local evidence and audience policy; optional repo/app ID and explicit environment (`none`, `staging`, `prod`). |
+| `Task v1` | ID/version, source/evidence IDs, requester/owner, local project snapshot, intent/fixed action profile, input digest, required capabilities, harness, execution state, board column, deadline. No arbitrary shell, host, path or environment bag. |
+| `Approval v1` | ID, task/version/input digest, principal, exact action/scope/environment, issue/expiry times, nonce, policy version, revocation and durable consumption state. Export additionally binds exact packet digest/destination/audience/purpose. Processing approval never authorizes export. |
+| `Delivery v1` | Approved packet ID/hash, destination, delivery key/revision, attempts/retry time, provider receipts/thread IDs, safe local error and state. No raw private event is directly renderable into the outbox. |
 
-`source_event_id` identifies a logical source occurrence, stable across delivery
-retries and reconciliation; raw webhook delivery IDs are separate audit metadata.
-For GitHub, derive it from repository/run/attempt and job ID where applicable; for
-deployments, use the producer's operation ID. `revision` is the source adapter's
-ordered version for that subject, not the code SHA. Define ordering per source and
-reconcile incomparable observations before changing current state. The canonical
-deduplication key is `(source, source_event_id, kind, revision, status)`; producers
-must preserve these fields when retransmitting the same observation.
+`source_event_id` identifies a logical occurrence across retries/reconciliation, not
+a raw webhook delivery. Bookmarks use source/item and capture version; CI uses
+repository/run/attempt/job identity; deployment uses operation ID. `revision` orders
+observations for the subject, not code SHA. Deduplicate on
+`(source, source_event_id, kind, revision, status)`; retransmissions preserve all fields.
+Content hashes relate repeated bookmarks without merging provenance/audiences.
+Reconcile incomparable observations instead of trusting arrival order.
 
-Event kinds include `deployment.started`, `deployment.completed`,
-`deployment.failed`, `deployment.verification_failed`, `ci.failed`, `ci.recovered`,
-`task.changed`, and `approval.requested`. Deployment completion requires the
-producer's final verification evidence; workflow success alone cannot assert it.
-Represent cancelled, skipped, timed-out, unknown, and superseded states explicitly.
+Execution states: `proposed`, `awaiting_approval`, `queued`, `running`,
+`succeeded|failed|cancelled|unknown`, plus `blocked`/`paused` with reason/prior state.
+Use compare-and-swap versions and durable execution reservations. Timeout or unconfirmed
+cancellation is unknown until reconciled, never blind redispatch. Atomically consume
+approval at dispatch; recheck identity, membership, policy, input, expiry, working hours
+and deadline. Changed inputs need reapproval. Chat buttons/copied approvals/agent
+suggestions cannot authorize strict-profile work. A local recurring-analysis grant can
+cover bounded imported snapshots, not expand sources, tools, inference or export scope.
 
-Source-specific evidence includes GitHub repository ID, workflow ID, run ID, attempt,
-job/check URL, full commit SHA, and ref; deployment evidence includes operation ID,
-application, environment, source revision, image/chart identity and immutable digests
-when supplied, verification outcome, and the canonical Sugarkube evidence/runbook
-links. Missing proof means `unknown` or `verification_failed`, never invented success.
-Do not copy secret values or raw command output into the shared schema.
+## Transport and harness adapters
 
-Task progression is `proposed -> awaiting_approval -> queued -> running ->
-succeeded|failed|cancelled|unknown`; notification-only records need no executable
-task. `paused` and `blocked` record a reason and previous state. Every transition uses
-compare-and-swap on task version. Reject stale/out-of-order transitions; preserve
-their evidence in the audit history. Cancellation is a request until the harness
-confirms it. A timeout or lost connection after dispatch is `unknown`, not permission
-to execute again. Reconcile by the stable task ID before any retry.
+Schema/policy/deduplication logic lives once in Axel. Transports own provider auth,
+normalization, rendering and delivery; harness adapters own verified capabilities,
+never policy grants. Unknown capabilities are false; discovery/model claims confer
+no authority.
 
-Approval binds the exact reviewed inputs and task version. At dispatch, atomically
-consume it and reserve the task execution key; recheck identity, current permissions,
-expiry, revocation, evidence freshness, working hours, and deadline. Changed inputs
-require a new approval. One winning approval across Slack and Discord consumes the
-same canonical record; button text, emoji, an agent's recommendation, and a copied
-approval message convey no authority. Phase one exposes no approval buttons.
+Bind human principals to authenticated local identities and, in online stages, immutable
+provider/tenant user IDs. Never link identities by display name. Separate viewer,
+requester, approver and policy-administrator grants; recheck revocation at use.
+Export approval requires the owner's authority to release every included source,
+not merely access to read it. Cross-platform identity linkage is owner-verified and
+does not let chat authenticate an approval in the strict local UI.
 
-## Transport adapters and audience
-
-| Capability | Slack adapter | Discord adapter |
-| --- | --- | --- |
-| Notification MVP | Bot posting to allowlisted channels with durable returned message IDs; incoming webhooks are a simpler option only if receipt/thread limitations are accepted. | Dedicated bot posting to allowlisted text channels under `todos`; a notification webhook is possible but is not an interactive bot. |
-| Conversation mapping | One root message per correlation/destination and replies using `thread_ts`; reserve root creation in the store. | One root and an explicit thread where supported and permitted; otherwise bounded replies in the configured channel. A category is a container, not a message destination. |
-| Inbound request, later | Explicit command/mention or authenticated interaction; verified HTTP signatures and timestamp, or a separately validated Socket Mode session. | Explicit application command/mention; validate HTTP interaction signature when using HTTP, or authenticated Gateway event context. Use the chosen SDK's supported acknowledgement/defer path. |
-| Minimal access | Only required posting scope and invited channels initially; add event/history scopes only for approved inbound capabilities. | Only selected guild/channel access and required send/thread permissions; no Administrator. Request Message Content intent only if the chosen mention-capture behavior requires it. |
-
-Map destinations by immutable workspace/guild/channel IDs and allowed audience, not
-matching repository names. For Discord, check category permission inheritance and
-channel overrides, including future moves. Neither `todos` nor a private guild proves
-that every member may read every repository. Deny unknown or changed audiences until
-revalidated. A thread inherits the destination's effective policy; it is not a new
-security boundary. Search/summaries must filter by the requester's currently authorized
-source channels, including existing local captures, before producing even a snippet.
-
-New captures must persist immutable provider/workspace or guild/channel/thread/message
-IDs and capture-time audience policy. Existing name-only captures are ineligible for
-chat search or agent export until an owner-controlled migration verifies their original
-IDs and audience against authoritative source records. Never infer provenance from a
-channel name, repository name, or user-supplied link. Missing/deleted source records or
-ambiguous migration fail closed; keep those captures local and excluded from results.
-
-Cross-posting is opt-in per event class and destination pair. A recipient on Slack
-does not automatically have access to private Discord context or vice versa. Render
-only the intersection of the event's allowed audience and the destination policy;
-otherwise deliver a safe restricted-status notice or withhold delivery. Recheck before
-each send/retry. Never broaden a source's audience to make an agent integration work.
-Suppress mass mentions and link unfurls; allowlist evidence-link hosts and redact URL
-credentials/query secrets. Link visibility is checked separately from message text.
-
-## Agent and harness adapters
-
-A capability declaration is locally configured and verified, with `adapter_id`,
-version, supported operations, environments, evidence visibility, authentication mode,
-working-hours behavior, and `verified_at`. Unknown capabilities are false. Discovery
-or a model's claim is not authorization. The core intersects advertised capabilities
-with owner grants and current policy before dispatch.
-
-| Consumer | Initial usable boundary | Deferred capability gate |
-| --- | --- | --- |
-| ChatGPT Dots | Human supplies a minimal redacted task/evidence summary or an allowed public-channel mention; private reading remains current-conversation-only under the reported session limits. | Verify a documented, supported integration and its audience/wake-up behavior with a harmless owner-controlled test. Until then `submit_task`, automatic bot-post wake, status callbacks, and cancellation are unsupported. No public Dots API is assumed. |
-| Axel harness | Existing task/quest/CLI facilities can inform a manual handoff in an isolated checkout. This document adds no running dispatcher. | Implement explicit bounded submission, stable task IDs, evidence-backed status, cancellation acknowledgement, and working-hours enforcement before advertising them. |
-| Other agent harness | Manual handoff with task ID, objective, scope, evidence links, restrictions, and expected result. | Adapter for that product's supported interface, identity, permissions, and lifecycle; never generic shell execution disguised as an adapter. |
-| Claude Code remote session | Continue through the existing official UI and host permissions described in the remote-control design. | Separately reviewed supervisor integration if needed; chat cannot bypass the official/local approval boundary. |
-
-The manual bridge is a supported outcome: display a handoff packet and mark the task
-`blocked: manual_handoff_required`; a human opens the chosen agent, provides approved
-context, and later attaches result evidence. It must not claim an agent was awakened.
-Agent output remains a proposal until evidence and policy validate it. Ignore bot and
-webhook posts as commands by default; allowlisted machine events may create notices
-but never human approvals. Record origin and hop count to prevent bot-to-bot loops.
-
-## Deployment and CI notification policy
-
-| Situation | Shared message and action boundary |
+| Adapter | Sensitive-profile boundary |
 | --- | --- |
-| Staging deployment | One compact start/update/completion thread, app/environment/SHA/digests, operator or producer identity, verification evidence and runbook link. Routine checks stay lightweight and bounded; summarize repeats. |
-| Production deployment | Prominent `prod` label, approved release identity, staging evidence link, rollout status and careful production smoke evidence. Failure or uncertainty stays visible. No chat-driven promotion or rollback. |
-| GitHub Actions failure | First failure for an allowlisted workflow/ref opens or updates one thread, with failed jobs and source links. Logs, PR text, and artifacts are untrusted. Do not download or execute artifacts to render notifications. |
-| CI recovery | Require authoritative successful completion in the same workflow/ref incident scope and a later run/attempt; link the failure and successful run. A success for another branch or an older completion cannot close it. |
-| Flapping or repeated failure | Coalesce identical failure fingerprints, show count/last seen, and issue a bounded digest. Preserve meaningful severity changes and terminal states. Cancelled/skipped is not recovery. |
-| Operational incident | Link existing incident/runbook context when authorized. Chat delivery, task completion, and incident acknowledgement/resolution are separate states; PagerDuty/Healthchecks.io behavior remains owned by Sugarkube. |
+| Discord/Slack ingestion | Online stage only; verify origin/current authorized scope and pass inert snapshots inward. No corpus search/summary replies, including ephemeral replies. |
+| Discord/Slack delivery | Optional outside private workers; only I6-approved packets, destination IDs and current audience checks. No raw-event auto-rendering or default cross-posting. |
+| token.place inference | Dedicated enrolled LAN relay/compute pool under I1-I3/I7. A future adapter must enforce this; current model metadata is not inference capability. |
+| Axel/other local harness | Fixed offline analysis/drafting, device-local workdirs/UI and approved LAN inference. Fail closed if networking, telemetry or storage cannot be constrained. |
+| Dots/cloud/official remote agents | Outside strict processing, no corpus access or automatic wake/public API assumption. Optional manual handoff only from an exact approved sanitized packet; unsupported integrations stay manual. |
+| Print workflow | Local capability-aware queue/review packet only; no printer credentials, submission or actuation. Human operation is separate. |
 
-Keep incident grouping separate from deduplication: a CI group uses repository,
-workflow, and ref/PR identity; individual events use run ID, attempt, job/transition
-identity. A deployment group uses app, environment, and operation ID. A release-level
-correlation can relate CI to deployment through verified SHA/digests, but not conflate
-staging and production success. Never correlate solely on message text or timestamps.
+Select actual workspace/guild/category/channel IDs privately; names are not authority.
+Categories are containers, not destinations. Recheck overrides, moves and memberships
+before sync/export. Persist immutable capture provenance; name-only legacy captures
+stay excluded from shared search/export until owner-controlled migration verifies
+origin/audience. Missing or ambiguous origin fails closed. Offline analysis requires
+an owner-authorized snapshot and valid cached policy; stale required authorization
+blocks new processing instead of forcing an Internet call.
 
-Quiet hours govern routine chat noise; mutation pauses govern execution. During a
-pause, accept safe evidence and queue a digest, visibly mark tasks paused, and do not
-start mutation work. Critical incident routing remains the existing paging system.
-Do not automatically resume a production action or retry an expired staging approval
-at the end of a pause. Owners choose notification cadence and severity thresholds.
+For approved notifications, use one root per correlation/destination with Slack
+`thread_ts` replies or permitted Discord threads. Suppress mass mentions/unfurls.
+Verify HTTP Slack signatures/timestamps and Discord interaction signatures, or use
+authenticated Gateway/Socket Mode as applicable. Minimum scopes/intents, no Discord
+Administrator. Bot/webhook content cannot approve anything; track origin/hops to stop loops.
 
-## Delivery, replay, and rate limits
+## Optional deployment and CI notifications
 
-Authenticate and bound input before enqueueing. Acknowledge valid provider events
-promptly after durable acceptance, within the current provider deadline; business work
-runs asynchronously. Use the canonical Event v1 deduplication key as a unique constraint
-and one transaction for accepted event, task transition, and outbox intents. Each
-destination has its own delivery key and retry state; Slack failure cannot roll back
-a successful Discord delivery or cause a second task execution.
+Use a separate network-capable operations profile, not private-corpus inspection/export.
+Share contracts/adapters without sharing corpus access, credentials or workers. Public
+operational events may use an explicit event-class/destination grant; private-derived
+content still requires an exact I6 packet approval. A URL does not prove public classification.
 
-At-least-once delivery is the design assumption. Persist provider receipts and thread
-mappings before claiming delivered. A crash after a provider accepted a message but
-before saving its receipt is ambiguous: reconcile with provider-supported identifiers
-or history only when permitted; otherwise flag uncertain delivery for operator review.
-Do not promise exactly-once chat posting or blindly repeat actionable notices. Edits
-update status summaries, with append-only safe audit metadata preserving transitions.
-Deleted/archived threads require an owner-approved fallback destination, never a public
-channel chosen automatically. A replacement root references the canonical task ID.
+Sugarkube owns deployment, RBAC, rollout, verification and rollback. PagerDuty and
+Healthchecks.io remain the incident path; chat does not replace paging or acknowledge
+incidents. Routine staging checks stay lightweight without weakening verification;
+production notifications retain careful rollout/smoke evidence, never command authority.
+No token.place production process is changed.
 
-Honor provider retry-after and bucket/global limits, bounded exponential backoff with
-jitter, per-destination queues, concurrency limits, and configured queue capacity.
-Coalesce progress before it floods chat; prioritize failures/recoveries over routine
-success. Invalid permission/authentication is a blocked delivery needing operator
-attention, not an infinite retry. Expired events become a labelled catch-up digest;
-do not silently drop terminal outcomes when a queue fills. Persist backlog state and
-expose delivery lag, oldest pending age, retry counts, and dead-letter counts locally.
+| Event | Notification rule |
+| --- | --- |
+| Staging/prod deployment | Explicit app/environment/operation, full SHA, immutable image/chart identity and canonical verification/runbook evidence. Workflow success alone is not deployment success; absent proof means unknown. |
+| Actions failure/recovery | Group by repository/workflow/ref or PR; dedupe run/attempt/job transitions. Only later authoritative matching success resolves failure; other branches, older completions and cancelled/skipped runs do not. |
+| Repeats/flapping | Coalesce counts/last seen; bounded digests preserve severity changes and terminal states. Never correlate solely on text/time. |
 
-GitHub does not automatically redeliver failed webhooks. Use an owner-approved bounded
-reconciliation window and read-only API cursor with overlap, plus explicit redelivery
-where supported. Compare source run/deployment state with the durable ledger, dedupe
-recovered events, and label them late. A source outage or retention gap means unknown
-coverage, not healthy CI. Replaying notifications never replays approvals or execution.
-Restart/backup restore must retain consumed approval IDs and execution reservations;
-if freshness cannot be established, fail closed and reconcile with an operator.
+Environment-specific IDs keep staging/prod separate for the same SHA. CI evidence stays
+untrusted; do not execute downloaded artifacts. Quiet hours defer routine notices;
+working-hour pauses block mutations. Paging remains independent; resumed tasks/exports
+recheck approval. Future least-privilege staging access is a separate owner decision
+requiring shared visibility, Sugarkube-owned narrow RBAC, audit, revocation and recovery.
+It belongs outside private processing and gives no production access.
 
-## Identity, security, and retention
+## Delivery, audit and retention
 
-Bind principals to immutable provider user IDs within the workspace/guild, then link
-cross-platform identities only through an owner-controlled verification procedure.
-No display-name matching. Keep roles for viewer, task requester, approver, operator,
-and policy administrator distinct; deny by default, and recheck revoked roles at use.
-Bot identity, app signature, and channel membership alone never authorize execution.
-Separate source-read, chat-write, and harness credentials; scope installations to the
-selected repositories/channels. Future credentials need rotation/revocation procedures
-and secure storage, but none are created by this proposal.
+Persist accepted input, local transition and import intent atomically before provider
+acknowledgement; process asynchronously within bounds. Export outbox creation separately
+requires valid approval. Retries preserve packet identity and recheck audience/expiry;
+withheld content cannot be replaced with an automatically generated notice. Destination
+receipts are independent; delivery is not task success. Ambiguous send-before-receipt
+crashes require reconciliation/human review, not exactly-once claims or blind resend.
 
-Treat all bot messages, user content, CI logs, attachments, linked pages, task results,
-and repository instructions as untrusted data at the integration boundary. Keep them
-outside trusted policy and fixed action profiles. No instruction in a failed job can
-grant tools, change an allowlist, request a credential, or approve a command. Disable
-automatic attachment downloads and arbitrary URL fetching in the notification path.
-Test prompt injection, forged bot identities, edited messages, replay, and cross-tenant
-IDs. Production execution capability is absent, not merely hidden in the UI.
+Honor provider retry-after/bucket/global limits, bounded jitter/backoff and queue capacity.
+Deleted threads, revoked permissions and expired approvals block delivery, never choose
+a public fallback. Show backlog/unknown outcomes locally. Controlled online reconciliation
+uses cursors/overlap and deduplication; GitHub failed webhooks are not automatically
+redelivered. Offline processing shows snapshot age/unknown coverage without external
+requests. Replay recovers data/status, never consumed execution/export authority.
 
-Persist audit metadata for origin verification, principal, policy version, decisions,
-state changes, input digest, delivery attempts/receipts, and evidence references. Limit
-readers and make changes tamper-evident; do not retain credentials, raw prompts, private
-message bodies, full CI logs, or attachments by default. Redact before persistence,
-rendering, and model handoff, not just in the final chat message. Redaction tests must
-include signed URLs, webhook/heartbeat URLs, kubeconfigs, and tokens in error text.
+Keep source/import/planning/approval/execution/export audit metadata on the harness
+device with restricted readers and tamper-evident history. No source text, prompts,
+credentials or private paths in diagnostics. Block log/crash/trace export on UI, worker,
+relay and compute. Broker credentials outside model context. Encrypt captures,
+attachments, indexes, database, workdirs and device-local backups at rest; cloud-sync
+folders and remote backup agents must not access strict-profile data.
 
-Proposed retention for owner approval: 30 days for safe event/delivery metadata and
-90 days for decision audits, with encrypted storage/backups and verified expiry.
-Deduplication tombstones must outlive the configured source replay horizon; consumed
-approval/execution records must survive their replay risk or trigger fail-closed
-re-enrollment on restore. Chat-provider retention is separate and must be documented;
-deleting local records cannot promise deletion of copies or provider history. Deletion
-requests must cover captures, attachment stores, exports, and backups where applicable.
-Do not ship a new capture path until retention, audience, and deletion owners agree.
+Owners set corpus retention/deletion and backup expiry before real data. Proposed safe
+metadata defaults: 30 days for delivery, 90 for decision audits, subject to approval.
+Replay tombstones/consumed approvals outlive replay horizons; stale restores fail closed.
+Deletion covers attachments, embeddings/indexes, caches, drafts, packets and backups.
+Approved exports have separate provider retention; local deletion cannot promise their
+removal. A status request does not imply transcript export.
 
 ## Phases and owner decisions
 
-1. **Design and fixture review:** agree schemas, owners, supported sources, destination
-   IDs, audience policy, budget, retention, quiet hours, and the manual Dots bridge.
-   Record unsupported capabilities explicitly. No account or credential provisioning.
-2. **Notification-only prototype:** synthetic events through the shared core and both
-   transports in owner-approved test channels; no real private payloads or commands.
-   Validate failure/recovery ordering, delivery ambiguity, redaction, and replay first.
-3. **Read-only operational pilot:** separately approve source reads and chat posting;
-   Sugarkube adds its producer/crosslink in its own PR. Observe staging deploys and CI
-   with lightweight checks and visible gaps. Production can receive evidence-only
-   notifications after audience review; it acquires no execution capability.
-4. **Task coordination:** authenticated requests, manual handoffs, bounded harness
-   adapters, and approvals tested without infrastructure mutation. Unsupported Dots
-   operations remain manual. Demonstrate pause, cancellation, and unknown-outcome paths.
-5. **Optional least-privilege staging access:** a separate owner decision, conditional
-   on reliable shared visibility of intent, approval, evidence, and results. Sugarkube
-   owns namespace/action-specific RBAC and runbooks. Start read-only; any later bounded
-   mutation needs short-lived scoped access, no secrets/exec/admin permission, exact
-   inputs, independent local guards, audit, revocation/kill switch, tested recovery,
-   and no production reachability. If visibility fails, dispatch fails closed.
+1. **Boundary/source review:** agree LAN profile, local corpus/catalog scope, ownership,
+   retention, fixed actions and stop rules. Record gaps; synthetic fixtures only.
+2. **Enforcement prototype:** prove stage separation, no Internet egress, relay/compute
+   enrollment, provisioning, credential/UI confinement and restart behavior. No real
+   private data while any required I1-I9 control is missing.
+3. **Bounded sync/offline pilot:** separately authorize network-stage access; import a
+   minimal snapshot, disconnect Internet and analyze cached local projects using trusted
+   LAN inference. Test forbidden routes and model outages. No outbound summaries or printing.
+4. **Local actionable queues:** evaluate article-to-design/remediation and capability-aware
+   print proposals. Add offline drafting only with explicit grants, isolated workdirs and
+   provisioned tests. Human validates output and physical feasibility.
+5. **Optional export pilot:** approve exact sanitized PR/artifact/chat packets locally,
+   transfer to isolated exporter, prove changed/stale/replayed/unapproved packets denied.
+   Cloud handoffs remain optional and scoped.
+6. **Optional operations profile:** independently review Sugarkube producers/notifications;
+   stage future RBAC/control separately. Never widen the private profile for convenience.
 
-Production command authority requires a new design and explicit authorization outside
-these phases. Cautious future commands should be structured `status`, `request_task`,
-or `cancel_task` actions with fixed profiles; free-form deploy/rollback/shell commands
-are excluded. Chat approval never replaces Sugarkube's release gates or careful rollout
-and smoke checks. Do not weaken existing staging verification to reduce routine noise.
-
-Open decisions and accountable owners:
-
-| Decision | Owner required before the relevant phase |
+| Decision | Owner and gate |
 | --- | --- |
-| Actual Slack workspace/channel IDs and private Discord guild/`todos` child channels; cross-post audience | Chat owner, before any delivery |
-| Event producer and immutable deployment evidence source; staging RBAC, release and rollback gates | Sugarkube maintainer, before operational pilot/access |
-| Hosting, durable store, queue/replay bounds, availability and delivery-gap escalation | Axel maintainer, before pilot |
-| Verified Dots interface/wake behavior, permissible context, manual handoff workflow | User and integration owner, before automated dispatch |
-| Identity linking, role grants, approval TTL, reapproval after pause | Security/operations owner, before task commands |
-| Noise thresholds, routine check budget, quiet hours, retention/deletion and costs | User and data owner, before real payloads |
+| LAN topology, relay/compute identities, route/firewall enforcement, revocation | Device/network owner before inference; unsupported means blocked |
+| Sources, cached project/printer catalog, storage/backup retention and deletion | Data owner before real import |
+| Offline harness, fixed tools, model/dependency artifacts, gap remediation | Axel/inference maintainers before processing |
+| Public-link allowlist, sync access, immutable packet transfer and destination scopes | Integration owner before network stages |
+| Exact sanitized bytes, destination, audience and purpose | Human data owner per sensitive-profile export |
+| Print feasibility and any physical operation | Human operator outside this queue design |
+| Notifications, least-privilege staging and rollback | Sugarkube maintainer in a separate operations proposal |
+
+[Working-hours policy](../HILLCLIMB.md#working-hours-guard) blocks operational mutations
+weekdays 09:00-17:00 America/Los_Angeles by default. Run its guard before every mutation
+and after resume; the owner's stricter pause/cutoff wins. This proposal grants no exception.
 
 ## Acceptance tests for future implementation
 
-These are implementation gates, not claims that a live integration has been tested.
+These are required gates, not claims that current software has passed them.
 
 | Scenario | Required evidence |
 | --- | --- |
-| Same fixture over Slack and Discord | Equivalent canonical status, safe evidence links, environment, correlation and task IDs; only rendering differs. |
-| Duplicate/out-of-order CI events | One logical transition; old successes, other refs, cancelled/skipped runs cannot resolve the current failure. A later matching success produces one recovery. |
-| Staging and prod share a SHA | Separate deployment operation/state; no staging success reported as production proof. Missing smoke evidence remains unknown/failed. |
-| 429, network failure, restart, send-before-receipt crash | Backoff/buckets honored; durable backlog retained; uncertain sends reconciled or flagged without repeating execution. |
-| Lost webhook and source outage | Bounded reconciliation recovers late notices; gap/lag remains visible; no false healthy status. |
-| Concurrent approvals in both transports | One reservation and consumption; expired, revoked, edited-input, wrong-user/tenant, and replayed approvals denied. |
-| Permission removal or channel move | Pending sends and capture search recheck audience; no cross-channel snippet leak or automatic public fallback. |
-| Host crash or failed cancellation | Task becomes unknown until authoritative reconciliation; cancellation is not falsely reported complete. |
-| Bot loop, forged identity, malicious log/attachment | No human authority inferred, no command execution or arbitrary fetching, bounded hops and redacted safe output. |
-| Pause, deadline, or unavailable guard | Mutation dispatch blocked, including queued/retried work; routine digest deferred; existing paging unaffected. |
-| Dots cannot read destination or wake | Explicit unsupported capability and usable manual packet; no widened audience or invented API. |
-| Retention/restore/revocation drill | Expiry verified across local stores/backups; replay tombstones retained or service fails closed; credential removal blocks further activity. |
-| Conditional staging access | Shared intent/result visibility, narrow RBAC and kill switch proven; denied secrets/exec/admin and prod access; Sugarkube rollback responsibility unchanged. |
+| I1/I2 offline positive path | After sync remove Internet routes. Cached bookmark analysis, local relevance links, board/search and approved LAN multi-node inference work; state/UI/workdirs remain on harness device. Uncached sources stay unavailable. |
+| I1/I3 public routes/fallbacks | Packet/firewall evidence on worker, relay and every compute shows public relay/provider IPs, alternate interfaces, IPv6, VPN/tunnels, public DNS and inherited fallback URLs denied. No private context leaves approved LAN; other profiles retain general federation. |
+| I3 untrusted join/key substitution | Unapproved LAN node, replacement compute key, revoked node, stale manifest and forged result denied before context release/result acceptance. Private IP or E2EE alone is insufficient. |
+| I3/I5 proxy/redirect escape | DNS rebinding, redirects, proxies and dual-homed forwarding cannot escape inference policy. Public fetcher cannot reach private/loopback/link-local/metadata targets or forward credentials. |
+| I1/I7 outage | Missing model/dependency, unreachable relay/compute or expired trust yields blocked inference, no public retry/download/provider fallback. Cached non-inference planning remains usable. |
+| I4 content-triggered actions | Malicious paper/message/model metadata/CI log cannot run code, fetch more URLs, enroll nodes, reveal credentials, approve PRs or print. Proposed actions require independent local grants. |
+| I2/I5 stage isolation | Online stages cannot mount/query corpus/DB/workdirs or proxy through private workers; workers cannot read network credentials. Import races, traversal, active HTML, archive bombs and scripts fail safely. |
+| I6 exact export | No ephemeral reply, cloud handoff, PR text/diff, artifact, private status or relationship leaks without exact approval. Changed bytes/destination, expiry, replay or source-policy changes block send. |
+| I7 diagnostics/UI | Private canaries in prompts/errors/paths/attachments produce no remote log/trace/crash/analytics or asset calls and no corpus-bearing local diagnostics. Credentials never enter model context. |
+| I2/I7 compute storage | Verify no prompt/result persistence, training capture, content-bearing swap/dumps or hidden forwarding; inability to enforce required controls keeps profile blocked. |
+| I9 restart/restore/pause | Latest trust state/classifications/packets/consumed keys persist. Stale backup, uncertain clock/state or pause blocks dispatch/export without relaxing routes or repeating actions. |
+| Provenance/retention | Ambiguous legacy captures stay excluded. Permission changes deny processing/export as required; deletion covers attachments/indexes/drafts/packets/backups. Expired cached authority never forces an online refresh. |
+| Planning/print capabilities | Relevance is evidence-linked with uncertainty; unsupported geometry/material/printer assumptions block readiness. Queue/model output triggers no slicing, printer submission or actuation. |
+| Shared operations | Same approved fixture preserves IDs/status in both transports. Duplicate/out-of-order CI cannot create false recovery or staging/prod conflation. 429/lost webhook/ambiguous send causes bounded retries or visible unknown state, not repeated execution. |
+| Optional staging | Separate profile proves narrow RBAC/shared visibility/kill switch and no production access; strict corpus unreachable and existing paging unchanged. |
 
-## Source map and crosslinks
+## Sources and crosslinks
 
-Repository behavior was inspected at Axel commit
-`32c5c6975cd806870a8ae0fb319d4661e7c69ee7`. External platform documentation was checked
-on 2026-10-07; revalidate scopes, deadlines, limits, and product capabilities before
-implementation. The retention durations and rollout phases above are design choices.
+Axel sources were refreshed against main `32c5c6975cd806870a8ae0fb319d4661e7c69ee7`
+and this PR on 2026-10-08. token.place links are pinned to
+`a42a58f824f21d5b4c51a22db838116899d49983`; proposed security migrations are not treated
+as implemented. No live topology was inspected. Interfaces/phases/durations above are
+proposals; revalidate provider capabilities before implementation.
 
 - [Axel Discord guide](../discord-bot.md), [threat model](../THREAT_MODEL.md),
-  [remote-control design](remote-claude-code-control.md), and
-  [working-hours implementation](../../axel/working_hours.py).
-- [Sugarkube app deployment contract](https://github.com/futuroptimist/sugarkube/blob/main/docs/app_deployment_contract.md):
-  artifact/environment ownership and release verification gates.
-- [Sugarkube alerting](https://github.com/futuroptimist/sugarkube/blob/main/docs/observability-alerting.md)
-  and [operations](https://github.com/futuroptimist/sugarkube/blob/main/docs/observability-operations.md):
-  authoritative PagerDuty/Healthchecks.io status, procedures, and remaining drills.
-- [Sugarkube app runbooks](https://github.com/futuroptimist/sugarkube/tree/main/docs/apps):
-  app-specific deployment and rollback, rather than generic chat commands.
-- [Slack Events API](https://docs.slack.dev/apis/events-api/),
-  [request verification](https://docs.slack.dev/authentication/verifying-requests-from-slack/),
+  [local-agent guide](../LOCAL_AGENT_PROMPT.md), [remote-control design](remote-claude-code-control.md)
+  and [working-hours implementation](../../axel/working_hours.py).
+- [token.place relay-blind invariant](https://github.com/futuroptimist/token.place/blob/a42a58f824f21d5b4c51a22db838116899d49983/docs/security/e2ee_relay_invariant.md):
+  preserve ciphertext-only relay behavior without mistaking it for verified topology.
+- [Sugarkube deployment contract](https://github.com/futuroptimist/sugarkube/blob/main/docs/app_deployment_contract.md),
+  [app runbooks](https://github.com/futuroptimist/sugarkube/tree/main/docs/apps),
+  [alerting](https://github.com/futuroptimist/sugarkube/blob/main/docs/observability-alerting.md)
+  and [operations](https://github.com/futuroptimist/sugarkube/blob/main/docs/observability-operations.md).
+- [Slack events](https://docs.slack.dev/apis/events-api/),
+  [request verification](https://docs.slack.dev/authentication/verifying-requests-from-slack/)
   and [posting/threading](https://docs.slack.dev/reference/methods/chat.postMessage/).
 - [Discord interactions](https://docs.discord.com/developers/interactions/receiving-and-responding)
   and [rate limits](https://docs.discord.com/developers/topics/rate-limits).
 - [GitHub workflow events](https://docs.github.com/en/webhooks/webhook-events-and-payloads#workflow_run)
-  and [failed delivery handling](https://docs.github.com/en/webhooks/using-webhooks/handling-failed-webhook-deliveries).
+  and [failed deliveries](https://docs.github.com/en/webhooks/using-webhooks/handling-failed-webhook-deliveries).
 
-Recommend a later Sugarkube deployment-contract/observability crosslink to this design
-once owners accept the producer boundary. Keep actual RBAC and deploy/rollback details
-there. No Sugarkube edit is necessary for this design-only PR.
+A later Sugarkube crosslink may reference the separate operations profile; deploy/RBAC/
+rollback details stay there. No Sugarkube or token.place edit is part of this PR.

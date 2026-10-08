@@ -12,7 +12,7 @@ The sensitive profile must fail closed if any required control cannot be enforce
 | ID | Required boundary for the sensitive profile |
 | --- | --- |
 | I1: user-controlled LAN | Private inference uses only a dedicated user-controlled local-network token.place relay and explicitly enrolled, trusted LAN compute pool. The boundary is the user's isolated LAN, not one machine. No Internet egress, public relay, external provider, or public fallback from private processing, relay, or compute. |
-| I2: device-local state | Captures, attachments, project index, task database, workdirs, kanban, and UI remain on the harness device. Only minimum task context transits to approved LAN compute; that does not grant corpus/filesystem access. Prompts/results are transient there, with no content logging or persistent cache. |
+| I2: device-local state | Captures, attachments, project index, task database, workdirs, kanban, and UI remain on the harness device. UI and approval endpoints are device-only, with no LAN ingress or forwarding. Only minimum task context transits to approved LAN compute; that does not grant corpus/filesystem/UI access. Prompts/results are transient there, with no content logging or persistent cache. |
 | I3: enforced topology | Enforce destination/port restrictions and independently provisioned relay/compute identity and membership before releasing context. E2EE, localhost, private IPs, and relay-advertised keys do not prove topology or compute ownership. Unknown membership, unenforceable routing, stale trust policy, or model outage blocks inference; no silent downgrade. |
 | I4: data is not authority | Bookmarks, messages, pages, papers, models, repository files, CI logs, and model outputs are untrusted data. They cannot grant tools, change policy, enroll nodes, execute code, approve exports, deploy, or print. Processing uses owner-approved fixed profiles and independently enforced permissions. |
 | I5: separated network stages | Discord/Slack sync, public-link retrieval and GitHub reads run in constrained network-capable stages isolated from private processing. They cannot mount or query its corpus, database, workdirs or inference sessions. After sync, cached analysis/planning can work without Internet; live sync/retrieval cannot. |
@@ -118,9 +118,14 @@ types, time and decompression. Sandbox parsers; import inert text/metadata and q
 artifacts. Content suggesting another URL cannot authorize its retrieval.
 
 **Private processing (I1-I4/I7):** corpus, embeddings/indexes, cached projects, board
-and workdirs stay on the harness device. UI uses a selected local interface,
-authentication/CSRF protections and bundled assets. No remote fonts, embeds, unfurls
-or analytics. Fixed local planning/drafting tools have bounded filesystem permissions;
+and workdirs stay on the harness device. UI and approval endpoints bind only to
+loopback or a device-local socket, with host-firewall denial of LAN ingress on both
+IPv4 and IPv6. No reverse proxy, tunnel or port-forward exposes them remotely.
+Process/network isolation also denies online ingestion/export stages access to these
+endpoints, even on the same host. Retain authentication/CSRF protections and bundled
+assets; no remote fonts, embeds, unfurls or analytics. This device-only UI restriction
+does not restrict approved inference to one machine or make localhost proof of the
+inference topology. Fixed planning/drafting tools have bounded filesystem permissions;
 a harness's usual shell, browser, package manager, Git remote, printer API or arbitrary
 HTTP capability is not automatically available. Local draft tests run in the same
 offline sandbox with provisioned dependencies and no untrusted hooks.
@@ -334,6 +339,7 @@ These are required gates, not claims that current software has passed them.
 | I1/I7 outage | Missing model/dependency, unreachable relay/compute or expired trust yields blocked inference, no public retry/download/provider fallback. Cached non-inference planning remains usable. |
 | I4 content-triggered actions | Malicious paper/message/model metadata/CI log cannot run code, fetch more URLs, enroll nodes, reveal credentials, approve PRs or print. Proposed actions require independent local grants. |
 | I2/I5 stage isolation | Online stages cannot mount/query corpus/DB/workdirs or proxy through private workers; workers cannot read network credentials. Import races, traversal, active HTML, archive bombs and scripts fail safely. |
+| I2 device-only UI | Relay, compute and other LAN nodes cannot reach UI/corpus views or approval endpoints over IPv4/IPv6. Online stages on the same host are denied too; reverse-proxy/tunnel/forwarding attempts fail. Authenticated device-local use still works. |
 | I6 exact export | No ephemeral reply, cloud handoff, PR text/diff, artifact, private status or relationship leaks without exact approval. Changed bytes/destination, expiry, replay or source-policy changes block send. |
 | I7 diagnostics/UI | Private canaries in prompts/errors/paths/attachments produce no remote log/trace/crash/analytics or asset calls and no corpus-bearing local diagnostics. Credentials never enter model context. |
 | I2/I7 compute storage | Verify no prompt/result persistence, training capture, content-bearing swap/dumps or hidden forwarding; inability to enforce required controls keeps profile blocked. |

@@ -30,11 +30,16 @@ messages or topology belong in this public design or its examples.
 
 ## Purpose and user workflows
 
-Turn an opted-in bookmark backlog into local, evidence-linked plans and actionable
-queues. Reuse core ingestion/event/task logic across Slack and Discord; separate
-transports, private processing, inference and optional export adapters. The local UI
-is the primary planning/approval surface. Chat is an optional source and approved
-destination, not a default window onto the private corpus.
+Axel aims to be a general system for diverse automation tasks across opted-in channels
+spanning many topics and goals. One workflow turns a bookmark backlog into local,
+evidence-linked plans and actionable queues. Reuse core ingestion/event/task logic
+across Slack and Discord; separate transports, private processing, inference and
+optional export adapters. The local UI is the primary planning/approval surface.
+Chat is an optional source and approved destination, not a default window onto the
+private corpus.
+
+The following workflows are illustrative and non-exhaustive; other topics and tasks
+remain subject to the same privacy/security invariants and approval gates.
 
 1. **AI paper/article to project work:** sync a selected generic bookmark and separately
    retrieve its approved public source. Cache bounded text/provenance. Offline analysis
@@ -51,12 +56,12 @@ destination, not a default window onto the private corpus.
    block readiness. Queue placement does not trigger slicing, G-code execution, printer
    upload or printing; physical operation remains a separate human action.
 
-Both flows support deduplication, relationships between sources, relevance explanations
-and human correction. Stable source IDs and content hashes supplement titles. Proposed
-local board columns are inbox, triaged, planned, ready, blocked and done, independent
-of execution state. Model output cannot establish verified completion without evidence
-or a recorded human decision. Empty/stale project catalogs remain visibly empty/stale;
-no silent online replacement fetch.
+Shared workflow capabilities include deduplication, relationships between sources,
+relevance explanations and human correction. Stable source IDs and content hashes
+supplement titles. Proposed local board columns are inbox, triaged, planned, ready,
+blocked and done, independent of execution state. Model output cannot establish
+verified completion without evidence or a recorded human decision. Empty/stale
+project catalogs remain visibly empty/stale; no silent online replacement fetch.
 
 ## Existing implementation and gaps
 
@@ -303,9 +308,9 @@ removal. A status request does not imply transcript export.
 3. **Bounded sync/offline pilot:** separately authorize network-stage access; import a
    minimal snapshot, disconnect Internet and analyze cached local projects using trusted
    LAN inference. Test forbidden routes and model outages. No outbound summaries or printing.
-4. **Local actionable queues:** evaluate article-to-design/remediation and capability-aware
-   print proposals. Add offline drafting only with explicit grants, isolated workdirs and
-   provisioned tests. Human validates output and physical feasibility.
+4. **Local actionable queues:** evaluate examples such as article-to-design/remediation
+   and capability-aware print proposals. Add offline drafting only with explicit grants,
+   isolated workdirs and provisioned tests. Human validates output and physical feasibility.
 5. **Optional export pilot:** approve exact sanitized PR/artifact/chat packets locally,
    transfer to isolated exporter, prove changed/stale/replayed/unapproved packets denied.
    Cloud handoffs remain optional and scoped.

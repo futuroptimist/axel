@@ -150,7 +150,8 @@ workers use narrow service identities plus captured actor/scope and current poli
 | `POST .../cards`, `PATCH .../cards/{id}` | Validated create/edit with `Idempotency-Key`; edits require `If-Match` revision. Reject stale edits with 412 and changed key payload with 409. |
 | `POST .../cards/{id}/requests` | Bounded typed action proposal, actor and input digest; never arbitrary shell/SQL/tool definitions. Does not dispatch or approve. |
 | `POST .../approvals` | Authorized human decision binds action, resource/revision, input digest, environment, destination/audience if outward, expiry and nonce. Consumption is atomic with dispatch reservation. |
-| `POST .../imports/preview`, `POST .../imports/{id}/commit` | Validate private manifest and mapping into quarantine, then separately authorized transactional promotion of the exact reviewed digest/version. |
+| `POST .../imports/preview`, `POST .../imports/{id}/commit` | Validate private manifest and mapping, then write and seal the exact reviewed candidate in quarantine only; neither operation changes the live generation. |
+| `POST .../imports/{id}/activate` | Separate owner-approved cutover after backup, restore proof and comparison; atomically switch the live generation with a writer fence and expected destination revision. |
 | `POST .../exports`, `GET .../operations/{id}` | Explicit coherent capture intent and read-only progress/reconciliation. Export status/download still authorize; reads do not renew leases or start work. |
 | `GET /api/v1/compatibility` | Authenticated bounded release/API/schema compatibility metadata for deployment preflight; no operational secrets or database access. |
 
@@ -299,8 +300,9 @@ Both UI and API/MCP expose the same stages and receipts:
    proposed owner-selected reconciliation. No fabricated approvals or lost history.
 4. **Commit into quarantine:** bind operation, manifest/mapping digests, policy,
    destination revision and explicit approval. Use one transaction for promotion
-   where possible; large imports use immutable staging chunks and durable checkpoint
-   compare-and-swap, followed by atomic activation of a verified generation. Restart
+   into quarantined candidate storage where possible; large imports use immutable
+   staging chunks and durable checkpoint compare-and-swap, followed by atomic sealing
+   of that candidate. This never changes live data or its activation pointer. Restart
    checks actual durable chunks, not progress counters. Mixed visible generations
    and partial live imports are forbidden. Changed inputs invalidate preview.
 5. **Backup and test restore:** preserve a verified pre-change recovery point; restore

@@ -74,6 +74,7 @@ Automated coverage for these references lives in
 - [x] review permissions for integrated tools (token.place, gabriel) (see docs/THREAT_MODEL.md)
 - [x] configurable, DST-aware working-hours guard for hillclimb mutations (see [Hillclimb](docs/HILLCLIMB.md#working-hours-guard))
 - [x] achieve 100% test coverage
+- [ ] bounded resumable local backup and restore ([proposed design](docs/design/resumable-backup-contract.md); implementation requires separate authorization)
 
 ## installation
 

@@ -76,6 +76,7 @@ Automated coverage for these references lives in
 - [x] achieve 100% test coverage
 - [ ] bounded resumable local backup and restore ([proposed design](docs/design/resumable-backup-contract.md); implementation requires separate authorization)
 - [ ] sanitized kanban domain/UI and adapter extraction ([K269 design](docs/design/sanitized-kanban-contract.md); online integrations, migration and deployment require separate authorization)
+- [ ] optional full kanban E2EE ([roadmap issue #252](https://github.com/futuroptimist/axel/issues/252), [future design](docs/design/kanban-e2ee-boundary.md)); initial mode explicitly trusts scoped server/Slack/dot endpoints and is not E2EE
 
 ## installation
 

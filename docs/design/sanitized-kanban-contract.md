@@ -6,6 +6,15 @@ sanitized source and synthetic fixtures. This proposal creates no service, ident
 registration, database, migration, import, deployment or entitlement. Implementation,
 private migration and deployment require separate work and action-specific authority.
 
+**Initial mode: explicitly trusted server, not full E2EE.** The design permits
+plaintext only where needed at narrowly scoped API/server, Slack integration and
+authorized ChatGPT dot endpoints. It requires tenant isolation, least privilege and
+encryption in transit and at rest; privileged operators may still access plaintext.
+[Full operator-blind E2EE](kanban-e2ee-boundary.md) is a separate optional long-term
+extension tracked in [Axel #252](https://github.com/futuroptimist/axel/issues/252),
+not a blocker for initial implementation. Neither mode is implemented or
+security-qualified by this documentation.
+
 K269 is one card with two required design PRs:
 [Axel #251](https://github.com/futuroptimist/axel/pull/251) and
 [Sugarkube #2910](https://github.com/futuroptimist/sugarkube/pull/2910).
@@ -31,6 +40,8 @@ They are proposed acceptance gates, not guarantees of today's Axel implementatio
 | K6: durable evidence | Permanent IDs, revisions, questions, receipts, links and history survive archive, migration and retry. Unknown outcomes remain unknown until reconciled. Old state never revives consumed or revoked authority. |
 | K7: reproducible release | Source tag, commit, frontend artifact, API contract, schema/migration set and deployment record must match an immutable release manifest. Unknown compatibility blocks rollout; a build success does not prove deployed state. |
 | K8: private operations | Private records, identity mappings, manifests, backups and operational evidence stay in approved private storage. Public logs, fixtures, analytics, error reports and build outputs contain none of them. No production access follows from this design. |
+| K9: explicit confidentiality mode | Initial mode trusts only the named endpoints needed for a scoped operation. Encrypt transport, stored data and backups with qualified key management, but disclose privileged-operator access. Never label server-readable data E2EE or make an optional stronger mode's guarantees apply to this mode. |
+| K10: bounded agent disclosure | A verified ChatGPT dot may read/write explicitly granted board/task scope through API/MCP. Tenant-owner grants bound recipient, data, tools, purpose, duration and disclosure policy; recheck at use. No blanket future disclosure, cross-tenant access or implied merge/deploy authority. |
 
 The [private LAN planning proposal](https://github.com/futuroptimist/axel/blob/5632350c20c0a3dc6aac2ce3024047518d506901/docs/design/chat-operations-contract.md)
 in [PR #249](https://github.com/futuroptimist/axel/pull/249) retains its device-only
@@ -48,10 +59,29 @@ Slack is an additional opt-in adapter, not a replacement or inference provider.
 | Axel domain | Card lifecycle, permanent identity, revisions, dependencies, questions, receipts, multi-PR evidence, authorization decisions and validation independent of storage/UI. |
 | Axel UI | Accessible board/card/history/archive/search views, explicit pending/failed/unknown states, approval previews and migration/export journeys. Bundle local assets for offline use. |
 | Axel adapters | Local storage, authenticated service storage, identity providers, agent API/MCP and chat normalization. Capabilities are declared and verified, not inferred from provider names. |
-| On-prem service | Trusted HTTPS API, session boundary, server-side policy, transactional storage adapter, bounded jobs and audit. No direct browser, Slack or agent database connection. |
+| On-prem service | Initial-mode trusted HTTPS API and scoped plaintext processing, session/policy boundary, transactional storage, bounded jobs and safe audit. Minimize plaintext exposure; no direct browser, Slack or agent DB connection. |
 | Sites frontend | Build/deploy approved reusable UI assets for the online profile and call the API through a supported authenticated integration. No private data baked into JavaScript, HTML, source maps or static fallback snapshots. |
 | Sugarkube | Staging topology, ingress/TLS, database lifecycle, runtime and migration identities, secret injection, network isolation, capacity, monitoring, backup/restore operations, rollout and rollback design. |
 | Shared decision | Engine evaluation, isolation proof, schema compatibility, recovery objectives and the release/API handshake. No database engine is selected here. |
+
+Initial-mode data may be decrypted in the selected API/worker when necessary, so
+compromised or privileged hosting/API/database/backup operators remain a content
+confidentiality risk. Keep runtime, migration, backup and human administration
+roles separate; audit access, qualify key custody/rotation/recovery, and minimize
+plaintext lifetime and replication. Require verified TLS for every service hop,
+encryption for data volumes and all backup copies, and no keys in code, URLs,
+logs or model context. Sugarkube owns infrastructure key management and recovery
+qualification; Axel defines minimum application access and safe content handling.
+Server-side column encryption, TLS or disk encryption does not make the operator
+blind: [PostgreSQL's encryption guidance](https://www.postgresql.org/docs/18/encryption-options.html)
+distinguishes those protections from client-side encryption. These requirements
+are design gates, not statements about current deployments.
+
+Avoid plaintext content in diagnostics, metrics, traces and crash reports. Backups
+retain content under encrypted, restricted storage and explicit retention/deletion
+policy; authorized restore still exposes it to its trusted recovery environment.
+Support/admin procedures must not silently expand board access or export data.
+Historical copies and already disclosed plaintext cannot be recalled by revocation.
 
 Use a same-origin backend-for-frontend (BFF) session boundary where the Sites
 deployment supports a verified route to it. Otherwise a separate origin needs an
@@ -162,6 +192,41 @@ expiry and policy version. Server enforcement applies independently of tool labe
 or prompt instructions. Agents cannot self-approve, link accounts or mint broader
 capabilities. Fixed approved execution profiles are separate from kanban CRUD.
 
+### First-class opt-in ChatGPT dot agent
+
+Support a verified authorized dot as a scoped read/write agent over the same
+authenticated API/MCP contract. In initial mode the trusted API may return only
+the approved board/task fields needed for that operation and validate returned
+updates before committing them. Selected plaintext enters OpenAI processing; it
+does not remain local, and no zero-retention or guaranteed-deletion claim is made.
+Do not infer product entitlement, autonomous wake behavior or a supported transport.
+Actual dot/MCP authentication, recipient/audience verification, secure connectivity
+and revocation capabilities must be demonstrated before enabling the adapter.
+If unsupported or unverifiable, report blocked; never use shared admin credentials.
+Initial mode does not require a local decrypting gateway. This proposal creates no
+credentials, grants or authorization to share actual data.
+
+Tenant-owner grants identify recipient, tenant/board/task scope, read versus write
+tools, allowed fields, purpose, expiry and either exact disclosure or a clearly
+bounded standing disclosure policy. A board grant does not authorize all future
+data, tools, destinations or exports. Recheck membership/grant state per request
+and queued execution; bind audience, request ID, payload digest and expected revision
+to resist substitution/replay. Return safe audit receipts, not raw content logs.
+Revocation stops future access and invalidates queued/cached authority; it cannot
+erase plaintext the dot/provider previously received. Offline/unavailable endpoints
+fail closed, not by widening scope. Agents cannot self-grant or approve actions.
+
+Private-by-default boards and minimal generic Slack notifications are preferred.
+Local agents and explicitly enrolled user-controlled LAN-only token.place compute
+remain suitable for private work; nodes processing plaintext are trusted endpoints.
+This online dot option does not override the sensitive local profile's exact-packet
+export rule or create access to its corpus, filesystem, UI or inference sessions.
+For optional future E2EE, a user-controlled gateway can provide scoped dot access
+without giving hosting content keys; its independent trust and lock/offline limits
+are specified in the [extension](kanban-e2ee-boundary.md).
+
+### Shared operation semantics
+
 Common envelopes include contract version, opaque request/operation ID, card ID,
 revision, safe status/error code and correlation ID. Durable idempotency binds
 tenant, board, principal, operation kind, key and canonical payload digest, in the
@@ -192,6 +257,16 @@ tenant policies, driver/extension safety, operational maturity and recovery proo
 memory safety alone is not isolation, and no engine has been selected.
 
 ## Slack request and response lifecycle
+
+Ordinary [Slack message events](https://docs.slack.dev/reference/events/message/)
+include plaintext. Slack and the receiving endpoint can see it; later encryption
+cannot retroactively make that intake E2EE. Initial mode allows this explicitly
+disclosed trusted-endpoint exception only for configured scopes, minimum needed
+content and approved retention. A user-controlled receiver can reduce hosting
+exposure, but does not hide the source from Slack. Prefer generic content-free
+notifications linking to the app entry, without card IDs/titles; notification
+timing still reveals activity and needs an approved audience policy. Optional
+card-specific replies must also satisfy the durable audience checks below.
 
 Only configured Kepler workspace/channel IDs map to an online tenant/board. Names
 are display metadata. Verify Slack's signature over raw request bytes and timestamp
@@ -272,7 +347,7 @@ For K269, retain both required design PR links even after archive.
 | Requester | Sign in or use authorized local identity, select an allowed board, create via UI/chat/MCP, inspect idempotent receipt/card link, answer questions, preview changes and follow each PR. Denied/stale/unknown requests remain explicit and retryable by original ID. |
 | Reviewer | Open an authorized card, inspect exact PR head/diff and CI/review evidence, ask questions and record findings against that revision. New commits show stale review; reviewer cannot turn a finding into action approval. |
 | Approver/owner | Inspect exact action/input/scope and each required PR's current head, checks and unresolved findings; approve only that action. Owner merges each PR separately outside this design. Reconciliation records partial merge, then Done only after all required owner merge receipts. |
-| Agent | Obtain narrow capability, read only permitted scope, propose/modify with revision checks, preserve questions and evidence, wait for action-specific approval, reconcile unknown outcomes and report blockers. No inferred merge/deploy authority or completion from its own text. |
+| Agent | Verify recipient identity and tenant-owner grant; obtain narrow read/write capability, disclose only approved fields to the local/LAN or authorized dot endpoint, and modify with revision checks. Preserve questions/evidence, await action-specific approval, reconcile unknown outcomes and report blockers. No self-grants or inferred merge/deploy authority. |
 | Import/export operator | Select authorized inventory and identity mapping, inspect dry-run counts/conflicts/digests, request separate commit/export/cutover approvals, verify restore/comparison and preserve receipts. Failure stays quarantined and resumable without public data release. |
 
 ## Import, export, schema migration and cutover
@@ -369,6 +444,8 @@ regression gate; none has been executed by this documentation PR.
 | Supply chain/release | Modified lockfile, tag/artifact substitution, unsigned/untrusted provenance, schema mismatch and compromised dependency fixture block admission; clean rebuild digest and receipt agree. | Trusted builder compromise; release/Sugarkube owners. |
 | Recovery/availability | Rate floods, full disk, lost acknowledgement, removed channel, revoked actor, restart and restore preserve idempotency and bounded queues; kill switch stops new work and legitimate recovery remains possible. | Denial of service and unknown external sends; shared owner. |
 | Profile separation | With Internet disabled, local board works; private LAN inference cannot reach online adapter routes, telemetry or fallback providers. Online workers cannot reach corpus/UI or local backups. | Host/admin compromise; deployment/security owner. |
+| Initial-mode encryption/keys | Plaintext transport, wrong certificate, unencrypted volume/backup, wrong restore key and unauthorized key access fail; approved encrypted backup/restore and rotation succeed. Verify no content in diagnostics. | Privileged operators may still decrypt; shared owner. |
+| Dot recipient/disclosure | Forged recipient/audience, cross-board field requests, expired/revoked grants, replayed writes and queued actions after revocation fail; valid scoped read/write succeeds with recorded disclosure scope. No outage fallback to broader tools or credentials. | Already disclosed plaintext/provider retention; Axel/integration owner. |
 | Multi-PR completion | One merged/one open, stale head CI, dismissed review, closed-unmerged and missing companion link never yield Done; verified owner merges for every required PR do. | Provider observation delay; Axel owner. |
 
 Implementation evidence must attach fixture version, tested release/head, environment,
@@ -387,10 +464,23 @@ profile and numerical resource limits; authority freshness anchor; DB engine and
 isolation proof; backup/key custody, recovery objectives and retention; cutover
 window and backward-compatible migration policy. Future ChatGPT identity requires
 actual partner access and a separately verified contract. No engine or entitlement
-is implied by acceptance of this design.
+is implied by acceptance of this design. Initial-mode dot identity/tool authorization,
+field/disclosure scope, encryption/key management and provider retention review also
+remain implementation gates. Website sign-in eligibility is distinct from agent
+authorization; neither proves the other. Full E2EE decisions and qualification are
+tracked separately in [Axel #252](https://github.com/futuroptimist/axel/issues/252).
 
-The [companion platform design](https://github.com/futuroptimist/sugarkube/blob/367e7a90c68a4baa84864fa6135ac9cefca1a96c/docs/design/axel-database-platform.md)
-was inspected at head `367e7a90c68a4baa84864fa6135ac9cefca1a96c`. Its provisional
+The [companion platform design](https://github.com/futuroptimist/sugarkube/blob/9bc51b2a1d34eb25fb540e2631464069fbac8f68/docs/design/axel-database-platform.md)
+was re-inspected at published head `9bc51b2a1d34eb25fb540e2631464069fbac8f68`.
+That revision predates these initial-mode/dot clarifications and optional E2EE
+roadmap notes. The companion's local amended `docs/design/axel-database-platform.md`
+was then inspected at SHA-256
+`9eadb6a27969e609c9475136f62c54d60a3cdd4841a0d411119bb6655e937727`.
+It aligns initial trusted-server processing, scoped dots/Slack without a mandatory
+gateway, and optional future E2EE. This identifies an observed local snapshot, not
+a published/final head or automatic approval of subsequent edits. Record actual
+reviewed heads separately after publication; no mutually dependent final hashes.
+Its provisional
 PostgreSQL-first evaluation does not select an engine. Its encrypted off-site
 recovery proposal applies to the separately approved online service; it does not
 change the sensitive profile's device-local backup restriction. Sites publication

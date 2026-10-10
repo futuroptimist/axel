@@ -75,6 +75,7 @@ Automated coverage for these references lives in
 - [x] configurable, DST-aware working-hours guard for hillclimb mutations (see [Hillclimb](docs/HILLCLIMB.md#working-hours-guard))
 - [x] achieve 100% test coverage
 - [ ] bounded resumable local backup and restore ([proposed design](docs/design/resumable-backup-contract.md); implementation requires separate authorization)
+- [ ] sanitized kanban domain/UI and adapter extraction ([K269 design](docs/design/sanitized-kanban-contract.md); online integrations, migration and deployment require separate authorization)
 
 ## installation
 

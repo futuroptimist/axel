@@ -217,7 +217,16 @@ link, suppressing mentions and unfurls. Posting a link is itself disclosure: req
 the destination's current audience to be allowed to know that card exists. If a
 private board has a narrower audience than the channel, withhold the card link and
 content; show blocked delivery in authorized UI. Do not fall back to a public
-channel or DM. The sensitive local profile still requires exact packet approval.
+channel or DM. Current audience validation alone is insufficient: retained Slack
+history can be read by future joiners, rejoiners and connected organizations.
+Card-specific replies require a proven durable membership/history constraint that
+keeps every future history reader within the approved existence-disclosure audience,
+including invitation, rejoin, revocation, sharing and export paths. If the provider
+and workspace policy cannot enforce that constraint, do not post a card-specific
+link or title. Show the card link only in authenticated Axel UI; an independently
+approved generic portal reply may contain no card identifier or existence detail.
+Message deletion and link expiry cannot retract already disclosed existence. The
+sensitive local profile still requires exact packet approval.
 
 Edits append source revisions and propose a card change under optimistic concurrency;
 they do not silently rewrite approvals, reviewed heads or completed actions. Deletes
@@ -349,7 +358,7 @@ regression gate; none has been executed by this documentation PR.
 | --- | --- | --- |
 | Login/session/CSRF | Reject wrong/reused state, substituted code/verifier, callback/open redirect, session fixation, missing CSRF, hostile Origin and expired/revoked sessions; valid login and scoped write succeed. | Browser/provider compromise; Axel identity owner. |
 | Account linking/Sites bridge | Same email/name cannot link; swapped subject/issuer/audience, forged header and replay fail; independently verified subject linking succeeds. | Provider recovery fraud; identity owner. |
-| Slack forgery/replay | Invalid raw-body signature, stale timestamp, wrong workspace/channel, duplicate event and edit/delete reordering cannot create repeated work; valid configured sender creates one request. | Provider compromise and ambiguous delivery; integration owner. |
+| Slack forgery/replay/history | Invalid raw-body signature, stale timestamp, wrong workspace/channel, duplicate event and edit/delete reordering cannot create repeated work; valid configured sender creates one request. Future join/rejoin, connected organization, revoked reader and history-export tests must preserve the approved disclosure audience or block card-specific replies. | Provider compromise and ambiguous delivery; integration owner. |
 | Prompt injection/tool authority | Malicious text, attachments, CI output and imported approvals cannot invoke shell/SQL, broaden capabilities, approve or deploy; allowed typed proposals work. | Bugs in approved tools; Axel/security reviewer. |
 | Tenant/board IDOR | Cross-tenant and same-tenant private-board guesses fail on CRUD, archives, history, search/facets, links, caches, jobs, subscriptions and export/status/download; authorized equivalents succeed without existence leaks. | Policy implementation defects; Axel/storage owner. |
 | Import/archive abuse | Truncation, checksum substitution, unknown schema, omitted archives/history, giant cells, bombs, nesting, traversal, symlink and collision tests fail before unsafe allocation/activation; bounded synthetic round trip preserves exact inventory. | Parser defects/resource exhaustion; importer owner. |

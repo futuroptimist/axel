@@ -6,8 +6,10 @@ sanitized source and synthetic fixtures. This proposal creates no service, ident
 registration, database, migration, import, deployment or entitlement. Implementation,
 private migration and deployment require separate work and action-specific authority.
 
-K269 is one card with two required design PRs: this Axel contract and a separate
-Sugarkube database-responsibility contract. Keep both explicit direct PR links on
+K269 is one card with two required design PRs:
+[Axel #251](https://github.com/futuroptimist/axel/pull/251) and
+[Sugarkube #2910](https://github.com/futuroptimist/sugarkube/pull/2910).
+Keep both explicit direct PR links on
 that card, with independent heads, checks, reviews and merge receipts. A missing
 companion link blocks readiness. Only the owner merges; one merge is **partially
 merged**, and Done requires both required PRs owner-merged. Implementation is not
@@ -375,6 +377,13 @@ isolation proof; backup/key custody, recovery objectives and retention; cutover
 window and backward-compatible migration policy. Future ChatGPT identity requires
 actual partner access and a separately verified contract. No engine or entitlement
 is implied by acceptance of this design.
+
+The [companion platform design](https://github.com/futuroptimist/sugarkube/blob/367e7a90c68a4baa84864fa6135ac9cefca1a96c/docs/design/axel-database-platform.md)
+was inspected at head `367e7a90c68a4baa84864fa6135ac9cefca1a96c`. Its provisional
+PostgreSQL-first evaluation does not select an engine. Its encrypted off-site
+recovery proposal applies to the separately approved online service; it does not
+change the sensitive profile's device-local backup restriction. Sites publication
+automation remains unverified and needs a manual verification gate until supported.
 
 The companion Sugarkube PR must agree the release/compatibility handshake above,
 privilege split, health semantics, backup/test-restore gates and staging-only rollout

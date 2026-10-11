@@ -32,6 +32,13 @@ the MVP because it creates public ingress and requires a separate threat model.
 
 ## Goals and non-goals
 
+For private bookmark planning and optional Slack/Discord exports, see the separate
+[private LAN planning design](chat-operations-contract.md). Its sensitive profile
+keeps processing within the user's isolated LAN and excludes this network-capable
+official Remote Control workflow. Any handoff here requires a separately approved
+sanitized export; it grants no corpus access, chat-based deployment, or unrestricted
+session control.
+
 ### Goals
 
 - Control or continue a local Claude Code session from an iPhone.

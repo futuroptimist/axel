@@ -1,3 +1,4 @@
+import zoneinfo
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -48,6 +49,27 @@ def test_dst_changes_preserve_nine_am_local_start(date, utc_start):
 )
 def test_dst_transition_sundays_are_not_blocked(instant):
     assert not WorkingHours().blocks_mutations(datetime.fromisoformat(instant))
+
+
+def test_packaged_tzdata_preserves_paraguay_working_hours():
+    original_tzpath = zoneinfo.TZPATH
+    try:
+        # Exercise the packaged fallback even on hosts with a system timezone DB.
+        zoneinfo.reset_tzpath(())
+        ZoneInfo.clear_cache()
+        policy = WorkingHours(timezone="America/Asuncion")
+        # IANA 2025a made Paraguay permanently UTC-03, including April 2026.
+        instant = datetime.fromisoformat("2026-04-13T12:30:00+00:00")
+        assert policy.blocks_mutations(instant)  # 09:30 local, not 08:30.
+        start = instant.replace(minute=0)
+        end = start + timedelta(hours=8)
+        assert not policy.blocks_mutations(start - timedelta(microseconds=1))
+        assert policy.blocks_mutations(start)
+        assert policy.blocks_mutations(end - timedelta(microseconds=1))
+        assert not policy.blocks_mutations(end)
+    finally:
+        zoneinfo.reset_tzpath(original_tzpath)
+        ZoneInfo.clear_cache()
 
 
 def test_utc_date_does_not_determine_local_weekday():

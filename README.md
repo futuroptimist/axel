@@ -63,6 +63,7 @@ Automated coverage for these references lives in
 - [x] integrate `token.place` clients across all repos
 - [x] integrate [`gabriel`](https://github.com/futuroptimist/gabriel) as a security layer across repos
 - [x] self-hosted Discord bot for ingesting messages when mentioned (see docs/discord-bot.md)
+- [ ] private LAN bookmark planning, local queues and separately approved Slack/Discord exports ([proposed design](docs/design/chat-operations-contract.md); documentation only, isolation controls pending)
 - [x] represent personal flywheel of projects and highlight cross-pollination (see repo list below)
 - [x] document workflow for a private `local/` directory (see local setup below)
 - [x] track tasks with markdown files in the `issues/` folder

@@ -232,10 +232,38 @@ def test_invalid_graph_and_scope_reject_entire_batch(tmp_path):
 
 def test_no_extension_or_sql_command_interface(tmp_path):
     with LifecycleStore.initialize_new(tmp_path / "db", SCOPE) as store:
-        with pytest.raises(sqlite3.OperationalError, match="not authorized"):
+        with pytest.raises(
+            sqlite3.OperationalError, match="not authorized|no such function"
+        ):
             store._db.execute("SELECT load_extension('invented')")
         with pytest.raises(m.RecordError):
             store.append("DELETE FROM records")
+
+
+def test_sqlite_without_optional_extension_control_can_create_and_reopen(
+    tmp_path, monkeypatch
+):
+    class NoExtensionControl(sqlite3.Connection):
+        @property
+        def enable_load_extension(self):
+            raise AttributeError("extension loading is not supported by this build")
+
+    connect = sqlite3.connect
+
+    def without_extension_control(*args, **kwargs):
+        return connect(*args, **kwargs, factory=NoExtensionControl)
+
+    monkeypatch.setattr(sqlite3, "connect", without_extension_control)
+    path = tmp_path / "db"
+    with LifecycleStore.initialize_new(path, SCOPE) as store:
+        receipt = store.append(command())
+    with LifecycleStore.open_existing(path, SCOPE) as store:
+        assert store.append(command()) == receipt
+        assert store.snapshot().records == (task(),)
+        with pytest.raises(
+            sqlite3.OperationalError, match="not authorized|no such function"
+        ):
+            store._db.execute("SELECT load_extension('invented')")
 
 
 def test_failed_initialization_and_live_corruption_require_recovery(

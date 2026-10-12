@@ -52,7 +52,8 @@ tested cases. UNC/network-share paths are rejected. Filesystem mounts, permissio
 and OS containment still require separate qualification.
 
 The adapter verifies its fixed schema, application/schema version, foreign keys,
-`DELETE` journal mode and `FULL` synchronous mode. Extension loading is disabled.
+`DELETE` journal mode and `FULL` synchronous mode. Extension loading is disabled
+where supported; Python builds without extension-loading support also work.
 It accepts typed append commands, not SQL or callbacks. Private implementation
 attributes are not a sandbox against hostile Python running in the same process.
 
@@ -151,7 +152,8 @@ provenance independently and recheck current policy at use.
   not dispatch-time fencing.
 - Explicit stop observations remain latched across clock advance, revision change
   and reopen. Only an explicit resume referencing the current stop clears the
-  synthetic latch, and only once its observation time is reached. Future task,
+  synthetic latch, and only once its observation time is reached. Replacing a
+  latched stop or resuming it cannot regress its source or observation time. Future task,
   attempt, dependency and transition observations block readiness; a future
   success cannot establish acceptance. Missing/stale policy, unknown stop state and
   missing capabilities block. Lease expiry cannot imply completion or retry permission.

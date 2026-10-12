@@ -120,7 +120,10 @@ def _validate_command(command):
 def _connect(path, *, readonly, timeout):
     uri = path.as_uri() + ("?mode=ro&immutable=1" if readonly else "?mode=rw")
     connection = sqlite3.connect(uri, uri=True, timeout=timeout, isolation_level=None)
-    connection.enable_load_extension(False)
+    # The optional method is absent on builds without extension-loading support.
+    disable_extensions = getattr(connection, "enable_load_extension", None)
+    if disable_extensions is not None:
+        disable_extensions(False)
     connection.execute("PRAGMA trusted_schema=OFF")
     connection.execute("PRAGMA foreign_keys=ON")
     connection.execute("PRAGMA synchronous=FULL")

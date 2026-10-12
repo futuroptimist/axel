@@ -396,3 +396,20 @@ def test_codec_handles_escaped_text_and_references_without_authority():
     invalid["value"]["extra"] = "rejected"
     with pytest.raises(m.RecordError):
         m.decode_record(m.canonical(invalid))
+
+
+@pytest.mark.parametrize("action", ["resume", "stop"])
+@pytest.mark.parametrize("source,observed", [(100, 100), (100, 500)])
+def test_stop_latch_changes_cannot_regress_referenced_times(action, source, observed):
+    stop = m.Transition(envelope("stop", source_at=500, observed_at=500), "stop")
+    change = m.Transition(
+        envelope("change", source_at=source, observed_at=observed),
+        action,
+        "stop" if action == "resume" else None,
+    )
+    with pytest.raises(m.RecordError, match="stop_time"):
+        snapshot(task(), stop, change)
+    valid = replace(
+        change, envelope=replace(change.envelope, source_at=500, observed_at=500)
+    )
+    snapshot(task(), stop, valid)

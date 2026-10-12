@@ -608,6 +608,13 @@ def validate_snapshot(snapshot: Snapshot) -> dict[str, TaskRevision]:
                             "supersedes_attempt",
                         )
         if isinstance(record, Transition):
+            if record.action in ("stop", "resume") and env.task_id in stops:
+                stop = by_id[stops[env.task_id]].envelope
+                require(
+                    env.observed_at >= stop.observed_at
+                    and env.source_at >= stop.source_at,
+                    "stop_time",
+                )
             if record.action == "stop":
                 stops[env.task_id] = env.record_id
             elif record.action == "resume":

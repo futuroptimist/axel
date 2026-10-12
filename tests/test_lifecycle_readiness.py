@@ -1,7 +1,7 @@
 """Pure synthetic policy/evidence acceptance; no grants are authenticated here."""
 
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone, tzinfo
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -438,7 +438,7 @@ def test_modules_import_without_network_subprocess_or_unexpected_files():
 
     code = """
 import dataclasses, datetime, functools, hashlib, json, os, pathlib
-import re, sqlite3, sys, types, typing
+import re, sqlite3, sys, types, typing, zoneinfo
 import axel
 root = pathlib.Path(axel.__file__).parent.resolve()
 names = ('lifecycle_records', 'lifecycle_store', 'lifecycle_readiness')
@@ -520,6 +520,7 @@ def test_future_successful_attempt_cannot_establish_runtime_acceptance():
     attempt = m.Attempt(
         envelope("attempt", observed_at=500, source_at=500), "attempt", 1, "succeeded"
     )
+
     evidence = m.Evidence(
         envelope("runtime"),
         "runtime",
@@ -547,3 +548,27 @@ def test_future_successful_attempt_cannot_establish_runtime_acceptance():
         ).accepted_stage
         == "runtime"
     )
+
+
+@pytest.mark.parametrize(
+    "zone", [ZoneInfo("UTC"), ZoneInfo("Etc/UTC"), timezone(timedelta(0), "UTC-name")]
+)
+def test_equivalent_utc_clocks_preserve_readiness_and_time_gates(zone):
+    clock = datetime.fromtimestamp(110, zone)
+    assert evaluate(task(), review(), now=clock) == evaluate(task(), review())
+    assert (
+        "CUTOFF"
+        in evaluate(
+            task(), review(), now=clock, policy=replace(POLICY, cutoff_at=110)
+        ).blockers
+    )
+
+
+def test_custom_timezone_callbacks_and_non_utc_offsets_are_rejected():
+    class UntrustedZone(tzinfo):
+        def utcoffset(self, value):
+            raise AssertionError("timezone callback must not execute")
+
+    for zone in (UntrustedZone(), timezone(timedelta(hours=1))):
+        clock = datetime(2026, 1, 1, tzinfo=zone)
+        assert "AMBIGUOUS_TIME" in evaluate(task(), review(), now=clock).blockers

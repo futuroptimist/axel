@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from . import lifecycle_records as model
 
@@ -103,7 +104,11 @@ def evaluate(
         or expected_ledger_revision != snapshot.ledger_revision
     ):
         global_blockers.add("SNAPSHOT_CHANGED")
-    if type(now) is not datetime or now.tzinfo is not timezone.utc:
+    if (
+        type(now) is not datetime
+        or type(now.tzinfo) not in (timezone, ZoneInfo)
+        or now.utcoffset() != timedelta(0)
+    ):
         global_blockers.add("AMBIGUOUS_TIME")
         instant = None
     else:

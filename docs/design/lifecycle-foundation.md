@@ -117,7 +117,9 @@ measurements do not qualify maximum-capacity performance or power-loss durabilit
 
 `evaluate(snapshot, task_id, expected_ledger_revision=..., now=..., policy=...)`
 performs no I/O and reads no system clock. It accepts an explicit UTC-aware
-`datetime`; naive or local-wall clocks return `AMBIGUOUS_TIME`. A caller must
+`datetime` with a standard `datetime.timezone` or `zoneinfo.ZoneInfo` and zero UTC
+offset. Equivalent UTC zone objects work; naive/non-UTC clocks and custom timezone
+callbacks return `AMBIGUOUS_TIME`. A caller must
 resolve working-hour intervals to UTC with its timezone/DST rules before calling.
 Policy windows are start-inclusive/end-exclusive. Explicit cutoff and deadline
 instants are inclusive: the exact instant blocks. Policy expiry blocks at expiry.

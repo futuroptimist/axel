@@ -137,6 +137,119 @@ def _local_path(path):
     return Path(path).absolute()
 
 
+def _read_history(db, scope):
+    model.require(
+        db.execute("PRAGMA application_id").fetchone()[0] == APPLICATION_ID
+        and db.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION,
+        "schema",
+    )
+    model.require(
+        db.execute("PRAGMA journal_mode").fetchone()[0] == "delete"
+        and db.execute("PRAGMA synchronous").fetchone()[0] == 2
+        and db.execute("PRAGMA foreign_keys").fetchone()[0] == 1,
+        "settings",
+    )
+    actual = {
+        row[0]
+        for row in db.execute("SELECT sql FROM sqlite_schema WHERE sql IS NOT NULL")
+    }
+    model.require(actual == set(SCHEMA), "schema")
+    model.require(
+        db.execute("PRAGMA quick_check").fetchall() == [("ok",)]
+        and not db.execute("PRAGMA foreign_key_check").fetchall(),
+        "integrity",
+    )
+    metadata = db.execute("SELECT * FROM metadata").fetchall()
+    model.require(len(metadata) == 1, "metadata")
+    _, workspace, profile, revision, count, size = metadata[0]
+    model.require(
+        (workspace, profile) == (scope.workspace_id, scope.profile_id),
+        "scope",
+    )
+    # Aggregate lengths before fetching any untrusted encoded payload.
+    inventory = db.execute(
+        "SELECT count(*), coalesce(sum(length(payload)),0), "
+        "coalesce(max(length(payload)),0) FROM records"
+    ).fetchone()
+    model.require(
+        inventory[:2] == (count, size)
+        and 0 <= count <= model.MAX_RECORDS
+        and 0 <= size <= model.MAX_PAYLOAD_BYTES
+        and inventory[2] <= model.MAX_RECORD_BYTES,
+        "retention",
+    )
+    operations_size = db.execute(
+        "SELECT count(*), coalesce(max(length(command)),0), "
+        "coalesce(sum(length(command)),0) FROM operations"
+    ).fetchone()
+    model.require(
+        operations_size[0] == revision
+        and 0 <= revision <= count
+        and operations_size[1] <= model.MAX_RECORD_BYTES
+        and operations_size[2] <= model.MAX_PAYLOAD_BYTES,
+        "operations",
+    )
+    model.require(
+        db.execute("SELECT count(*) FROM task_heads").fetchone()[0] <= model.MAX_TASKS
+        and db.execute("SELECT count(*) FROM audit").fetchone()[0] == revision,
+        "projection_size",
+    )
+    rows = db.execute(
+        "SELECT sequence, record_id, revision, payload "
+        "FROM records ORDER BY sequence"
+    ).fetchall()
+    model.require([row[0] for row in rows] == list(range(1, count + 1)), "sequence")
+    records = tuple(model.decode_record(row[3]) for row in rows)
+    model.require(
+        all(row[1] == record.envelope.record_id for row, record in zip(rows, records)),
+        "record_id",
+    )
+    snapshot = model.Snapshot(scope, revision, records)
+    latest = model.validate_snapshot(snapshot)
+    heads = set(db.execute("SELECT * FROM task_heads"))
+    model.require(
+        heads
+        == {
+            (task, r.envelope.task_revision, r.envelope.record_id)
+            for task, r in latest.items()
+        },
+        "projection",
+    )
+    operations = db.execute("SELECT * FROM operations ORDER BY revision").fetchall()
+    model.require(
+        [r[0] for r in operations] == list(range(1, revision + 1)),
+        "operation_sequence",
+    )
+    model.require(
+        set(db.execute("SELECT * FROM audit")) == {(r[0], r[3]) for r in operations},
+        "audit",
+    )
+    receipts, groups = {}, {}
+    for row in rows:
+        groups.setdefault(row[2], []).append(row)
+    for rev, principal, key, digest, raw in operations:
+        group = groups.get(rev, [])
+        model.require(0 < len(group) <= model.MAX_COMMAND_RECORDS, "operation_records")
+        data = json.loads(raw)
+        model.require(
+            model.canonical(data) == raw and model.payload_digest(raw) == digest,
+            "operation_digest",
+        )
+        model.require(
+            data["records"] == [model.payload_digest(row[3]) for row in group]
+            and data["expected_ledger_revision"] == rev - 1
+            and data["principal"] == principal
+            and data["operation_key"] == key
+            and data["kind"] == "append"
+            and model.canonical(data["scope"]) == model.canonical(scope),
+            "operation_binding",
+        )
+        receipts[(principal, key)] = model.OperationReceipt(
+            scope, principal, key, digest, rev, tuple(row[1] for row in group)
+        )
+    return snapshot, receipts, size
+
+
 class LifecycleStore:
     """One explicit connection; concurrent writers use separate store instances."""
 
@@ -233,124 +346,7 @@ class LifecycleStore:
         self.close()
 
     def _read(self):
-        db = self._db
-        model.require(
-            db.execute("PRAGMA application_id").fetchone()[0] == APPLICATION_ID
-            and db.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION,
-            "schema",
-        )
-        model.require(
-            db.execute("PRAGMA journal_mode").fetchone()[0] == "delete"
-            and db.execute("PRAGMA synchronous").fetchone()[0] == 2
-            and db.execute("PRAGMA foreign_keys").fetchone()[0] == 1,
-            "settings",
-        )
-        actual = {
-            row[0]
-            for row in db.execute("SELECT sql FROM sqlite_schema WHERE sql IS NOT NULL")
-        }
-        model.require(actual == set(SCHEMA), "schema")
-        model.require(
-            db.execute("PRAGMA quick_check").fetchall() == [("ok",)]
-            and not db.execute("PRAGMA foreign_key_check").fetchall(),
-            "integrity",
-        )
-        metadata = db.execute("SELECT * FROM metadata").fetchall()
-        model.require(len(metadata) == 1, "metadata")
-        _, workspace, profile, revision, count, size = metadata[0]
-        model.require(
-            (workspace, profile) == (self.scope.workspace_id, self.scope.profile_id),
-            "scope",
-        )
-        # Aggregate lengths before fetching any untrusted encoded payload.
-        inventory = db.execute(
-            "SELECT count(*), coalesce(sum(length(payload)),0), "
-            "coalesce(max(length(payload)),0) FROM records"
-        ).fetchone()
-        model.require(
-            inventory[:2] == (count, size)
-            and 0 <= count <= model.MAX_RECORDS
-            and 0 <= size <= model.MAX_PAYLOAD_BYTES
-            and inventory[2] <= model.MAX_RECORD_BYTES,
-            "retention",
-        )
-        operations_size = db.execute(
-            "SELECT count(*), coalesce(max(length(command)),0), "
-            "coalesce(sum(length(command)),0) FROM operations"
-        ).fetchone()
-        model.require(
-            operations_size[0] == revision
-            and 0 <= revision <= count
-            and operations_size[1] <= model.MAX_RECORD_BYTES
-            and operations_size[2] <= model.MAX_PAYLOAD_BYTES,
-            "operations",
-        )
-        model.require(
-            db.execute("SELECT count(*) FROM task_heads").fetchone()[0]
-            <= model.MAX_TASKS
-            and db.execute("SELECT count(*) FROM audit").fetchone()[0] == revision,
-            "projection_size",
-        )
-        rows = db.execute(
-            "SELECT sequence, record_id, revision, payload "
-            "FROM records ORDER BY sequence"
-        ).fetchall()
-        model.require([row[0] for row in rows] == list(range(1, count + 1)), "sequence")
-        records = tuple(model.decode_record(row[3]) for row in rows)
-        model.require(
-            all(
-                row[1] == record.envelope.record_id
-                for row, record in zip(rows, records)
-            ),
-            "record_id",
-        )
-        snapshot = model.Snapshot(self.scope, revision, records)
-        latest = model.validate_snapshot(snapshot)
-        heads = set(db.execute("SELECT * FROM task_heads"))
-        model.require(
-            heads
-            == {
-                (task, r.envelope.task_revision, r.envelope.record_id)
-                for task, r in latest.items()
-            },
-            "projection",
-        )
-        operations = db.execute("SELECT * FROM operations ORDER BY revision").fetchall()
-        model.require(
-            [r[0] for r in operations] == list(range(1, revision + 1)),
-            "operation_sequence",
-        )
-        model.require(
-            set(db.execute("SELECT * FROM audit"))
-            == {(r[0], r[3]) for r in operations},
-            "audit",
-        )
-        receipts, groups = {}, {}
-        for row in rows:
-            groups.setdefault(row[2], []).append(row)
-        for rev, principal, key, digest, raw in operations:
-            group = groups.get(rev, [])
-            model.require(
-                0 < len(group) <= model.MAX_COMMAND_RECORDS, "operation_records"
-            )
-            data = json.loads(raw)
-            model.require(
-                model.canonical(data) == raw and model.payload_digest(raw) == digest,
-                "operation_digest",
-            )
-            model.require(
-                data["records"] == [model.payload_digest(row[3]) for row in group]
-                and data["expected_ledger_revision"] == rev - 1
-                and data["principal"] == principal
-                and data["operation_key"] == key
-                and data["kind"] == "append"
-                and model.canonical(data["scope"]) == model.canonical(self.scope),
-                "operation_binding",
-            )
-            receipts[(principal, key)] = model.OperationReceipt(
-                self.scope, principal, key, digest, rev, tuple(row[1] for row in group)
-            )
-        return snapshot, receipts, size
+        return _read_history(self._db, self.scope)
 
     def snapshot(self) -> model.Snapshot:
         try:

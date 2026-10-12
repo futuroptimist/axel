@@ -378,28 +378,9 @@ def main(argv: Sequence[str] | None = None) -> None:
         help="Request timeout in seconds (defaults to %(default)s)",
     )
 
-    rotate_cmd = sub.add_parser(
+    sub.add_parser(
         "rotate",
-        help="Rotate token.place API keys",
-    )
-    rotate_cmd.add_argument(
-        "--base-url",
-        default=None,
-        help=(
-            "token.place API base URL (defaults to AXEL_TOKEN_PLACE_URL or "
-            f"{DEFAULT_API_URL})"
-        ),
-    )
-    rotate_cmd.add_argument(
-        "--api-key",
-        default=None,
-        help="token.place API key (defaults to TOKEN_PLACE_API_KEY)",
-    )
-    rotate_cmd.add_argument(
-        "--timeout",
-        type=int,
-        default=DEFAULT_TIMEOUT,
-        help="Request timeout in seconds (defaults to %(default)s)",
+        help="Disabled until secure credential delivery is available",
     )
 
     # Subcommand: plan client integrations
@@ -432,6 +413,15 @@ def main(argv: Sequence[str] | None = None) -> None:
     if not parsed_args or parsed_args[0].startswith("-"):
         parsed_args = ["list", *parsed_args]
 
+    # Refuse before parsing so malformed arguments cannot echo credentials.
+    if parsed_args[0] == "rotate":
+        print(
+            "CLI token.place key rotation is disabled until secure credential "
+            "delivery is available. No rotation request was sent.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
     args = parser.parse_args(parsed_args)
 
     if args.cmd == "list":
@@ -450,20 +440,6 @@ def main(argv: Sequence[str] | None = None) -> None:
         print("Available models:")
         for model in models:
             print(f"- {model}")
-        return
-
-    if args.cmd == "rotate":
-        try:
-            keys = rotate_api_keys(
-                base_url=args.base_url, api_key=args.api_key, timeout=args.timeout
-            )
-        except TokenPlaceError as exc:
-            print(f"Failed to rotate keys: {exc}", file=sys.stderr)
-            raise SystemExit(1) from exc
-
-        print("Rotated token.place keys:")
-        for name, value in keys.items():
-            print(f"- {name}: {value}")
         return
 
     if args.cmd == "clients":

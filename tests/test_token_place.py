@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 
@@ -47,7 +48,7 @@ class DummyResponse:
 
 
 def test_rotate_api_keys_requests_new_tokens(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Rotating keys posts to the auth endpoint and returns secrets."""
 
@@ -75,6 +76,8 @@ def test_rotate_api_keys_requests_new_tokens(
     assert headers["Accept"] == "application/json"
     assert captured["timeout"] == 15
     assert result == {"relay": "relay-new", "server": "server-new"}
+    captured_output = capsys.readouterr()
+    assert captured_output.out == captured_output.err == ""
 
 
 def test_rotate_api_keys_requires_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -236,51 +239,54 @@ def test_main_reports_errors(
     assert "offline" in captured.err
 
 
-def test_main_rotate_prints_keys(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """The rotate subcommand should display refreshed credentials."""
-
-    monkeypatch.setattr(
-        token_place,
-        "rotate_api_keys",
-        lambda base_url=None, api_key=None, timeout=token_place.DEFAULT_TIMEOUT: {
-            "relay": "relay-new",
-            "server": "server-new",
-        },
-    )
-
-    token_place.main(
+@pytest.mark.parametrize("use_sys_argv", [False, True])
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        [],
         [
-            "rotate",
             "--base-url",
-            "https://token.place/api/v1",
+            "https://provider.example.invalid/api/v1",
             "--api-key",
-            "secret",
-        ]
-    )
-
-    output = capsys.readouterr().out.strip().splitlines()
-    assert output[0].startswith("Rotated token.place keys:")
-    assert "- relay: relay-new" in output
-    assert "- server: server-new" in output
-
-
-def test_main_rotate_reports_errors(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+            "synthetic-cli-key",
+        ],
+        ["--api-key=synthetic-cli-key"],
+        ["--timeout", "synthetic-cli-key"],
+        ["--unexpected", "synthetic-cli-key"],
+        ["--help"],
+    ],
+)
+def test_main_rotate_refuses_without_requests_or_credential_output(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    arguments: list[str],
+    use_sys_argv: bool,
 ) -> None:
-    """Rotation failures exit with a helpful message."""
+    """Even malformed rotation arguments are refused without echoing secrets."""
 
-    def boom(**_: object) -> dict[str, str]:  # pragma: no cover - helper
-        raise token_place.TokenPlaceError("denied")
-
-    monkeypatch.setattr(token_place, "rotate_api_keys", boom)
+    rotate = Mock(return_value={"relay": "relay-new", "server": "server-new"})
+    post = Mock(side_effect=AssertionError("CLI rotation must not send requests"))
+    resolve_key = Mock(side_effect=AssertionError("CLI must not resolve API keys"))
+    monkeypatch.setattr(token_place, "rotate_api_keys", rotate)
+    monkeypatch.setattr(token_place.requests, "post", post)
+    monkeypatch.setattr(token_place, "_resolve_api_key", resolve_key)
+    monkeypatch.setenv("TOKEN_PLACE_API_KEY", "synthetic-environment-key")
+    argv = ["rotate", *arguments]
+    monkeypatch.setattr(sys, "argv", ["token_place", *argv])
 
     with pytest.raises(SystemExit) as excinfo:
-        token_place.main(["rotate"])
+        token_place.main(None if use_sys_argv else argv)
 
     assert excinfo.value.code == 1
-    assert "denied" in capsys.readouterr().err
+    rotate.assert_not_called()
+    post.assert_not_called()
+    resolve_key.assert_not_called()
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert output.err == (
+        "CLI token.place key rotation is disabled until secure credential "
+        "delivery is available. No rotation request was sent.\n"
+    )
 
 
 def test_main_reports_empty_model_list(

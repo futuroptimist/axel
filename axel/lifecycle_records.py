@@ -574,6 +574,11 @@ def validate_snapshot(snapshot: Snapshot) -> dict[str, TaskRevision]:
             if previous:
                 require(binding(env) == binding(previous.envelope), "attempt_binding")
                 require(previous.state in ("running", "unknown"), "terminal_attempt")
+                require(
+                    env.source_at >= previous.envelope.source_at
+                    and env.observed_at >= previous.envelope.observed_at,
+                    "attempt_time",
+                )
             attempts[record.attempt_id] = record
         if isinstance(record, Evidence) and record.attempt_id is not None:
             attempt = attempts.get(record.attempt_id)

@@ -137,6 +137,8 @@ provenance independently and recheck current policy at use.
   unrelated success cannot hide a failed check. Supersession preserves history,
   requires the same source/channel/binding and cannot regress source time or run
   attempt. Arrival order is not evidence of success.
+- Each successor attempt sequence must retain or advance both its source and
+  observation timestamps; a backdated success cannot replace a later running state.
 - Reviews bind the complete required PR/head tuple and requested stage. Model
   observations neither satisfy nor poison a required human review. Unresolved
   human findings, dismissal,

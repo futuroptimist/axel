@@ -413,3 +413,21 @@ def test_stop_latch_changes_cannot_regress_referenced_times(action, source, obse
         change, envelope=replace(change.envelope, source_at=500, observed_at=500)
     )
     snapshot(task(), stop, valid)
+
+
+@pytest.mark.parametrize("source,observed", [(50, 50), (50, 100)])
+def test_attempt_success_cannot_predate_previous_sequence(source, observed):
+    running = m.Attempt(envelope("running"), "attempt", 1, "running")
+    succeeded = m.Attempt(
+        envelope("succeeded", source_at=source, observed_at=observed),
+        "attempt",
+        2,
+        "succeeded",
+    )
+    with pytest.raises(m.RecordError, match="attempt_time"):
+        snapshot(task(), running, succeeded)
+    valid = replace(
+        succeeded,
+        envelope=replace(succeeded.envelope, source_at=100, observed_at=100),
+    )
+    snapshot(task(), running, valid)

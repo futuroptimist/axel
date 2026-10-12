@@ -486,3 +486,64 @@ def test_diamond_dependency_reuses_one_evaluated_upstream():
         dependency(c, d, "cd"),
     ]
     assert evaluate(*records).advisory_ready
+
+
+@pytest.mark.parametrize("decision", ["accepted", "rejected", "unknown", "dismissed"])
+def test_model_observations_cannot_poison_required_human_review(decision):
+    model = review(
+        "model", principal_kind="model", decision=decision, findings=("model finding",)
+    )
+    human = review("human")
+    assert not evaluate(task(), model).advisory_ready
+    assert evaluate(task(), model, human).advisory_ready
+    assert evaluate(task(), human, model).advisory_ready
+    other_human = review("other-human", decision="rejected")
+    assert "REVIEW_CONFLICT" in evaluate(task(), model, human, other_human).blockers
+
+
+def test_future_resume_keeps_stop_latched_until_explicit_instant():
+    stop = m.Transition(envelope("stop"), "stop")
+    resume = m.Transition(
+        envelope("resume", observed_at=500, source_at=500), "resume", "stop"
+    )
+    policy = replace(POLICY, evidence_max_age=1000)
+    records = (task(), review(), stop, resume)
+    before = evaluate(*records, policy=policy)
+    assert not before.advisory_ready and "STOP_LATCHED" in before.blockers
+    assert evaluate(
+        *records, policy=policy, now=datetime.fromtimestamp(500, timezone.utc)
+    ).advisory_ready
+
+
+def test_future_successful_attempt_cannot_establish_runtime_acceptance():
+    target = source_task(stage="runtime", execution_state="succeeded")
+    attempt = m.Attempt(
+        envelope("attempt", observed_at=500, source_at=500), "attempt", 1, "succeeded"
+    )
+    evidence = m.Evidence(
+        envelope("runtime"),
+        "runtime",
+        "success",
+        "artifact",
+        DIGEST,
+        attempt_id="attempt",
+    )
+    records = (
+        target,
+        review(target=target),
+        ci(target=target),
+        ci("second", target, PR2),
+        merge(target, PR),
+        merge(target, PR2, "merge-second"),
+        attempt,
+        evidence,
+    )
+    policy = replace(POLICY, evidence_max_age=1000)
+    before = evaluate(*records, policy=policy)
+    assert not before.advisory_ready and before.accepted_stage is None
+    assert (
+        evaluate(
+            *records, policy=policy, now=datetime.fromtimestamp(500, timezone.utc)
+        ).accepted_stage
+        == "runtime"
+    )

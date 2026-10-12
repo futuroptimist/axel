@@ -137,7 +137,8 @@ provenance independently and recheck current policy at use.
   requires the same source/channel/binding and cannot regress source time or run
   attempt. Arrival order is not evidence of success.
 - Reviews bind the complete required PR/head tuple and requested stage. Model
-  status cannot replace a human observation; unresolved findings, dismissal,
+  observations neither satisfy nor poison a required human review. Unresolved
+  human findings, dismissal,
   stale reviews and missing required reviews block. Draft, closed and unknown PR
   states block source/runtime readiness.
 - Awaiting an owner merge is separate from review readiness. One of two required
@@ -150,8 +151,10 @@ provenance independently and recheck current policy at use.
   not dispatch-time fencing.
 - Explicit stop observations remain latched across clock advance, revision change
   and reopen. Only an explicit resume referencing the current stop clears the
-  synthetic latch. Missing/stale policy, unknown stop state and missing
-  capabilities block. Lease expiry cannot imply completion or retry permission.
+  synthetic latch, and only once its observation time is reached. Future task,
+  attempt, dependency and transition observations block readiness; a future
+  success cannot establish acceptance. Missing/stale policy, unknown stop state and
+  missing capabilities block. Lease expiry cannot imply completion or retry permission.
 
 ## Acceptance coverage and deferred gates
 

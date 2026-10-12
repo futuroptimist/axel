@@ -126,14 +126,21 @@ def evaluate(
                 global_blockers.add("WORKING_HOURS")
     current = {task: [] for task in latest}
     stopped = set()
+    future_state = set()
     for record in snapshot.records:
         env = record.envelope
+        future = instant is not None and env.observed_at > instant
+        if future and isinstance(
+            record,
+            (model.TaskRevision, model.Attempt, model.Dependency, model.Transition),
+        ):
+            future_state.add(env.task_id)
         if env.task_revision == latest[env.task_id].envelope.task_revision:
             current[env.task_id].append(record)
         if isinstance(record, model.Transition):
             if record.action == "stop":
                 stopped.add(env.task_id)
-            elif record.action == "resume":
+            elif record.action == "resume" and instant is not None and not future:
                 stopped.discard(env.task_id)
     results = {}
 
@@ -145,6 +152,8 @@ def evaluate(
         observations = current[task]
         if task in stopped:
             blockers.add("STOP_LATCHED")
+        if task in future_state:
+            blockers.add("OBSERVATION_FUTURE")
         if revision.execution_state in ("cancelled", "unknown"):
             blockers.add("EXECUTION_" + revision.execution_state.upper())
         if _policy_valid(policy):
@@ -229,12 +238,11 @@ def evaluate(
                     if isinstance(r, model.ReviewDecision)
                     and r.reviewer == reviewer
                     and r.stage == revision.stage
+                    and r.principal_kind == "human"
                 ],
                 "REVIEW",
             )
             if item:
-                if item.principal_kind != "human":
-                    blockers.add("HUMAN_REVIEW_REQUIRED")
                 if item.decision != "accepted":
                     blockers.add("REVIEW_NOT_ACCEPTED")
                 if item.findings:

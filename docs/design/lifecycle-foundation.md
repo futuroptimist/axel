@@ -155,7 +155,8 @@ provenance independently and recheck current policy at use.
 - Explicit stop observations remain latched across clock advance, revision change
   and reopen. Only an explicit resume referencing the current stop clears the
   synthetic latch, and only once its observation time is reached. Replacing a
-  latched stop or resuming it cannot regress its source or observation time. Future task,
+  latched stop or resuming it cannot regress its source or observation time. This
+  chronology remains enforced after resume and across task revisions. Future task,
   attempt, dependency and transition observations block readiness; a future
   success cannot establish acceptance. Missing/stale policy, unknown stop state and
   missing capabilities block. Lease expiry cannot imply completion or retry permission.

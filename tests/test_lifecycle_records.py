@@ -431,3 +431,21 @@ def test_attempt_success_cannot_predate_previous_sequence(source, observed):
         envelope=replace(succeeded.envelope, source_at=100, observed_at=100),
     )
     snapshot(task(), running, valid)
+
+
+@pytest.mark.parametrize("source,observed", [(100, 100), (500, 600)])
+def test_transition_chronology_remains_bound_after_resume(source, observed):
+    stop = m.Transition(envelope("stop", source_at=500, observed_at=500), "stop")
+    resume = m.Transition(
+        envelope("resume", source_at=600, observed_at=600), "resume", "stop"
+    )
+    next_stop = m.Transition(
+        envelope("next-stop", source_at=source, observed_at=observed), "stop"
+    )
+    with pytest.raises(m.RecordError, match="stop_time"):
+        snapshot(task(), stop, resume, next_stop)
+    valid = replace(
+        next_stop,
+        envelope=replace(next_stop.envelope, source_at=600, observed_at=600),
+    )
+    snapshot(task(), stop, resume, valid)

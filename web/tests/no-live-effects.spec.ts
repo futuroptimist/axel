@@ -1,11 +1,23 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import { readdirSync } from 'node:fs';
 
-test('built assets and interactions have no live effects or executable fixture markup', async ({
-  page,
-  context,
-}) => {
+async function denyUnexpected(
+  context: BrowserContext,
+  page: Page,
+): Promise<string[]> {
   const unexpected: string[] = [];
   const origin = 'http://127.0.0.1:4173';
+  const assets = new Map(
+    readdirSync('dist/assets').map((name) => [
+      `/assets/${name}`,
+      name.endsWith('.js')
+        ? 'script'
+        : name.endsWith('.css')
+          ? 'stylesheet'
+          : 'image',
+    ]),
+  );
+  let documentLoaded = false;
   await context.routeWebSocket('**/*', (socket) => {
     unexpected.push(`blocked websocket ${socket.url()}`);
     socket.close();
@@ -13,16 +25,24 @@ test('built assets and interactions have no live effects or executable fixture m
   await context.route('**/*', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
+    const initialDocument =
+      !documentLoaded &&
+      url.pathname === '/' &&
+      request.resourceType() === 'document' &&
+      request.frame() === page.mainFrame();
+    const expectedAsset = assets.get(url.pathname) === request.resourceType();
     if (
       url.origin !== origin ||
       request.method() !== 'GET' ||
-      !['document', 'script', 'stylesheet', 'image'].includes(
-        request.resourceType(),
-      )
+      url.search !== '' ||
+      (!initialDocument && !expectedAsset)
     ) {
       unexpected.push(`${request.method()} ${request.url()}`);
       await route.abort();
-    } else await route.continue();
+    } else {
+      if (initialDocument) documentLoaded = true;
+      await route.continue();
+    }
   });
   page.on('websocket', (socket) =>
     unexpected.push(`websocket ${socket.url()}`),
@@ -39,6 +59,36 @@ test('built assets and interactions have no live effects or executable fixture m
       },
     });
   });
+  return unexpected;
+}
+
+test('request guard denies extra same-origin assets and navigation', async ({
+  page,
+  context,
+}) => {
+  const unexpected = await denyUnexpected(context, page);
+  await page.goto('/');
+  await expect(page.getByRole('status')).toContainText('10 matching');
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        const image = new Image();
+        image.onerror = () => resolve();
+        image.src = '/unexpected.gif';
+      }),
+  );
+  await page.goto('/unexpected-page').catch(() => {});
+  expect(unexpected).toEqual([
+    'GET http://127.0.0.1:4173/unexpected.gif',
+    'GET http://127.0.0.1:4173/unexpected-page',
+  ]);
+});
+
+test('built assets and interactions have no live effects or executable fixture markup', async ({
+  page,
+  context,
+}) => {
+  const unexpected = await denyUnexpected(context, page);
   await page.goto('/');
   await expect(page.getByRole('status')).toContainText('10 matching');
   const before = await page.locator('[data-task]').allTextContents();

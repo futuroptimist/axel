@@ -1,5 +1,42 @@
 import { expect, test } from '@playwright/test';
 
+test('history preserves focus changes without scrolling and focused cards', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await expect(page.getByRole('status')).toContainText('10 matching');
+  await page.getByRole('button', { name: 'Archive', exact: true }).click();
+  await page.getByLabel('priority', { exact: true }).focus();
+  await page.goBack();
+  await page.goForward();
+  await expect(page.getByLabel('priority', { exact: true })).toBeFocused();
+  await page.getByRole('button', { name: 'Board', exact: true }).click();
+  const card = page.locator('[data-task="demo:orbit/a"]');
+  await card.getByRole('link').click();
+  await expect(card).toBeFocused();
+  await page.goBack();
+  await page.goForward();
+  await expect(card).toBeFocused();
+});
+
+test('loading preserves disclosure-summary keyboard focus', async ({
+  page,
+}) => {
+  await page.goto('/?scenario=slow');
+  const help = page.locator('[data-focus="help-summary"]');
+  await help.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('status')).toContainText('10 matching');
+  await expect(help).toBeFocused();
+  await expect(page.locator('.help')).toHaveAttribute('open', '');
+  const directory = page.locator('[data-focus="directory-summary"]');
+  await directory.focus();
+  await page
+    .getByRole('button', { name: 'Collapse all', exact: true })
+    .evaluate((button: HTMLButtonElement) => button.click());
+  await expect(directory).toBeFocused();
+});
+
 test('Back to a failed read restores Retry focus after the error settles', async ({
   page,
 }) => {

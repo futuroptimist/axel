@@ -35,7 +35,7 @@ This launches the token.place server, relay and a mock LLM using one command.
 
 - `axel/` – core Python package with CLI entry points, repo/task managers and analytics helpers.
 - `tests/` – pytest suite mirroring CLI flows, analytics helpers and README expectations.
-- `web/` - [local synthetic read-only board demo](web/README.md), with invented fixtures and frontend tests.
+- `web/` – [local synthetic read-only board demo](web/README.md), with invented fixtures and frontend tests.
 - `docs/` – long-form documentation, FAQs, security notes, and architecture designs under `docs/design/`.
 - `analytics/` – orthogonality and saturation workbooks that back the `axel analyze-*` commands.
 - `hardware/` – CAD and STL assets for the token.place hardware experiments.

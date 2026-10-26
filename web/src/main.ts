@@ -15,6 +15,7 @@ import { render, type Actions } from './render';
 
 const root = document.querySelector<HTMLElement>('#app')!;
 let route = readRoute(new URL(location.href));
+let draftSearch = route.view.search;
 let state: LoadState = { kind: 'loading' };
 const storage = {
   getItem(key: string) {
@@ -63,7 +64,7 @@ function restoreFocus(key: string | null): void {
   const node = findFocus(key);
   // A directory link may be inside a closed disclosure after rendering.
   const details = node?.closest('details');
-  if (details) details.open = true;
+  if (details && node?.tagName !== 'SUMMARY') details.open = true;
   node?.focus({ preventScroll: true });
 }
 function paint(restore?: Snapshot): void {
@@ -72,7 +73,7 @@ function paint(restore?: Snapshot): void {
   const helpOpen = document.querySelector<HTMLDetailsElement>('.help')?.open;
   const directoryOpen =
     document.querySelector<HTMLDetailsElement>('.directory')?.open;
-  render(root, route, state, preferences, actions);
+  render(root, route, state, preferences, actions, draftSearch);
   const help = document.querySelector<HTMLDetailsElement>('.help');
   if (help) help.open = Boolean(helpOpen);
   const directory = document.querySelector<HTMLDetailsElement>('.directory');
@@ -86,6 +87,7 @@ function paint(restore?: Snapshot): void {
       pendingRestore = undefined;
       scrollTo(0, position.y);
       restoreFocus(position.focus);
+      savePosition();
       return;
     }
     if (pendingScroll && state.kind === 'ready' && route.target !== null) {
@@ -96,14 +98,16 @@ function paint(restore?: Snapshot): void {
       target?.scrollIntoView({ block: 'center', behavior: 'instant' });
       target?.focus({ preventScroll: true });
     }
+    if (state.kind !== 'loading') savePosition();
   });
 }
-function navigate(next: Route, origin?: Snapshot): void {
+function navigate(next: Route, origin?: Snapshot, preserveDraft = false): void {
   savePosition();
   pendingRestore = undefined;
   const previousScenario = route.scenario;
   history.pushState(origin ? { origin } : {}, '', routeUrl(next));
   route = next;
+  if (!preserveDraft) draftSearch = route.view.search;
   pendingScroll = route.target !== null;
   if (previousScenario !== next.scenario) void loader.load(next.scenario);
   else paint();
@@ -113,8 +117,11 @@ function persist(): void {
   paint();
 }
 const actions: Actions = {
-  view(view) {
-    navigate({ ...route, view, target: null });
+  view(view, preserveDraft) {
+    navigate({ ...route, view, target: null }, undefined, preserveDraft);
+  },
+  searchDraft(value) {
+    draftSearch = value;
   },
   scenario(scenario) {
     navigate({ ...route, scenario });
@@ -169,6 +176,10 @@ const loader = new BoardLoader(createFixtureReader(), (next) => {
   paint();
 });
 history.scrollRestoration = 'manual';
+addEventListener('focusin', () => {
+  if (state.kind !== 'loading' && !pendingRestore && !pendingScroll)
+    savePosition();
+});
 addEventListener(
   'pointerdown',
   () => {
@@ -181,6 +192,7 @@ addEventListener(
 addEventListener('popstate', () => {
   const oldScenario = route.scenario;
   route = readRoute(new URL(location.href));
+  draftSearch = route.view.search;
   pendingScroll = false;
   pendingRestore = entry().snapshot;
   if (oldScenario !== route.scenario) void loader.load(route.scenario);

@@ -1,5 +1,28 @@
 import { expect, test } from '@playwright/test';
 
+test('unsubmitted search survives presentation and filter changes but is not persisted', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await expect(page.getByRole('status')).toContainText('10 matching');
+  await page.getByRole('searchbox').fill('unfinished query');
+  await page.getByLabel('Sort', { exact: true }).selectOption('priority');
+  await expect(page.getByRole('searchbox')).toHaveValue('unfinished query');
+  await page
+    .getByLabel('repository', { exact: true })
+    .selectOption('tiny-atlas');
+  await page.getByRole('button', { name: 'Collapse all', exact: true }).click();
+  await expect(page.getByRole('searchbox')).toHaveValue('unfinished query');
+  expect(await page.evaluate(() => JSON.stringify(localStorage))).not.toContain(
+    'unfinished query',
+  );
+  await page.goBack();
+  await expect(page.getByRole('searchbox')).toHaveValue('');
+  await page.getByRole('searchbox').fill('another unfinished query');
+  await page.getByRole('button', { name: 'Reset filters' }).click();
+  await expect(page.getByRole('searchbox')).toHaveValue('');
+});
+
 test('board, archive, details, history and controls', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('status')).toHaveText(

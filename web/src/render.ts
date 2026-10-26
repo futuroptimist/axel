@@ -11,7 +11,8 @@ import { scenarios, type Scenario } from './fixtures/scenarios';
 import type { LoadState } from './fixture-reader';
 
 export interface Actions {
-  view(view: View): void;
+  view(view: View, preserveDraft?: boolean): void;
+  searchDraft(value: string): void;
   scenario(scenario: Scenario): void;
   link(id: string): void;
   dismiss(): void;
@@ -79,6 +80,7 @@ function card(
 ): HTMLElement {
   const node = el('article', undefined, 'card');
   node.dataset.task = task.id;
+  node.dataset.focus = `card:${task.id}`;
   node.tabIndex = -1;
   node.setAttribute('aria-label', task.title);
   if (route.target === task.id) node.classList.add('target');
@@ -136,11 +138,13 @@ export function render(
   state: LoadState,
   preferences: Preferences,
   actions: Actions,
+  draftSearch: string,
 ): void {
   const fragment = document.createDocumentFragment();
   const skip = el('a', 'Skip to board', 'skip');
   skip.href = '#board';
   skip.tabIndex = 0;
+  skip.dataset.focus = 'skip';
   skip.addEventListener('click', (event) => {
     event.preventDefault();
     const main = document.querySelector<HTMLElement>('#board');
@@ -179,8 +183,10 @@ export function render(
   }
   header.append(nav);
   const help = el('details', undefined, 'help');
+  const helpSummary = el('summary', 'Help & limitations');
+  helpSummary.dataset.focus = 'help-summary';
   help.append(
-    el('summary', 'Help & limitations'),
+    helpSummary,
     el(
       'p',
       'Board and Archive are separate views. Terminal status does not imply archive. Search includes titles, descriptions, IDs and history. Filter counts apply all other filters and the current view. Zero-count options remain available.',
@@ -198,6 +204,7 @@ export function render(
   fragment.append(header);
   const main = el('main');
   main.id = 'board';
+  main.dataset.focus = 'main';
   main.tabIndex = -1;
   const toolbar = el('section', undefined, 'toolbar');
   toolbar.setAttribute('aria-label', 'Board controls');
@@ -220,7 +227,8 @@ export function render(
   const search = el('input');
   search.type = 'search';
   search.name = 'q';
-  search.value = route.view.search;
+  search.value = draftSearch;
+  search.addEventListener('input', () => actions.searchDraft(search.value));
   search.dataset.focus = 'search';
   search.setAttribute('aria-label', 'Search invented tasks');
   searchLabel.append(search);
@@ -248,10 +256,13 @@ export function render(
         select.append(option(item.value, `${item.value} (${item.count})`));
     select.value = route.view.filters[key];
     select.addEventListener('change', () =>
-      actions.view({
-        ...route.view,
-        filters: { ...route.view.filters, [key]: select.value },
-      }),
+      actions.view(
+        {
+          ...route.view,
+          filters: { ...route.view.filters, [key]: select.value },
+        },
+        true,
+      ),
     );
     label.append(select);
     filters.append(label);
@@ -269,7 +280,7 @@ export function render(
     sort.append(option(value!, label!));
   sort.value = route.view.sort;
   sort.addEventListener('change', () =>
-    actions.view({ ...route.view, sort: sort.value as View['sort'] }),
+    actions.view({ ...route.view, sort: sort.value as View['sort'] }, true),
   );
   sortLabel.append(sort);
   filters.append(
@@ -405,10 +416,12 @@ function renderBoard(
   }
   content.append(lanes);
   const directory = el('details', undefined, 'directory');
-  directory.dataset.focus = 'directory';
-  directory.append(
-    el('summary', 'Demo links · includes hidden and archived tasks'),
+  const directorySummary = el(
+    'summary',
+    'Demo links · includes hidden and archived tasks',
   );
+  directorySummary.dataset.focus = 'directory-summary';
+  directory.append(directorySummary);
   const list = el('ul');
   for (const task of board) {
     const row = el('li');

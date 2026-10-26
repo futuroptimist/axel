@@ -35,6 +35,7 @@ This launches the token.place server, relay and a mock LLM using one command.
 
 - `axel/` – core Python package with CLI entry points, repo/task managers and analytics helpers.
 - `tests/` – pytest suite mirroring CLI flows, analytics helpers and README expectations.
+- `web/` - [local synthetic read-only board demo](web/README.md), with invented fixtures and frontend tests.
 - `docs/` – long-form documentation, FAQs, security notes, and architecture designs under `docs/design/`.
 - `analytics/` – orthogonality and saturation workbooks that back the `axel analyze-*` commands.
 - `hardware/` – CAD and STL assets for the token.place hardware experiments.
@@ -77,6 +78,7 @@ Automated coverage for these references lives in
 - [x] achieve 100% test coverage
 - [ ] bounded resumable local backup and restore ([proposed design](docs/design/resumable-backup-contract.md); implementation requires separate authorization)
 - [ ] sanitized kanban domain/UI and adapter extraction ([K269 design](docs/design/sanitized-kanban-contract.md); online integrations, migration and deployment require separate authorization)
+- [x] local synthetic read-only web board presentation ([milestone scope](docs/design/web-milestone-one.md)); complete domain/UI parity and live adapters remain future work
 - [ ] optional full kanban E2EE ([roadmap issue #252](https://github.com/futuroptimist/axel/issues/252), [future design](docs/design/kanban-e2ee-boundary.md)); initial mode explicitly trusts scoped server/Slack/dot endpoints and is not E2EE
 
 ## installation

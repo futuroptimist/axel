@@ -34,12 +34,21 @@ interface Snapshot {
   focus: string | null;
 }
 interface Entry {
+  key?: number;
   snapshot?: Snapshot;
   origin?: Snapshot;
 }
 let pendingRestore: Snapshot | undefined;
 function entry(): Entry {
   return (history.state as Entry | null) ?? {};
+}
+let currentEntryKey = entry().key ?? 0;
+let nextEntryKey = currentEntryKey;
+const positions = new Map<number, Snapshot>();
+let scrollSaveTimer: ReturnType<typeof setTimeout> | undefined;
+function cancelScrollSave(): void {
+  clearTimeout(scrollSaveTimer);
+  scrollSaveTimer = undefined;
 }
 function focusKey(): string | null {
   return (document.activeElement as HTMLElement | null)?.dataset.focus ?? null;
@@ -52,7 +61,13 @@ function snapshot(): Snapshot {
   };
 }
 function savePosition(): void {
-  history.replaceState({ ...entry(), snapshot: snapshot() }, '');
+  cancelScrollSave();
+  const position = snapshot();
+  positions.set(currentEntryKey, position);
+  history.replaceState(
+    { ...entry(), key: currentEntryKey, snapshot: position },
+    '',
+  );
 }
 function findFocus(key: string): HTMLElement | undefined {
   return [...document.querySelectorAll<HTMLElement>('[data-focus]')].find(
@@ -105,7 +120,9 @@ function navigate(next: Route, origin?: Snapshot, preserveDraft = false): void {
   savePosition();
   pendingRestore = undefined;
   const previousScenario = route.scenario;
-  history.pushState(origin ? { origin } : {}, '', routeUrl(next));
+  const key = ++nextEntryKey;
+  history.pushState(origin ? { key, origin } : { key }, '', routeUrl(next));
+  currentEntryKey = key;
   route = next;
   if (!preserveDraft) draftSearch = route.view.search;
   pendingScroll = route.target !== null;
@@ -190,13 +207,16 @@ addEventListener(
   { capture: true },
 );
 addEventListener('popstate', () => {
+  cancelScrollSave();
+  currentEntryKey = entry().key ?? ++nextEntryKey;
+  nextEntryKey = Math.max(nextEntryKey, currentEntryKey);
   const oldScenario = route.scenario;
   route = readRoute(new URL(location.href));
   draftSearch = route.view.search;
   pendingScroll = false;
-  pendingRestore = entry().snapshot;
+  pendingRestore = positions.get(currentEntryKey) ?? entry().snapshot;
   if (oldScenario !== route.scenario) void loader.load(route.scenario);
-  paint(entry().snapshot);
+  paint(pendingRestore);
 });
 addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && route.target !== null) actions.dismiss();
@@ -238,7 +258,13 @@ addEventListener(
     // Pointer/wheel/touch/key intent cancels navigation above; do not mistake
     // ready-layout anchoring for user input before the scheduled target scroll.
     // A loading layout can also clamp a pending history restoration.
-    if (state.kind === 'ready') savePosition();
+    if (state.kind !== 'loading') {
+      // Keep every position in memory for immediate browser Back/Forward, but
+      // serialize only after scrolling settles instead of at display frequency.
+      positions.set(currentEntryKey, snapshot());
+      cancelScrollSave();
+      scrollSaveTimer = setTimeout(savePosition, 500);
+    }
   },
   { passive: true },
 );

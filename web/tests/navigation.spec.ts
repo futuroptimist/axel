@@ -1,5 +1,37 @@
 import { expect, test } from '@playwright/test';
 
+test('scroll history writes are coalesced without losing immediate Back/Forward position', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 700 });
+  await page.addInitScript(() => {
+    const original = history.replaceState.bind(history);
+    const counts = window as unknown as { historyWrites: number };
+    counts.historyWrites = 0;
+    history.replaceState = (...args) => {
+      counts.historyWrites++;
+      original(...args);
+    };
+  });
+  await page.goto('/');
+  await expect(page.getByRole('status')).toContainText('10 matching');
+  await page.locator('[data-task="demo:orbit/a"] a').click();
+  await expect(page.locator('[data-task="demo:orbit/a"]')).toBeFocused();
+  await page.evaluate(() => {
+    (window as unknown as { historyWrites: number }).historyWrites = 0;
+    scrollTo(0, 1800);
+    for (let i = 0; i < 120; i++) dispatchEvent(new Event('scroll'));
+  });
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { historyWrites: number }).historyWrites,
+    ),
+  ).toBeLessThan(5);
+  await page.goBack();
+  await page.goForward();
+  await expect.poll(() => page.evaluate(() => scrollY)).toBe(1800);
+});
+
 test('history preserves focus changes without scrolling and focused cards', async ({
   page,
 }) => {

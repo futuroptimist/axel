@@ -33,6 +33,13 @@ pytest --cov=axel --cov=tests
 ```
 
 ## Workflow Notes
+- Before commits, pushes, or other operational mutations, run
+  `python -m axel.working_hours --config .axel/hillclimb/config.yml` and proceed only
+  when it succeeds. Repeat the check before each later mutation. Default blocked
+  working hours are Monday–Friday, 09:00 inclusive to 17:00 exclusive in
+  `America/Los_Angeles` (DST-aware). Read-only inspection and planning may continue.
+  Forks/clones can customize the configuration; see
+  [the working-hours guide](docs/HILLCLIMB.md#working-hours-guard).
 - Manage repositories with `python -m axel.repo_manager`
 - Set `AXEL_REPO_FILE` for a custom repo list
 - Keep the [roadmap](README.md#roadmap) updated

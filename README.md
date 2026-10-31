@@ -35,7 +35,8 @@ This launches the token.place server, relay and a mock LLM using one command.
 
 - `axel/` – core Python package with CLI entry points, repo/task managers and analytics helpers.
 - `tests/` – pytest suite mirroring CLI flows, analytics helpers and README expectations.
-- `docs/` – long-form documentation, FAQs and security notes referenced throughout the README.
+- `web/` – [local synthetic read-only board demo](web/README.md), with invented fixtures and frontend tests.
+- `docs/` – long-form documentation, FAQs, security notes, and architecture designs under `docs/design/`.
 - `analytics/` – orthogonality and saturation workbooks that back the `axel analyze-*` commands.
 - `hardware/` – CAD and STL assets for the token.place hardware experiments.
 - `examples/` – sample repository lists and walkthrough data for local experimentation.
@@ -63,6 +64,7 @@ Automated coverage for these references lives in
 - [x] integrate `token.place` clients across all repos
 - [x] integrate [`gabriel`](https://github.com/futuroptimist/gabriel) as a security layer across repos
 - [x] self-hosted Discord bot for ingesting messages when mentioned (see docs/discord-bot.md)
+- [ ] private LAN bookmark planning, local queues and separately approved Slack/Discord exports ([proposed design](docs/design/chat-operations-contract.md); documentation only, isolation controls pending)
 - [x] represent personal flywheel of projects and highlight cross-pollination (see repo list below)
 - [x] document workflow for a private `local/` directory (see local setup below)
 - [x] track tasks with markdown files in the `issues/` folder
@@ -72,7 +74,12 @@ Automated coverage for these references lives in
 - [x] adopt [`flywheel`](https://github.com/futuroptimist/flywheel) template for new repositories
 - [x] encrypt notes saved under `local/discord/`
 - [x] review permissions for integrated tools (token.place, gabriel) (see docs/THREAT_MODEL.md)
+- [x] configurable, DST-aware working-hours guard for hillclimb mutations (see [Hillclimb](docs/HILLCLIMB.md#working-hours-guard))
 - [x] achieve 100% test coverage
+- [ ] bounded resumable local backup and restore ([proposed design](docs/design/resumable-backup-contract.md); implementation requires separate authorization)
+- [ ] sanitized kanban domain/UI and adapter extraction ([K269 design](docs/design/sanitized-kanban-contract.md); online integrations, migration and deployment require separate authorization)
+- [x] local synthetic read-only web board presentation ([milestone scope](docs/design/web-milestone-one.md)); complete domain/UI parity and live adapters remain future work
+- [ ] optional full kanban E2EE ([roadmap issue #252](https://github.com/futuroptimist/axel/issues/252), [future design](docs/design/kanban-e2ee-boundary.md)); initial mode explicitly trusts scoped server/Slack/dot endpoints and is not E2EE
 
 ## installation
 
@@ -324,6 +331,8 @@ audit how data is handled. We rely on the
 lint, test and documentation practices transparent.
 See [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) for cross-repo security tips.
 For instructions on rotating API tokens see [docs/ROTATING_TOKENS.md](docs/ROTATING_TOKENS.md).
+See the [remote Claude Code control design](docs/design/remote-claude-code-control.md)
+for the proposed iPhone, tailnet, and constrained Flipper architecture.
 For example, run gabriel alongside token.place and dspace to cross-check repository data
 for OSINT insights before sharing.
 

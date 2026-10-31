@@ -1,3 +1,11 @@
+# Block repository mutations during these local working hours.
+# Forks/clones may customize these generic defaults for their own schedules.
+working_hours:
+  enabled: true
+  timezone: "America/Los_Angeles"
+  weekdays: [monday, tuesday, wednesday, thursday, friday]
+  start: "09:00"
+  end: "17:00"
 runs: 4
 branch_prefix: "hc"
 touch_budget:

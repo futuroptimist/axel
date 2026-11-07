@@ -287,6 +287,43 @@ success until a receipt is verified. Cancel has no effect. Disallow duplicate
 submission while reconciling the same operation key. Untrusted titles/history are
 rendered as inert text, as in the current synthetic UI.
 
+### Aligned progress-comparison tables
+
+When reporting parallel outcomes as table columns, regenerate the table after each
+verified step completion. Preserve completed work without letting it obscure the
+relative amount and order of work remaining:
+
+1. Keep a completed-history block above the remaining-work block. Each completed
+   step gets its own row in completion order, with the step struck through and its
+   verified outcome retained. Every other column in that row is blank. Add each new
+   completion to this block rather than removing it or combining it with another
+   column's unfinished work.
+2. Below the completed-history rows, align the first unfinished step in every
+   column on the same row, then the second unfinished step on the next row, and so
+   on. Shift the other columns down when a completed-history row is added. Preserve
+   each column's dependency/order sequence; pad shorter remaining lists with blanks.
+3. Carry forward the existing estimates, units, uncertainty and wait qualifiers
+   with their steps. Do not silently revise estimates when rearranging cells. If an
+   estimate changes on new evidence, state the change and reason. A completed step's
+   prior estimate can remain in its struck-through text; it is not actual elapsed
+   time. Unknown duration stays unknown.
+
+Invented example; these estimates illustrate formatting, not delivery forecasts:
+
+| Outcome A | Outcome B | Outcome C |
+| --- | --- | --- |
+| ~~Review design: 1–2 h.~~ Approved. | | |
+| Implement validator: 2–4 h. | Scope review findings: duration unknown until scoped. | Resolve interface decision: 1 h after decisions; wait unknown. |
+| Run regression checks: 1 h. | Test agreed fixes: estimate pending scope. | Verify integration: 2–3 h. |
+
+If Outcome B's first remaining step then completes, add a row containing only that
+struck-through step below the existing completed row. Outcome A's validator,
+Outcome B's testing and Outcome C's interface decision become the aligned first
+remaining row below both completed rows. Blank cells mean no entry in that row,
+not unknown work, zero effort or Done. This reporting convention does not change
+board ordering, dependencies, WIP, E scores or implementation scope, and aligned
+rows do not imply equal effort, shared deadlines or simultaneous execution.
+
 ## 6. WIP and waiting
 
 Recommended rule: **one slot per distinct card actively executing its own work**.

@@ -54,9 +54,11 @@ E is neither elapsed time nor a promise about agent throughput or reviewer respo
 
 - Store a nullable integer `effort_remaining` in 0…9. Render null as **E?**, never E0.
   Reject fractions, strings, booleans and out-of-range values at typed boundaries.
-- E0 means no active work remains in this card's own scope. A parent can be E0 and
-  still wait on required children. A card can be E0 while awaiting an owner action.
-  E0 does not set Done, authorize a transition or bypass acceptance evidence.
+- E0 means no remaining work in this card's own scope. A parent can be E0 and
+  still wait on required children or an owner action outside its own scope. If an
+  owner must still perform acceptance work owned by this card, retain a nonzero E
+  or E? for that work. External waits are separate blockers. E0 does not set Done,
+  authorize a transition or bypass acceptance evidence.
 - Record a short estimate rationale, who estimated it and when. An estimate is
   tied to a task revision and rubric version. If scope changes without an accepted
   re-estimate, present E? and retain the previous estimate in history.
@@ -79,7 +81,7 @@ forecast. Adjacent bands express increasing scope, not a fixed ratio.
 
 | Band | Remaining own work | Typical invented example |
 | --- | --- | --- |
-| E0 | No active own work | Integration accepted; required child still awaiting its final gate |
+| E0 | No remaining own work | Integration accepted; required child still awaiting its final gate |
 | E1 | One tiny, well-understood action and verification | Correct a label and check its rendering |
 | E2 | Small localized change with a straightforward test | Add a field validator and boundary cases |
 | E3 | Several related edits within one component | Add a selector and its focused regression suite |

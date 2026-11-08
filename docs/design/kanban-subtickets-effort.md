@@ -7,6 +7,13 @@ not create cards, change the board, implement features, migrate data or authoriz
 execution, merge or deployment. The recommended defaults below remain subject to
 design review; accepting this document is not implementation approval.
 
+The proposed [dependency management extension](kanban-dependency-management.md)
+adds prerequisite/dependent visibility, supported add/edit/remove flows, persistent
+edge and completion bindings, validation, permissions and migration gates. Read it
+alongside this design: textual prerequisite links do not create graph records, and
+the dependency UI needs its own qualified domain/storage/adapter support. Neither
+design claims that live relationships have been registered or editing has shipped.
+
 ## 1. Goals and boundaries
 
 - Break a large outcome into independently actionable, testable cards without
@@ -228,6 +235,11 @@ The reopen cascade is a proposed future domain behavior, not implemented by toda
 advisory reducer. If an adapter cannot commit the dependent transition atomically,
 it must show an invalid/incomplete result and block new completion until reconciled.
 No client-only “Done” state can override the authoritative acceptance evaluation.
+Before adapter adoption, ST-01 must reconcile this proposed Blocked destination
+with the board's column policy. Dependency waits remain separate metadata where
+Blocked is reserved for owner-actionable waits; the
+[dependency extension](kanban-dependency-management.md#2-one-directed-relation-two-views)
+requires acceptance invalidation without inventing a status transition.
 
 ## 5. Board and card UI
 
@@ -580,6 +592,9 @@ not grants to execute. Each card should retain this design link and its acceptan
 Each card produces a focused reviewable change and evidence for its acceptance IDs.
 Do not close the overall feature merely because the read-only demo is complete.
 No delivery date or aggregate E is assigned by adding these estimates together.
+The [DG-01–07 extension backlog](kanban-dependency-management.md#8-scoped-backlog-and-relation-to-st-0113)
+adds dependency-specific slices without replacing ST-01–13 or silently revising
+their estimates. A combined hierarchy/dependency pilot also requires DG-06.
 
 ## 10. Decisions to confirm before implementation
 

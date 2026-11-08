@@ -322,7 +322,7 @@ Record exact tested commit, schema/fixture versions and actual passed, failed,
 skipped or unrun checks. Synthetic tests do not establish production durability,
 authentication, dispatch fencing or migration safety.
 
-## 8. Scoped backlog and relation to ST-01–13
+## 8. Scoped backlog and ST integration
 
 DG keys below are public planning keys, not allocated board cards or permission to
 execute. Keep all thirteen ST keys and their existing dependency ordering. Add

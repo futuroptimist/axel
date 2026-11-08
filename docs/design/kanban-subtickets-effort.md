@@ -592,7 +592,7 @@ not grants to execute. Each card should retain this design link and its acceptan
 Each card produces a focused reviewable change and evidence for its acceptance IDs.
 Do not close the overall feature merely because the read-only demo is complete.
 No delivery date or aggregate E is assigned by adding these estimates together.
-The [DG-01–07 extension backlog](kanban-dependency-management.md#8-scoped-backlog-and-relation-to-st-0113)
+The [DG-01–07 extension backlog](kanban-dependency-management.md#8-scoped-backlog-and-st-integration)
 adds dependency-specific slices without replacing ST-01–13 or silently revising
 their estimates. A combined hierarchy/dependency pilot also requires DG-06.
 

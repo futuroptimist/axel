@@ -1,6 +1,6 @@
 pyyaml
 tzdata==2026.5
-cryptography==46.0.5
+cryptography==50.0.2
 requests==2.32.5
 python-dotenv
 rich

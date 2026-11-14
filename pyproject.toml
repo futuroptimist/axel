@@ -14,7 +14,7 @@ dependencies = [
     "pyyaml==6.0.2",
     "tzdata==2026.5",
     "cryptography==46.0.5",
-    "pandas==2.2.2",
+    "pandas==3.1.0",
     "requests==2.32.5",
 ]
 

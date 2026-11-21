@@ -72,6 +72,36 @@ recursive decoding; raw JSON rejects duplicate keys and non-finite numbers.
 Canonical lifecycle encoding remains a separate requirement, not an assumed property
 of ordinary web JSON. Implementation review must pin the exact bounded decoder.
 
+### ST-04 synthetic acceptance input
+
+The parent binding describes **what is required**, not what acceptance was
+recorded for the child. For the read-only synthetic demo, ST-04 receives a
+separate immutable fixture input alongside the validated board envelope.
+It is not a card field,
+runtime receipt, or source of authority. The fixture has exactly `snapshot_id`,
+`snapshot_revision` and `acceptances`. The snapshot identity and revision must
+match the board. Each acceptance row has exactly `card_id`, `task_revision`,
+`accepted_stage` (`design`, `source` or `runtime`), `contract_digest` (lowercase
+64-hex), and `evidence_state` (`current`, `invalidated` or `unknown`). The
+fixture supplies these synthetic observations explicitly. Validate the input
+using the same bounds and strict parsing as the snapshot; allow at most one row
+per known card, and reject unknown keys, duplicate rows and unknown card IDs.
+
+A required child qualifies only if it is Done and has a row bound to its current
+task revision with current evidence and an exact stage and contract match.
+Missing input or rows, stale revision, unknown or invalidated evidence, or a
+stage or digest mismatch cannot satisfy the gate.
+A snapshot mismatch makes the evidence input unavailable. Do not infer evidence
+from a lane, history prose, or legacy upgrade. Reopening invalidates acceptance
+independently of the displayed lane; a prior receipt remains historical evidence,
+not a current pass.
+
+For A4, include a Done child with a current **design** receipt against a
+**source** requirement and verify it blocks. The same fixture with a matching
+current source receipt must satisfy the child gate; the parent still requires
+its own acceptance and the other required children. Cover wrong digest, stale
+card and snapshot revisions, missing rows and invalidated/unknown evidence.
+
 ## 3. Invented examples and upgrade
 
 These examples specify field relationships, not complete serialized fixtures:
